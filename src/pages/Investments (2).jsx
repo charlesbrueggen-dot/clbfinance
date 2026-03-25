@@ -52,9 +52,7 @@ export default function Investments() {
     for (const inv of investments) {
       try {
         // Use allorigins CORS proxy to bypass browser restrictions
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${inv.symbol}?interval=1d&range=1d`
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`
-        const res = await fetch(proxyUrl)
+        const res = await fetch(`/api/stock-price?symbol=${inv.symbol}`)
         const data = await res.json()
         const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice
         if (price && price > 0) {
