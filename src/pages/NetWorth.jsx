@@ -12,6 +12,7 @@ export default function NetWorth() {
   const [assets, setAssets] = useState([])
   const [investments, setInvestments] = useState([])
   const [income, setIncome] = useState([])
+  const [expenses, setExpenses] = useState([])
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -20,16 +21,18 @@ export default function NetWorth() {
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
-    const [{ data: a }, { data: inv }, { data: inc }, { data: ln }] = await Promise.all([
+    const [{ data: a }, { data: inv }, { data: inc }, { data: ln }, { data: exp }] = await Promise.all([
       supabase.from('assets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('investments').select('*').eq('user_id', user.id),
       supabase.from('income').select('amount').eq('user_id', user.id),
       supabase.from('loans').select('*').eq('user_id', user.id),
+      supabase.from('expenses').select('amount, recurring').eq('user_id', user.id),
     ])
     setAssets(a || [])
     setInvestments(inv || [])
     setIncome(inc || [])
     setLoans(ln || [])
+    setExpenses(exp || [])
     setLoading(false)
   }
   useEffect(() => { load() }, [user.id])
@@ -52,7 +55,9 @@ export default function NetWorth() {
     load()
   }
 
-  const balance = income.reduce((s, i) => s + i.amount, 0)
+  // Only one-time (non-recurring) expenses come out of balance
+  const oneTimeExpenses = expenses.filter(e => !e.recurring).reduce((s, e) => s + e.amount, 0)
+  const balance = income.reduce((s, i) => s + i.amount, 0) - oneTimeExpenses
   const physicalAssets = assets.reduce((s, a) => s + a.value, 0)
   const portValue = investments.reduce((s, i) => s + (i.shares * (i.current_price || i.avg_cost)), 0)
   const moneyLent = loans.filter(l => l.type === 'lent' && !l.settled).reduce((s, l) => s + l.amount, 0)

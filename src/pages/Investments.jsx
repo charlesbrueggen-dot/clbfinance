@@ -17,6 +17,7 @@ export default function Investments() {
   const [form, setForm] = useState({ symbol: '', name: '', type: 'Stock', shares: '', avg_cost: '', current_price: '', portfolio_pct: '', sector: 'Technology' })
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState('')
 
   const load = async () => {
     const { data } = await supabase.from('investments').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
@@ -45,15 +46,30 @@ export default function Investments() {
 
   const refreshPrices = async () => {
     setRefreshing(true)
+    setRefreshError('')
+    let updatedCount = 0
+
     for (const inv of investments) {
       try {
-        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${inv.symbol}?interval=1d&range=1d`)
+        // Use CORS proxy to avoid browser blocking the Yahoo Finance request
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${inv.symbol}?interval=1d&range=1d`
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`
+        const res = await fetch(proxyUrl)
         const data = await res.json()
         const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice
-        if (price) await supabase.from('investments').update({ current_price: price }).eq('id', inv.id).eq('user_id', user.id)
-      } catch {}
+        if (price && price > 0) {
+          await supabase.from('investments').update({ current_price: price }).eq('id', inv.id).eq('user_id', user.id)
+          updatedCount++
+        }
+      } catch {
+        // Skip symbols that fail (e.g. crypto tickers may differ)
+      }
     }
+
     setRefreshing(false)
+    if (updatedCount === 0 && investments.length > 0) {
+      setRefreshError('Could not fetch prices. Check your ticker symbols are valid (e.g. AAPL, TSLA, BTC-USD).')
+    }
     load()
   }
 
@@ -75,10 +91,12 @@ export default function Investments() {
         <p className="text-muted text-sm mt-1">Track your investment portfolio performance</p>
       </div>
 
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-2">
         <button onClick={refreshPrices} disabled={refreshing} className="btn-secondary">↻ {refreshing ? 'Refreshing...' : 'Refresh Prices'}</button>
         <button onClick={openAdd} className="btn-primary">+ Add Investment</button>
       </div>
+      {refreshError && <p className="text-red-500 text-sm mb-4">{refreshError}</p>}
+      {!refreshError && <div className="mb-4" />}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">

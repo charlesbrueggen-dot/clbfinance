@@ -51,8 +51,22 @@ export default function Income() {
   }
 
   const totalBalance = income.reduce((s, i) => s + i.amount, 0)
+
+  // Normalize source names: trim whitespace, lowercase, then title-case
+  // This merges "babysitting", "Babysitting", "Babysiting" into one slice
+  const normalizeSource = (source) => {
+    if (!source) return 'Other'
+    return source.trim().toLowerCase()
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+  }
+
   const srcMap = {}
-  income.forEach(i => { srcMap[i.source] = (srcMap[i.source] || 0) + i.amount })
+  income.forEach(i => {
+    const key = normalizeSource(i.source)
+    srcMap[key] = (srcMap[key] || 0) + i.amount
+  })
   const pieData = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
