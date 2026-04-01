@@ -26,69 +26,47 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #b8d4df 0%, #8ab4cc 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(145deg, #1a5a94 0%, #2a7ab8 50%, #3a8acc 100%)' }}>
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">$</div>
-          <h1 className="text-3xl font-bold text-slate-800">CLB Finance</h1>
-          <p className="text-slate-600 mt-1">Your personal financial dashboard</p>
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.35)', backdropFilter: 'blur(12px)' }}>
+            <span className="text-white font-black text-3xl tracking-tight">S</span>
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Stride</h1>
+          <p className="text-white/65 mt-2 text-sm font-medium">Your personal financial dashboard</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(16px)' }}>
           {/* Tabs */}
-          <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
+          <div className="flex rounded-xl p-1 mb-7" style={{ background: 'rgba(0,0,0,0.15)' }}>
             <button
               onClick={() => setMode('login')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${mode === 'login' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
-            >
-              Sign In
-            </button>
+              className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all"
+              style={{ background: mode === 'login' ? 'rgba(255,255,255,0.2)' : 'transparent', color: mode === 'login' ? 'white' : 'rgba(255,255,255,0.55)' }}
+            >Sign In</button>
             <button
               onClick={() => setMode('signup')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${mode === 'signup' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
-            >
-              Create Account
-            </button>
+              className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-all"
+              style={{ background: mode === 'signup' ? 'rgba(255,255,255,0.2)' : 'transparent', color: mode === 'signup' ? 'white' : 'rgba(255,255,255,0.55)' }}
+            >Create Account</button>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
-              />
+              <label className="label">Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required className="input-field" />
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                required
-                minLength={6}
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all"
-              />
+              <label className="label">Password</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" required minLength={6} className="input-field" />
             </div>
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
-            )}
-            {message && (
-              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm">{message}</div>
-            )}
+            {error && <div className="mb-4 p-3 rounded-xl text-sm font-medium" style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}>{error}</div>}
+            {message && <div className="mb-4 p-3 rounded-xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>{message}</div>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 text-base">
               {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
             </button>
           </form>

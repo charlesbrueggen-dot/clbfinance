@@ -56,7 +56,7 @@ export default function Goals() {
     return Math.ceil(diff)
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
 
   return (
     <div>
@@ -86,7 +86,7 @@ export default function Goals() {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)' }}>
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
                       {icon}
                     </div>
                     <div>

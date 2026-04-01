@@ -168,7 +168,7 @@ export default function Import() {
       {step === 3 && (
         <div className="card p-12 text-center">
           <div className="text-5xl mb-4">🎉</div>
-          <p className="text-2xl font-bold text-emerald-500 mb-2">{doneCount} transactions imported!</p>
+          <p className="text-2xl font-bold text-primary mb-2">{doneCount} transactions imported!</p>
           <p className="text-muted text-sm mb-6">They've been added to your Expenses page.</p>
           <button onClick={reset} className="btn-primary">Import Another File</button>
         </div>

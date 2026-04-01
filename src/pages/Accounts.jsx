@@ -43,7 +43,7 @@ export default function Accounts() {
   const totalBalance = accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0)
   const totalDebt = accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + a.balance, 0)
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
 
   return (
     <div>
@@ -58,7 +58,7 @@ export default function Accounts() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="card p-4">
             <p className="text-muted text-xs mb-1">Total Assets</p>
-            <p className="text-2xl font-bold text-emerald-500">{fmt(totalBalance)}</p>
+            <p className="text-2xl font-bold text-primary">{fmt(totalBalance)}</p>
           </div>
           <div className="card p-4">
             <p className="text-muted text-xs mb-1">Total Debt</p>
@@ -88,7 +88,7 @@ export default function Accounts() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <p className={`font-bold text-lg ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-emerald-500'}`}>{fmt(acc.balance)}</p>
+                <p className={`font-bold text-lg ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>{fmt(acc.balance)}</p>
                 <button onClick={() => openEdit(acc)} className="text-muted hover:text-primary text-sm">✎</button>
                 <button onClick={() => handleDelete(acc.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
               </div>

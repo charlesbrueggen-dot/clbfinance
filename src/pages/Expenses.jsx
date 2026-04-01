@@ -78,7 +78,7 @@ export default function Expenses() {
     return matchTab && matchSearch
   })
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
 
   return (
     <div>
@@ -91,20 +91,20 @@ export default function Expenses() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="rounded-xl p-4 text-white" style={{ background: '#ef4444' }}>
-          <p className="text-white/80 text-xs mb-1">Total Expenses</p>
-          <p className="text-2xl font-bold">{fmt(totalExpenses)}</p>
+        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+          <p className="text-muted text-xs mb-1">Total Expenses</p>
+          <p className="text-2xl font-bold text-primary">{fmt(totalExpenses)}</p>
         </div>
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Needs</p><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div></div>
+          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Needs</p><div className="w-2.5 h-2.5 rounded-full bg-white dark:bg-white/50 dark:bg-emerald-400"></div></div>
           <p className="font-bold text-primary">{fmt(needs)}</p>
         </div>
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Wants</p><div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div></div>
+          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Wants</p><div className="w-2.5 h-2.5 rounded-full bg-white/70 dark:bg-purple-500"></div></div>
           <p className="font-bold text-primary">{fmt(wants)}</p>
         </div>
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Savings</p><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div></div>
+          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Savings</p><div className="w-2.5 h-2.5 rounded-full bg-white/50 dark:bg-emerald-400"></div></div>
           <p className="font-bold text-primary">{fmt(savings)}</p>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function Expenses() {
                 <textarea className="input-field resize-none" rows={2} placeholder="Any extra details..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
               <div className="mb-6 flex items-center gap-3 cursor-pointer" onClick={() => setForm(f => ({ ...f, recurring: !f.recurring }))}>
-                <div className={`w-12 h-6 rounded-full transition-colors relative ${form.recurring ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                <div className={`w-12 h-6 rounded-full transition-colors relative ${form.recurring ? 'bg-white/50 dark:bg-emerald-400' : 'bg-gray-200 dark:bg-gray-700'}`}>
                   <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.recurring ? 'left-6' : 'left-0.5'}`}></div>
                 </div>
                 <span className="text-sm text-muted">This is a recurring expense</span>

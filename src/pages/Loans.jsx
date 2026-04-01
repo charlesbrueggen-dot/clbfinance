@@ -58,7 +58,7 @@ export default function Loans() {
   const moneyOwed = active.filter(l => l.type === 'borrowed').reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const netPosition = moneyLent - moneyOwed
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
 
   return (
     <div>
@@ -71,19 +71,19 @@ export default function Loans() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
-          <p className="text-white/80 text-xs mb-1">Money Lent Out</p>
+        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+          <p className="text-muted text-xs mb-1">Money Lent Out</p>
           <p className="text-2xl font-bold">{fmt(moneyLent)}</p>
           <p className="text-white/70 text-xs">{active.filter(l => l.type === 'lent').length} active</p>
         </div>
-        <div className="rounded-xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)' }}>
-          <p className="text-white/80 text-xs mb-1">Money You Owe</p>
+        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+          <p className="text-muted text-xs mb-1">Money You Owe</p>
           <p className="text-2xl font-bold">{fmt(moneyOwed)}</p>
           <p className="text-white/70 text-xs">{active.filter(l => l.type === 'borrowed').length} active</p>
         </div>
         <div className="card p-4">
           <p className="text-muted text-xs mb-1">Net Position</p>
-          <p className={`text-2xl font-bold ${netPosition >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{fmt(netPosition)}</p>
+          <p className={`text-2xl font-bold ${netPosition >= 0 ? 'text-primary' : 'text-red-500'}`}>{fmt(netPosition)}</p>
           <p className="text-muted text-xs">{settled.length} settled</p>
         </div>
       </div>
@@ -127,11 +127,11 @@ export default function Loans() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className={`font-bold ${isLent ? 'text-emerald-500' : 'text-red-500'}`}>{fmt(currentAmt)}</p>
+                      <p className={`font-bold ${isLent ? 'text-primary' : 'text-red-500'}`}>{fmt(currentAmt)}</p>
                       {loan.interest_rate > 0 && <p className="text-xs text-muted">Original: {fmt(loan.amount)}</p>}
                     </div>
                     <div className="flex gap-1">
-                      {!loan.settled && <button onClick={() => handleSettle(loan.id)} className="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-medium hover:opacity-80">✓ Settle</button>}
+                      {!loan.settled && <button onClick={() => handleSettle(loan.id)} className="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-primary dark:bg-emerald-900/30 dark:text-primary font-medium hover:opacity-80">✓ Settle</button>}
                       <button onClick={() => handleDelete(loan.id)} className="text-muted hover:text-red-500 text-sm px-1">🗑</button>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ export default function Loans() {
               <div className="mb-4">
                 <label className="label">Type</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setForm(f => ({ ...f, type: 'lent' }))} className={`py-3 rounded-xl text-sm font-semibold border transition-colors ${form.type === 'lent' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-gray-200 dark:border-gray-700 text-muted'}`}>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, type: 'lent' }))} className={`py-3 rounded-xl text-sm font-semibold border transition-colors ${form.type === 'lent' ? 'border-t-transparent bg-emerald-50 dark:bg-emerald-900/20 text-primary dark:text-primary' : 'border-gray-200 dark:border-gray-700 text-muted'}`}>
                     💸 I Lent Money
                   </button>
                   <button type="button" onClick={() => setForm(f => ({ ...f, type: 'borrowed' }))} className={`py-3 rounded-xl text-sm font-semibold border transition-colors ${form.type === 'borrowed' ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'border-gray-200 dark:border-gray-700 text-muted'}`}>

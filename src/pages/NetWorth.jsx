@@ -64,7 +64,7 @@ export default function NetWorth() {
   const moneyOwed = loans.filter(l => l.type === 'borrowed' && !l.settled).reduce((s, l) => s + l.amount, 0)
   const netWorth = balance + physicalAssets + portValue + moneyLent - moneyOwed
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
 
   return (
     <div>
@@ -76,7 +76,7 @@ export default function NetWorth() {
       <button onClick={openAdd} className="btn-primary mb-6">+ Add Asset</button>
 
       {/* Net Worth Hero */}
-      <div className="rounded-2xl p-6 mb-6 text-white flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+      <div className="rounded-2xl p-6 mb-6 text-white flex items-center justify-between" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
         <div>
           <p className="text-white/80 text-sm mb-1">Total Net Worth</p>
           <p className="text-4xl font-bold">{fmt(netWorth)}</p>
@@ -90,7 +90,7 @@ export default function NetWorth() {
           { label: 'Balance', value: balance, icon: '$' },
           { label: 'Investments', value: portValue, icon: '◔' },
           { label: 'Physical Assets', value: physicalAssets, icon: '◔' },
-          { label: 'Money Lent Out', value: moneyLent, icon: '👐', color: 'text-emerald-500' },
+          { label: 'Money Lent Out', value: moneyLent, icon: '👐', color: 'text-primary' },
           { label: 'Money You Owe', value: moneyOwed, icon: '👐', negative: true },
         ].map(item => (
           <div key={item.label} className="card p-4">

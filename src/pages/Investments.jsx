@@ -80,7 +80,7 @@ export default function Investments() {
   investments.forEach(i => { sectorMap[i.sector || 'Other'] = (sectorMap[i.sector || 'Other'] || 0) + (i.shares * (i.current_price || i.avg_cost)) })
   const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value }))
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
 
   return (
     <div>
@@ -98,17 +98,17 @@ export default function Investments() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' }}>
-          <p className="text-white/80 text-xs mb-1">Portfolio Value</p>
+        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+          <p className="text-muted text-xs mb-1">Portfolio Value</p>
           <p className="text-xl font-bold">{fmt(totalValue)}</p>
         </div>
-        <div className="rounded-xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
-          <p className="text-white/80 text-xs mb-1">Total Gain/Loss</p>
+        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+          <p className="text-muted text-xs mb-1">Total Gain/Loss</p>
           <p className="text-xl font-bold">{fmt(totalGL)}</p>
         </div>
         <div className="card p-4">
           <p className="text-muted text-xs mb-1">Total Return</p>
-          <p className={`text-xl font-bold ${totalGL >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{totalReturn}%</p>
+          <p className={`text-xl font-bold ${totalGL >= 0 ? 'text-primary' : 'text-red-500'}`}>{totalReturn}%</p>
         </div>
       </div>
 
@@ -146,8 +146,8 @@ export default function Investments() {
                       <td className="py-3 px-2 text-primary">${(item.current_price || item.avg_cost)?.toFixed(2)}</td>
                       <td className="py-3 px-2 font-medium text-primary">{fmt(val)}</td>
                       <td className="py-3 px-2">
-                        <span className={`font-medium ${gl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{gl >= 0 ? '+' : ''}{fmt(gl)}</span>
-                        <br /><span className={`text-xs ${gl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{glPct}%</span>
+                        <span className={`font-medium ${gl >= 0 ? 'text-primary' : 'text-red-500'}`}>{gl >= 0 ? '+' : ''}{fmt(gl)}</span>
+                        <br /><span className={`text-xs ${gl >= 0 ? 'text-primary' : 'text-red-500'}`}>{glPct}%</span>
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex gap-2">
