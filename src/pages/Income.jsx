@@ -47,7 +47,6 @@ export default function Income() {
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this income entry?')) return
     await supabase.from('income').delete().eq('id', id).eq('user_id', user.id)
     load()
   }
@@ -101,7 +100,7 @@ export default function Income() {
               <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} stroke={dark ? "transparent" : "#000"} strokeWidth={dark ? 0 : 1.5}>
                 {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
               </Pie>
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: dark ? '#10b981' : '#1a3a6b', fontSize: 13 }} />
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} />
             </PieChart>
           </ResponsiveContainer>
         ) : (

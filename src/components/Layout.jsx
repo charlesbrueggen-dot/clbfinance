@@ -63,7 +63,7 @@ export default function Layout({ dark, setDark }) {
         <div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm"></div>
           <div
-            className="absolute inset-y-0 left-0 w-72 shadow-2xl flex flex-col"
+            className="absolute inset-y-0 right-0 w-72 shadow-2xl flex flex-col"
             style={{ background: dark ? '#050505' : '#0f4a82' }}
             onClick={e => e.stopPropagation()}
           >
