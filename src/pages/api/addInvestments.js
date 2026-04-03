@@ -1,26 +1,36 @@
 import { createClient } from '@supabase/supabase-js'
 
+// Make sure these environment variables are set in Vercel or .env.local
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
 export default async function handler(req, res) {
+  // Only allow POST requests
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST allowed' })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { symbol, name, price } = req.body
+  try {
+    const { symbol, name, price } = req.body
 
-  if (!symbol || !price) {
-    return res.status(400).json({ error: 'Symbol and price required' })
+    // Check for missing data
+    if (!symbol || !name || price == null) {
+      return res.status(400).json({ error: 'Missing data' })
+    }
+
+    // Insert into Supabase
+    const { data, error } = await supabase
+      .from('investments')
+      .insert([{ symbol, name, price }])
+      .select()
+
+    if (error) throw error
+
+    // Return success
+    res.status(200).json({ success: true, investment: data[0] })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
   }
-
-  const { data, error } = await supabase
-    .from('investments')
-    .insert([{ symbol, name, price }])
-
-  if (error) return res.status(500).json({ error: error.message })
-
-  res.status(200).json({ message: 'Investment added!', data })
 }
