@@ -90,6 +90,7 @@ export default function Investments() {
   const [activeType, setActiveType]   = useState('Stock')
   const [form, setForm]               = useState(EMPTY['Stock'])
   const [saving, setSaving]           = useState(false)
+  const [saveError, setSaveError]     = useState('')
   const [refreshing, setRefreshing]   = useState(false)
   const [refreshError, setRefreshError] = useState('')
   const [lookupStatus, setLookupStatus] = useState('') // '' | 'loading' | 'found' | 'not_found'
@@ -112,6 +113,7 @@ export default function Investments() {
     setActiveType('Stock')
     setForm(EMPTY['Stock'])
     setLookupStatus('')
+    setSaveError('')
     setShowModal(true)
   }
 
@@ -220,6 +222,28 @@ export default function Investments() {
 
   // ─── Save ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    setSaveError('')
+
+    // Guard: ticker lookup still in flight — wait for it to finish
+    if (lookupStatus === 'loading') {
+      setSaveError('Ticker lookup is still in progress. Please wait a moment and try again.')
+      return
+    }
+
+    // Validation
+    if ((activeType === 'Stock' || activeType === 'ETF') && !form.symbol.trim()) {
+      setSaveError('Ticker symbol is required.')
+      return
+    }
+    if (activeType !== 'Bond' && !form.name.trim()) {
+      setSaveError('Name is required.')
+      return
+    }
+    if (activeType === 'Bond' && !form.name.trim()) {
+      setSaveError('Bond name is required.')
+      return
+    }
+
     setSaving(true)
     let payload = { user_id: user.id, type: activeType }
 
@@ -268,14 +292,21 @@ export default function Investments() {
       }
     }
 
-    if (editItem) {
-      await supabase.from('investments').update(payload).eq('id', editItem.id).eq('user_id', user.id)
-    } else {
-      await supabase.from('investments').insert(payload)
+    try {
+      let result
+      if (editItem) {
+        result = await supabase.from('investments').update(payload).eq('id', editItem.id).eq('user_id', user.id)
+      } else {
+        result = await supabase.from('investments').insert(payload)
+      }
+      if (result.error) throw result.error
+      setShowModal(false)
+      load()
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save investment. Please try again.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
-    setShowModal(false)
-    load()
   }
 
   const handleDelete = async id => {
@@ -818,6 +849,13 @@ export default function Investments() {
 
             {/* Type-specific fields */}
             {renderFormBody()}
+
+            {/* Save error */}
+            {saveError && (
+              <div className="mt-4 p-3 rounded-xl text-xs font-medium" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                ⚠ {saveError}
+              </div>
+            )}
 
             {/* Buttons */}
             <div className="grid grid-cols-2 gap-3 mt-5">
