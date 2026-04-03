@@ -256,7 +256,6 @@ export default function Investments() {
         name:   form.name.trim(),
         sector: form.sector || 'Other',
         shares, avg_cost: avgCost, current_price: curPrice, portfolio_pct: 0,
-        purchase_date: form.purchase_date || null,
       }
     } else if (activeType === 'Crypto') {
       const qty   = parseFloat(form.shares)   || 0
@@ -266,7 +265,6 @@ export default function Investments() {
         symbol: form.symbol.toUpperCase().trim() || '',
         name:   form.name.trim(), sector: 'Crypto',
         shares: qty, avg_cost: cost, current_price: price, portfolio_pct: 0,
-        purchase_date: form.purchase_date || null,
       }
     } else if (activeType === 'Bond') {
       const faceVal   = parseFloat(form.face_value)    || 0
@@ -279,7 +277,6 @@ export default function Investments() {
         current_price: faceVal,    // face / par value
         portfolio_pct: coupon,     // coupon rate % stored here
         maturity_date: form.maturity_date || null,
-        purchase_date: form.purchase_date || null,
       }
     } else if (activeType === 'Mutual Fund') {
       const units = parseFloat(form.shares) || 0
@@ -288,7 +285,6 @@ export default function Investments() {
         symbol: form.symbol.toUpperCase().trim() || '',
         name:   form.name.trim(), sector: 'Other',
         shares: units, avg_cost: nav, current_price: nav, portfolio_pct: 0,
-        purchase_date: form.purchase_date || null,
       }
     }
 
