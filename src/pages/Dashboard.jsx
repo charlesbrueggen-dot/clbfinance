@@ -10,12 +10,13 @@ const PIE_COLORS_DARK  = ['#10b981','#34d399','#6ee7b7','#a7f3d0','#059669','#04
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const navigate = useNavigate()
-  const [income, setIncome] = useState([])
+  const navigate  = useNavigate()
+  const [income,   setIncome]   = useState([])
   const [expenses, setExpenses] = useState([])
-  const [goals, setGoals] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [dark, setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
+  const [goals,    setGoals]    = useState([])
+  const [balance,  setBalance]  = useState([]) // NEW: separate balance entries
+  const [loading,  setLoading]  = useState(true)
+  const [dark, setDarkDetect]   = useState(document.documentElement.classList.contains('dark'))
 
   useEffect(() => {
     const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
@@ -25,45 +26,59 @@ export default function Dashboard() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: inc }, { data: exp }, { data: gls }] = await Promise.all([
+      const [{ data: inc }, { data: exp }, { data: gls }, { data: bal }] = await Promise.all([
         supabase.from('income').select('*').eq('user_id', user.id),
         supabase.from('expenses').select('*').eq('user_id', user.id),
         supabase.from('goals').select('*').eq('user_id', user.id),
+        supabase.from('balance').select('*').eq('user_id', user.id),
       ])
       setIncome(inc || [])
       setExpenses(exp || [])
       setGoals(gls || [])
+      setBalance(bal || [])
       setLoading(false)
     }
     load()
   }, [user.id])
 
-  const totalBalance = income.reduce((s, i) => s + i.amount, 0)
+  // Income = sum of all income entries
+  const totalIncome   = income.reduce((s, i) => s + i.amount, 0)
+  // Balance = actual money held (separate table)
+  const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
-  const thisMonth = new Date().toISOString().slice(0, 7)
-  const monthExp = expenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + e.amount, 0)
-  const savingsPct = totalBalance > 0 ? ((totalBalance - totalExpenses) / totalBalance * 100).toFixed(1) : '0.0'
+  const thisMonth     = new Date().toISOString().slice(0, 7)
+  const monthExp      = expenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + e.amount, 0)
 
+  // Savings rate uses income as denominator, falls back to balance if no income
+  const savingsBase   = totalIncome > 0 ? totalIncome : totalBalance
+  const savingsPct    = savingsBase > 0 ? ((savingsBase - totalExpenses) / savingsBase * 100).toFixed(1) : '0.0'
+
+  // Pie for income sources
   const srcMap = {}
   income.forEach(i => { srcMap[i.source] = (srcMap[i.source] || 0) + i.amount })
-  const pieData = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
+  const pieData   = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
-  const catMap = {}
+  // Expense breakdown
+  const catMap   = {}
   expenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount })
-  const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1])
+  const sorted   = Object.entries(catMap).sort((a, b) => b[1] - a[1])
   const largestCat = sorted[0] || ['N/A', 0]
 
-  const recentActivity = [...income.map(i => ({ ...i, kind: 'income' })), ...expenses.map(e => ({ ...e, kind: 'expense' }))]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 5)
+  const recentActivity = [
+    ...income.map(i => ({ ...i, kind: 'income' })),
+    ...expenses.map(e => ({ ...e, kind: 'expense' })),
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
 
-  const surplus = totalBalance - totalExpenses
+  // Surplus: balance minus expenses (or income minus expenses if no balance table)
+  const surplusBase  = totalBalance > 0 ? totalBalance : totalIncome
+  const surplus      = surplusBase - totalExpenses
   const surplusColor = surplus >= 0 ? (dark ? '#10b981' : 'rgba(255,255,255,0.9)') : '#ef4444'
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div>
+      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
+        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div>
     </div>
   )
 
@@ -81,24 +96,50 @@ export default function Dashboard() {
         <Link to="/income" className="btn-primary justify-center text-sm no-underline">⊕ Add</Link>
       </div>
 
-      {/* Balance Hero + Pie */}
+      {/* Income + Balance hero side-by-side */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Income card */}
+        <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/income')}>
+          <p className="text-muted text-xs mb-1">Total Income</p>
+          <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
+          <p className="text-muted text-xs mt-1">{income.length} source{income.length !== 1 ? 's' : ''}</p>
+          {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
+            <p className="text-xs mt-1" style={{ color: '#10b981' }}>
+              🔁 {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
+            </p>
+          )}
+        </div>
+        {/* Balance card */}
+        <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/balance')}>
+          <p className="text-muted text-xs mb-1">Balance</p>
+          <p className="text-2xl font-black text-primary">{fmt(totalBalance)}</p>
+          <p className="text-muted text-xs mt-1">On hand</p>
+          {balance.filter(b => b.type === 'small-gain').length > 0 && (
+            <p className="text-xs mt-1" style={{ color: '#10b981' }}>
+              💰 {balance.filter(b => b.type === 'small-gain').length} small gains
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Income Pie */}
       <div className="card p-5 mb-4">
         <div className="flex items-center gap-2 mb-1 font-bold" style={{ color: 'var(--text-primary)' }}>
-          <span>◔</span>
-          <span>Balance: {fmt(totalBalance)}</span>
+          <span>◔</span><span>Income: {fmt(totalIncome)}</span>
         </div>
         <p className="text-muted text-xs mb-3">{income.length} income source{income.length !== 1 ? 's' : ''}</p>
         {pieData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} stroke={dark ? "transparent" : "#000"} strokeWidth={dark ? 0 : 1.5}>
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75}
+                stroke={dark ? 'transparent' : '#000'} strokeWidth={dark ? 0 : 1.5}>
                 {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
               </Pie>
               <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-40 flex items-center justify-center text-muted text-sm">Add income entries to see breakdown</div>
+          <div className="h-32 flex items-center justify-center text-muted text-sm">Add income entries to see breakdown</div>
         )}
       </div>
 
@@ -112,7 +153,7 @@ export default function Dashboard() {
         <div className="card p-4">
           <p className="text-muted text-xs mb-1">Savings Rate</p>
           <p className="text-2xl font-black text-primary">{savingsPct}%</p>
-          <p className="text-xs text-muted mt-1">Of income saved</p>
+          <p className="text-xs text-muted mt-1">Of {totalIncome > 0 ? 'income' : 'balance'} saved</p>
         </div>
       </div>
 
@@ -176,7 +217,8 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-1">
             {recentActivity.map(item => (
-              <div key={item.id + item.kind} className="flex items-center justify-between py-2.5" style={{ borderBottom: '1px solid var(--card-border)' }}>
+              <div key={item.id + item.kind} className="flex items-center justify-between py-2.5"
+                style={{ borderBottom: '1px solid var(--card-border)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
                     style={{ background: item.kind === 'income' ? 'rgba(255,255,255,0.18)' : 'rgba(239,68,68,0.18)', color: item.kind === 'income' ? 'var(--text-primary)' : '#ef4444' }}>
@@ -201,9 +243,9 @@ export default function Dashboard() {
         <h2 className="font-black text-primary mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Add Income', icon: '↗', path: '/income' },
-            { label: 'Add Expense', icon: '↘', path: '/expenses' },
-            { label: 'Set Goal', icon: '◎', path: '/goals' },
+            { label: 'Add Income',   icon: '↗', path: '/income' },
+            { label: 'Add Expense',  icon: '↘', path: '/expenses' },
+            { label: 'Update Balance', icon: '◎', path: '/balance' },
             { label: 'View Reports', icon: '◑', path: '/analytics' },
           ].map(a => (
             <Link key={a.path} to={a.path} className="no-underline">
