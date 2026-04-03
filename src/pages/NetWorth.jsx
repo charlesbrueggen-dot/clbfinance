@@ -50,7 +50,6 @@ export default function NetWorth() {
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this asset?')) return
     await supabase.from('assets').delete().eq('id', id).eq('user_id', user.id)
     load()
   }

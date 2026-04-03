@@ -39,7 +39,6 @@ export default function Investments() {
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this investment?')) return
     await supabase.from('investments').delete().eq('id', id).eq('user_id', user.id)
     load()
   }

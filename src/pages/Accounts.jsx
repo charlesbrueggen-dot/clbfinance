@@ -35,7 +35,6 @@ export default function Accounts() {
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this account?')) return
     await supabase.from('accounts').delete().eq('id', id).eq('user_id', user.id)
     load()
   }

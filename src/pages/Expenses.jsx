@@ -62,7 +62,6 @@ export default function Expenses() {
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this expense?')) return
     await supabase.from('expenses').delete().eq('id', id).eq('user_id', user.id)
     load()
   }

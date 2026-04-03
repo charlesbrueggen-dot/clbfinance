@@ -36,7 +36,6 @@ export default function Goals() {
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this goal?')) return
     await supabase.from('goals').delete().eq('id', id).eq('user_id', user.id)
     load()
   }

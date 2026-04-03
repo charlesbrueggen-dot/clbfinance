@@ -39,13 +39,11 @@ export default function Loans() {
   }
 
   const handleSettle = async id => {
-    if (!confirm('Mark this loan as settled?')) return
     await supabase.from('loans').update({ settled: true }).eq('id', id).eq('user_id', user.id)
     load()
   }
 
   const handleDelete = async id => {
-    if (!confirm('Delete this loan?')) return
     await supabase.from('loans').delete().eq('id', id).eq('user_id', user.id)
     load()
   }
