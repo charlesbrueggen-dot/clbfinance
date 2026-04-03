@@ -69,3 +69,26 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Failed to fetch price', details: err.message })
   }
 }
+
+export default async function handler(req, res) {
+  try {
+    const { symbol } = req.query;
+
+    if (!symbol) {
+      return res.status(400).json({ error: "Missing symbol" });
+    }
+
+    const response = await fetch(`https://api.example.com?q=${symbol}`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("API ERROR:", error);
+    res.status(500).json({ error: error.message });
+  }
+}
