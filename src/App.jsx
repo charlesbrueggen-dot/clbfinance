@@ -1,3 +1,4 @@
+import Balance from './pages/Balance'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, createContext, useContext } from 'react'
 import { supabase } from './lib/supabase'
@@ -73,6 +74,7 @@ export default function App() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="goals" element={<Goals />} />
             <Route path="loans" element={<Loans />} />
+            <Route path="balance" element={<Balance />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
