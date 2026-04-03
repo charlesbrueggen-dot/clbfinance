@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '⊞' },
   { path: '/income', label: 'Income', icon: '↗' },
   { path: '/expenses', label: 'Expenses', icon: '↘' },
+  { path: '/balance', label: 'Balance', icon: '✨' },
   { path: '/networth', label: 'Net Worth', icon: '$' },
   { path: '/accounts', label: 'Accounts', icon: '🏛' },
   { path: '/investments', label: 'Investments', icon: '◔' },
