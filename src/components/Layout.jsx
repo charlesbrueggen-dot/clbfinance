@@ -33,9 +33,9 @@ export default function Layout({ dark, setDark }) {
       <nav className="nav-bg sticky top-0 z-40" style={{ borderBottom: '1px solid var(--card-border)' }}>
         <div className="flex items-center justify-between px-4 h-14">
           <Link to="/" className="flex items-center gap-2.5 no-underline">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg"
-              style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', color: 'white' }}>
-              S
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)' }}>
+              <img src="/logo.png" alt="Stride" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-black text-lg text-primary hidden sm:block tracking-tight">Stride</span>
           </Link>
@@ -72,8 +72,10 @@ export default function Layout({ dark, setDark }) {
           >
             <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black"
-                  style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>S</div>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                  <img src="/logo.png" alt="Stride" className="w-6 h-6 object-contain" />
+                </div>
                 <span className="font-black text-white text-xl tracking-tight">Stride</span>
               </div>
               <button onClick={() => setMenuOpen(false)} className="text-white/50 hover:text-white text-xl">✕</button>
