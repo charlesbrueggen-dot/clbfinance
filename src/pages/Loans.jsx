@@ -58,7 +58,7 @@ export default function Loans() {
   const moneyOwed = active.filter(l => l.type === 'borrowed').reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const netPosition = moneyLent - moneyOwed
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div></div>
 
   return (
     <div>
@@ -73,29 +73,42 @@ export default function Loans() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money Lent Out</p>
-          <p className="text-2xl font-bold">{fmt(moneyLent)}</p>
-          <p className="text-white/70 text-xs">{active.filter(l => l.type === 'lent').length} active</p>
+          <p className="text-2xl font-bold text-primary">{fmt(moneyLent)}</p>
+          <p className="text-muted text-xs">{active.filter(l => l.type === 'lent').length} active</p>
         </div>
         <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money You Owe</p>
-          <p className="text-2xl font-bold">{fmt(moneyOwed)}</p>
-          <p className="text-white/70 text-xs">{active.filter(l => l.type === 'borrowed').length} active</p>
+          <p className="text-2xl font-bold text-primary">{fmt(moneyOwed)}</p>
+          <p className="text-muted text-xs">{active.filter(l => l.type === 'borrowed').length} active</p>
         </div>
         <div className="card p-4">
           <p className="text-muted text-xs mb-1">Net Position</p>
-          <p className={`text-2xl font-bold ${netPosition >= 0 ? 'text-primary' : 'text-red-500'}`}>{fmt(netPosition)}</p>
+          <p className={`text-2xl font-bold ${netPosition >= 0 ? 'text-primary' : 'text-red-400'}`}>{fmt(netPosition)}</p>
           <p className="text-muted text-xs">{settled.length} settled</p>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — fully theme-aware, no white flash */}
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('active')} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${tab === 'active' ? 'bg-white dark:bg-gray-900 shadow text-primary border-gray-200 dark:border-gray-700' : 'text-muted border-transparent'}`}>
-          Active ({active.length})
-        </button>
-        <button onClick={() => setTab('settled')} className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${tab === 'settled' ? 'bg-white dark:bg-gray-900 shadow text-primary border-gray-200 dark:border-gray-700' : 'text-muted border-transparent'}`}>
-          Settled ({settled.length})
-        </button>
+        {['active', 'settled'].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              background: tab === t ? 'rgba(255,255,255,0.22)' : 'transparent',
+              color: 'var(--text-primary)',
+              border: tab === t ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--card-border)',
+              borderRadius: 12,
+              padding: '8px 18px',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {t === 'active' ? `Active (${active.length})` : `Settled (${settled.length})`}
+          </button>
+        ))}
       </div>
 
       {/* Loan List */}
@@ -113,9 +126,10 @@ export default function Loans() {
               const interest = currentAmt - loan.amount
               const isLent = loan.type === 'lent'
               return (
-                <div key={loan.id} className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: 'var(--card-border)' }}>
+                <div key={loan.id} className="flex items-center justify-between p-4 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${isLent ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+                      style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }}>
                       {isLent ? '↗' : '↘'}
                     </div>
                     <div>
@@ -127,12 +141,18 @@ export default function Loans() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className={`font-bold ${isLent ? 'text-primary' : 'text-red-500'}`}>{fmt(currentAmt)}</p>
+                      <p className="font-bold" style={{ color: isLent ? 'var(--text-primary)' : '#ef4444' }}>{fmt(currentAmt)}</p>
                       {loan.interest_rate > 0 && <p className="text-xs text-muted">Original: {fmt(loan.amount)}</p>}
                     </div>
                     <div className="flex gap-1">
-                      {!loan.settled && <button onClick={() => handleSettle(loan.id)} className="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-primary dark:bg-emerald-900/30 dark:text-primary font-medium hover:opacity-80">✓ Settle</button>}
-                      <button onClick={() => handleDelete(loan.id)} className="text-muted hover:text-red-500 text-sm px-1">🗑</button>
+                      {!loan.settled && (
+                        <button onClick={() => handleSettle(loan.id)}
+                          className="text-xs px-2 py-1 rounded-lg font-medium hover:opacity-80"
+                          style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--text-primary)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                          ✓ Settle
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(loan.id)} className="text-sm px-1 hover:opacity-60" style={{ color: '#ef4444' }}>🗑</button>
                     </div>
                   </div>
                 </div>
@@ -146,7 +166,7 @@ export default function Loans() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <p className="accent-text font-semibold text-lg">Add Loan / Debt</p>
+              <p className="font-semibold text-lg text-primary">Add Loan / Debt</p>
               <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
             </div>
             <form onSubmit={handleSave}>
@@ -154,10 +174,14 @@ export default function Loans() {
               <div className="mb-4">
                 <label className="label">Type</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setForm(f => ({ ...f, type: 'lent' }))} className={`py-3 rounded-xl text-sm font-semibold border transition-colors ${form.type === 'lent' ? 'border-t-transparent bg-emerald-50 dark:bg-emerald-900/20 text-primary dark:text-primary' : 'border-gray-200 dark:border-gray-700 text-muted'}`}>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, type: 'lent' }))}
+                    className="py-3 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ border: form.type === 'lent' ? '1px solid rgba(16,185,129,0.6)' : '1px solid var(--card-border)', background: form.type === 'lent' ? 'rgba(16,185,129,0.15)' : 'transparent', color: 'var(--text-primary)' }}>
                     💸 I Lent Money
                   </button>
-                  <button type="button" onClick={() => setForm(f => ({ ...f, type: 'borrowed' }))} className={`py-3 rounded-xl text-sm font-semibold border transition-colors ${form.type === 'borrowed' ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'border-gray-200 dark:border-gray-700 text-muted'}`}>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, type: 'borrowed' }))}
+                    className="py-3 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ border: form.type === 'borrowed' ? '1px solid rgba(239,68,68,0.6)' : '1px solid var(--card-border)', background: form.type === 'borrowed' ? 'rgba(239,68,68,0.15)' : 'transparent', color: form.type === 'borrowed' ? '#ef4444' : 'var(--text-primary)' }}>
                     🤲 I Borrowed
                   </button>
                 </div>

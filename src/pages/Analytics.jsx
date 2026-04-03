@@ -56,9 +56,10 @@ export default function Analytics() {
   const catMap = {}
   expenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount })
 
-  const lineColor = dark ? '#10b981' : '#ffffff'
-  const lineColorExp = dark ? '#ef4444' : 'rgba(255,255,255,0.5)'
-  const lineColorNet = dark ? '#34d399' : 'rgba(255,255,255,0.75)'
+  // Light mode: bold distinct colors. Dark mode: emerald palette
+  const lineColorIncome  = dark ? '#10b981' : '#1a3a6b'
+  const lineColorExp     = dark ? '#ef4444' : '#e05c2a'
+  const lineColorNet     = dark ? '#34d399' : '#f0a500'
   const tooltipStyle = { background: 'var(--modal-bg)', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--text-primary)', fontSize: 13 }
 
   if (loading) return (
@@ -102,22 +103,27 @@ export default function Analytics() {
 
       {/* Line Chart */}
       <div className="card p-5 mb-6">
-        <div className="flex items-center gap-2 mb-4 font-bold text-primary"><span>↗</span><span>Income vs Expenses Trend</span></div>
+        <div className="flex items-center gap-2 mb-1 font-bold text-primary"><span>↗</span><span>Income vs Expenses Trend</span></div>
+        {/* Legend */}
+        <div className="flex gap-4 mb-4 text-xs font-bold">
+          <span style={{ color: lineColorIncome }}>● Income</span>
+          <span style={{ color: lineColorExp }}>● Expenses</span>
+          <span style={{ color: lineColorNet }}>● Net</span>
+        </div>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
             <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
             <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
-            <Legend />
-            <Line type="monotone" dataKey="income" stroke={lineColor} strokeWidth={2.5} dot={{ r: 4, fill: lineColor }} name="Income" />
-            <Line type="monotone" dataKey="expenses" stroke={lineColorExp} strokeWidth={2.5} dot={{ r: 4, fill: lineColorExp }} name="Expenses" />
-            <Line type="monotone" dataKey="net" stroke={lineColorNet} strokeWidth={2} dot={{ r: 3 }} name="Net" strokeDasharray="5 3" />
+            <Line type="monotone" dataKey="income" stroke={lineColorIncome} strokeWidth={3} dot={{ r: 4, fill: lineColorIncome }} name="Income" legendType="none" />
+            <Line type="monotone" dataKey="expenses" stroke={lineColorExp} strokeWidth={3} dot={{ r: 4, fill: lineColorExp }} name="Expenses" legendType="none" />
+            <Line type="monotone" dataKey="net" stroke={lineColorNet} strokeWidth={2.5} dot={{ r: 3, fill: lineColorNet }} name="Net" strokeDasharray="5 3" legendType="none" />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Summary Cards — theme-neutral */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
           { label: 'Avg Monthly Income', value: avgMonthlyIncome },
