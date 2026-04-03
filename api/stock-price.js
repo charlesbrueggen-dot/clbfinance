@@ -92,3 +92,44 @@ export default async function handler(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
+
+// stock-price.js
+export default async function handler(req, res) {
+  const { symbol } = req.query;
+
+  if (!symbol) {
+    return res.status(400).json({ error: "Missing symbol parameter" });
+  }
+
+  try {
+    // v10 quoteSummary endpoint
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=price,summaryProfile,financialData`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Yahoo API returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.quoteSummary || !data.quoteSummary.result) {
+      return res.status(404).json({ error: "Ticker not found or API returned empty" });
+    }
+
+    const result = data.quoteSummary.result[0];
+    const priceData = result.price || {};
+
+    res.status(200).json({
+      symbol: priceData.symbol || symbol,
+      name: priceData.longName || priceData.shortName || "Unknown",
+      sector: result.summaryProfile?.sector || "N/A",
+      price: priceData.regularMarketPrice?.raw || 0,
+      type: priceData.quoteType || "Unknown",
+    });
+
+  } catch (err) {
+    console.error("Stock Proxy Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
