@@ -1,4 +1,6 @@
 // ─── Save ─────────────────────────────────────────────────────────────────
+export default function Investments() { ... }
+
 const handleSave = async () => {
   setSaving(true)
 
