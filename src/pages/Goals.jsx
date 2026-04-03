@@ -132,7 +132,7 @@ export default function Goals() {
                     <button onClick={() => { setShowProgress(null); setProgressAmt('') }} className="btn-secondary px-3 text-sm">✕</button>
                   </div>
                 ) : (
-                  <button onClick={() => setShowProgress(goal.id)} className="w-full py-2.5 rounded-xl border text-sm font-semibold text-primary flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" style={{ borderColor: 'var(--card-border)' }}>
+                  <button onClick={() => setShowProgress(goal.id)} className="w-full py-2.5 rounded-xl border text-sm font-semibold text-primary flex items-center justify-center gap-2 transition-colors" style={{ borderColor: 'var(--card-border)', background: 'var(--input-bg)' }}>
                     <span>$</span> Add Progress
                   </button>
                 )}

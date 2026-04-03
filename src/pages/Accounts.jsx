@@ -77,7 +77,7 @@ export default function Accounts() {
           {accounts.map(acc => (
             <div key={acc.id} className="card p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
                   {TYPE_ICONS[acc.type] || '🏦'}
                 </div>
                 <div>

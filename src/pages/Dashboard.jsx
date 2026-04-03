@@ -73,7 +73,7 @@ export default function Dashboard() {
   // Surplus: balance minus expenses (or income minus expenses if no balance table)
   const surplusBase  = totalBalance > 0 ? totalBalance : totalIncome
   const surplus      = surplusBase - totalExpenses
-  const surplusColor = surplus >= 0 ? (dark ? '#10b981' : 'rgba(255,255,255,0.9)') : '#ef4444'
+  const surplusColor = surplus >= 0 ? (dark ? '#10b981' : '#059669') : '#ef4444'
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -221,7 +221,7 @@ export default function Dashboard() {
                 style={{ borderBottom: '1px solid var(--card-border)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                    style={{ background: item.kind === 'income' ? 'rgba(255,255,255,0.18)' : 'rgba(239,68,68,0.18)', color: item.kind === 'income' ? 'var(--text-primary)' : '#ef4444' }}>
+                    style={{ background: item.kind === 'income' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: item.kind === 'income' ? '#10b981' : '#ef4444' }}>
                     {item.kind === 'income' ? '↗' : '↘'}
                   </div>
                   <div>

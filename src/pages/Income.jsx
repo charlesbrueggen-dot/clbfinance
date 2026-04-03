@@ -203,7 +203,7 @@ export default function Income() {
                     <button key={opt.value} type="button"
                       onClick={() => setForm(f => ({ ...f, frequency: opt.value, next_date: '' }))}
                       className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-sm font-semibold transition-all ${
-                        form.frequency === opt.value ? 'text-primary' : 'text-muted hover:bg-gray-50 dark:hover:bg-gray-800'
+                        form.frequency === opt.value ? 'text-primary' : 'text-muted'
                       }`}
                       style={{
                         borderColor:  form.frequency === opt.value ? '#10b981' : 'var(--card-border)',

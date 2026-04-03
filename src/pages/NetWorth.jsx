@@ -75,12 +75,12 @@ export default function NetWorth() {
       <button onClick={openAdd} className="btn-primary mb-6">+ Add Asset</button>
 
       {/* Net Worth Hero */}
-      <div className="rounded-2xl p-6 mb-6 text-white flex items-center justify-between" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+      <div className="rounded-2xl p-6 mb-6 flex items-center justify-between" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
         <div>
-          <p className="text-white/80 text-sm mb-1">Total Net Worth</p>
-          <p className="text-4xl font-bold">{fmt(netWorth)}</p>
+          <p className="text-muted text-sm mb-1">Total Net Worth</p>
+          <p className="text-4xl font-bold text-primary">{fmt(netWorth)}</p>
         </div>
-        <span className="text-4xl opacity-50">↗</span>
+        <span className="text-4xl text-muted opacity-50">↗</span>
       </div>
 
       {/* Breakdown Cards */}
@@ -113,7 +113,7 @@ export default function NetWorth() {
           <div key={item.id} className="card p-4">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
                   <span>{CAT_ICONS[item.category] || '📦'}</span>
                 </div>
                 <div>
