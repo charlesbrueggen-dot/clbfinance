@@ -30,10 +30,7 @@ export default function Auth() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.18)', border: '1.5px solid rgba(255,255,255,0.35)', backdropFilter: 'blur(12px)' }}>
-            <img src="/logo.png" alt="Stride" className="w-12 h-12 object-contain" />
-          </div>
+          <img src="/logo.png" alt="Stride" className="w-32 h-32 object-contain mx-auto mb-5" />
           <h1 className="text-4xl font-black text-white tracking-tight">Stride</h1>
           <p className="text-white/65 mt-2 text-sm font-medium">Your personal financial dashboard</p>
         </div>

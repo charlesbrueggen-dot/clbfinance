@@ -5,7 +5,6 @@ import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
-
 const PIE_COLORS_LIGHT = ['#1a3a6b','#2e6da4','#4a9fd4','#f0a500','#e05c2a','#7b2d8b','#2a8b5a','#c0392b','#16a085','#8e44ad']
 const PIE_COLORS_DARK  = ['#10b981','#34d399','#6ee7b7','#a7f3d0','#059669','#047857','#065f46','#d1fae5','#6ee7b7','#34d399']
 
@@ -92,10 +91,10 @@ export default function Dashboard() {
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} stroke={dark ? 'transparent' : '#000'} strokeWidth={dark ? 0 : 1.5}>
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} stroke={dark ? "transparent" : "#000"} strokeWidth={dark ? 0 : 1.5}>
                 {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
               </Pie>
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: 'var(--modal-bg)', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--text-primary)', fontSize: 13 }} />
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: dark ? '#10b981' : '#1a3a6b', fontSize: 13 }} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
