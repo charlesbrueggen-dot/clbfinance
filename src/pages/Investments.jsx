@@ -361,6 +361,35 @@ export default function Investments() {
   const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value }))
   const typeData   = Object.entries(typeMap).map(([name, value]) => ({ name, value }))
 
+  // ─── Consolidate duplicate tickers into one holding ───────────────────────
+  // Key: "<type>|<symbol|name>" so AAPL Stock + AAPL ETF stay separate,
+  // and name-only holdings (Bond, Mutual Fund, Crypto w/o symbol) merge by name.
+  const consolidatedInvestments = (() => {
+    const map = new Map()
+    for (const inv of investments) {
+      const key = `${inv.type}|${inv.symbol ? inv.symbol.toUpperCase() : inv.name}`
+      if (!map.has(key)) {
+        // Clone so we don't mutate state
+        map.set(key, { ...inv, _ids: [inv.id] })
+      } else {
+        const existing = map.get(key)
+        const prevShares   = existing.shares   || 0
+        const addShares    = inv.shares         || 0
+        const totalShares  = prevShares + addShares
+        // Weighted-average cost basis
+        const newAvgCost   = totalShares > 0
+          ? (prevShares * existing.avg_cost + addShares * inv.avg_cost) / totalShares
+          : existing.avg_cost
+        // Use the most recent current_price (from the newest record)
+        existing.shares        = totalShares
+        existing.avg_cost      = newAvgCost
+        existing.current_price = inv.current_price || existing.current_price
+        existing._ids.push(inv.id)
+      }
+    }
+    return Array.from(map.values())
+  })()
+
   // ─── Lookup badge ─────────────────────────────────────────────────────────
   const lookupBadge = {
     loading:   <span className="text-xs font-medium" style={{ color: '#f0a500' }}>⟳ looking…</span>,
@@ -606,6 +635,16 @@ export default function Investments() {
     return null
   }
 
+  const handleDeleteConsolidated = async item => {
+    const ids = item._ids || [item.id]
+    const lotLabel = ids.length > 1 ? `${ids.length} lots of ${item.symbol || item.name}` : `this investment`
+    if (!confirm(`Remove ${lotLabel}?`)) return
+    for (const id of ids) {
+      await supabase.from('investments').delete().eq('id', id).eq('user_id', user.id)
+    }
+    load()
+  }
+
   // ─── Row renderer ─────────────────────────────────────────────────────────
   const renderRow = item => {
     let val, cost, gl, glPct, subLine
@@ -638,12 +677,15 @@ export default function Investments() {
     }
 
     return (
-      <tr key={item.id} className="border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
+      <tr key={item._ids ? item._ids.join('-') : item.id} className="border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
         <td className="py-3 px-2">
           <div className="flex items-center gap-1">
             {item.symbol && <span className="font-bold text-primary text-sm">{item.symbol}</span>}
             {isAutoRefresh(item.type) && (
               <span className="text-xs px-1 rounded" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>auto</span>
+            )}
+            {item._ids && item._ids.length > 1 && (
+              <span className="text-xs px-1 rounded" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>{item._ids.length} lots</span>
             )}
           </div>
           <span className="text-xs text-muted block">{item.name}</span>
@@ -667,7 +709,7 @@ export default function Investments() {
         <td className="py-3 px-2">
           <div className="flex gap-2">
             <button onClick={() => openEdit(item)} className="text-muted hover:text-primary text-sm">✎</button>
-            <button onClick={() => handleDelete(item.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+            <button onClick={() => handleDeleteConsolidated(item)} className="text-muted hover:text-red-500 text-sm">🗑</button>
           </div>
         </td>
       </tr>
@@ -710,7 +752,12 @@ export default function Investments() {
         <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Portfolio Value</p>
           <p className="text-xl font-bold text-primary">{fmt(totalValue)}</p>
-          <p className="text-muted text-xs mt-0.5">{investments.length} holdings</p>
+          <p className="text-muted text-xs mt-0.5">
+            {consolidatedInvestments.length} holding{consolidatedInvestments.length !== 1 ? 's' : ''}
+            {investments.length > consolidatedInvestments.length && (
+              <span> · {investments.length - consolidatedInvestments.length} lot{investments.length - consolidatedInvestments.length !== 1 ? 's' : ''} merged</span>
+            )}
+          </p>
         </div>
         <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Total Gain / Loss</p>
@@ -750,7 +797,7 @@ export default function Investments() {
                   ))}
                 </tr>
               </thead>
-              <tbody>{investments.map(renderRow)}</tbody>
+              <tbody>{consolidatedInvestments.map(renderRow)}</tbody>
             </table>
           </div>
         )}
