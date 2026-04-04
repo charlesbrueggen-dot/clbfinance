@@ -15,6 +15,33 @@ const isTickerBased = type => type === 'Stock' || type === 'ETF'
 const TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'Mutual Fund']
 const SECTORS = ['Technology','Healthcare','Finance','Energy','Consumer','Real Estate','Utilities','Materials','Communication','Industrials','Other']
 
+
+function ProGate({ feature, icon, description }) {
+  const [upgrading, setUpgrading] = useState(false)
+  const handleUpgrade = async () => {
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch { setUpgrading(false) }
+  }
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+      <div className="text-5xl mb-4">{icon}</div>
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        ✦ Pro Feature
+      </div>
+      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
+      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
+      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
+        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+      </button>
+    </div>
+  )
+}
+
 // ─── Offline ticker hints (Stocks + ETFs) ─────────────────────────────────────
 const TICKER_HINTS = {
   // Stocks
@@ -94,6 +121,20 @@ export default function Investments() {
   const [refreshing, setRefreshing]   = useState(false)
   const [refreshError, setRefreshError] = useState('')
   const [lookupStatus, setLookupStatus] = useState('') // '' | 'loading' | 'found' | 'not_found'
+
+  const [isPro, setIsPro] = useState(false)
+  const [proLoading, setProLoading] = useState(true)
+
+  useEffect(() => {
+    const checkPro = async () => {
+      const { data } = await supabase
+        .from('subscriptions').select('status')
+        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
+      setIsPro(!!data)
+      setProLoading(false)
+    }
+    checkPro()
+  }, [user.id])
 
   // ─── Load ─────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -717,11 +758,19 @@ export default function Investments() {
   }
 
   // ─── Loading spinner ──────────────────────────────────────────────────────
-  if (loading) return (
+  if (proLoading || loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
         style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
     </div>
+  )
+
+  if (!isPro) return (
+    <ProGate
+      feature="Investments"
+      icon="📈"
+      description="Track your full portfolio — stocks, ETFs, crypto, bonds, and mutual funds — with live price refresh and performance charts."
+    />
   )
 
   // ─── Main render ──────────────────────────────────────────────────────────

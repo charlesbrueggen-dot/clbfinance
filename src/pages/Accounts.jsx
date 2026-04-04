@@ -1,7 +1,7 @@
 // src/pages/Accounts.jsx
 // Full Plaid integration — connects real banks, auto-syncs transactions
 // Manual accounts still supported alongside Plaid-connected ones
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
@@ -44,6 +44,33 @@ const blankTxn = () => ({
   date: today(), label: '', notes: '',
   merchant: '', card_last4: '', account_id: '',
 })
+
+
+function ProGate({ feature, icon, description }) {
+  const [upgrading, setUpgrading] = useState(false)
+  const handleUpgrade = async () => {
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch { setUpgrading(false) }
+  }
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+      <div className="text-5xl mb-4">{icon}</div>
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        ✦ Pro Feature
+      </div>
+      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
+      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
+      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
+        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+      </button>
+    </div>
+  )
+}
 
 function CardVisual({ account }) {
   const isCard = account.type === 'Credit Card'
@@ -252,10 +279,18 @@ export default function Accounts() {
     })
   }, [transactions, selectedAcc, txnFilter, search])
 
-  if (loading) return (
+  if (proLoading || loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
     </div>
+  )
+
+  if (!isPro) return (
+    <ProGate
+      feature="Accounts & Cards"
+      icon="🏦"
+      description="Connect your real bank accounts via Plaid, track balances, and log transactions across all your accounts and credit cards."
+    />
   )
 
   return (

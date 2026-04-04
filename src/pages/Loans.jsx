@@ -12,14 +12,53 @@ const calcWithInterest = (principal, rate, startDate) => {
   return principal * Math.pow(1 + rate / 100, years)
 }
 
+function ProGate({ feature, icon, description }) {
+  const [upgrading, setUpgrading] = useState(false)
+  const handleUpgrade = async () => {
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch { setUpgrading(false) }
+  }
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+      <div className="text-5xl mb-4">{icon}</div>
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        ✦ Pro Feature
+      </div>
+      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
+      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
+      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
+        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+      </button>
+    </div>
+  )
+}
+
 export default function Loans() {
   const { user } = useAuth()
+  const [isPro, setIsPro] = useState(false)
+  const [proLoading, setProLoading] = useState(true)
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('active')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ person_name: '', type: 'lent', amount: '', interest_rate: '', loan_date: today(), notes: '' })
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const checkPro = async () => {
+      const { data } = await supabase
+        .from('subscriptions').select('status')
+        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
+      setIsPro(!!data)
+      setProLoading(false)
+    }
+    checkPro()
+  }, [user.id])
 
   const load = async () => {
     const { data } = await supabase.from('loans').select('*').eq('user_id', user.id).order('loan_date', { ascending: false })
@@ -56,7 +95,15 @@ export default function Loans() {
   const moneyOwed = active.filter(l => l.type === 'borrowed').reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const netPosition = moneyLent - moneyOwed
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div></div>
+  if (proLoading || loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div></div>
+
+  if (!isPro) return (
+    <ProGate
+      feature="Loans & Debts"
+      icon="🤝"
+      description="Track money you've lent or borrowed with automatic interest calculations and settlement tracking."
+    />
+  )
 
   return (
     <div>
@@ -67,7 +114,6 @@ export default function Loans() {
 
       <button onClick={openAdd} className="btn-primary mb-6">+ Add Loan</button>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money Lent Out</p>
@@ -86,30 +132,15 @@ export default function Loans() {
         </div>
       </div>
 
-      {/* Tabs — fully theme-aware, no white flash */}
       <div className="flex gap-2 mb-4">
         {['active', 'settled'].map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              background: tab === t ? 'rgba(255,255,255,0.22)' : 'transparent',
-              color: 'var(--text-primary)',
-              border: tab === t ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--card-border)',
-              borderRadius: 12,
-              padding: '8px 18px',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
+          <button key={t} onClick={() => setTab(t)}
+            style={{ background: tab === t ? 'rgba(255,255,255,0.22)' : 'transparent', color: 'var(--text-primary)', border: tab === t ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--card-border)', borderRadius: 12, padding: '8px 18px', fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.15s' }}>
             {t === 'active' ? `Active (${active.length})` : `Settled (${settled.length})`}
           </button>
         ))}
       </div>
 
-      {/* Loan List */}
       <div className="card p-5">
         {displayed.length === 0 ? (
           <div className="text-center py-12">

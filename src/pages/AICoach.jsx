@@ -36,8 +36,40 @@ Guidelines:
 - Never make up financial data — only use what's provided above
 - Format numbers in USD when referencing amounts`
 
+function ProGate({ feature, icon, description }) {
+  const [upgrading, setUpgrading] = useState(false)
+
+  const handleUpgrade = async () => {
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/checkout', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch {
+      setUpgrading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+      <div className="text-5xl mb-4">{icon}</div>
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        ✦ Pro Feature
+      </div>
+      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
+      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
+      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
+        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+      </button>
+    </div>
+  )
+}
+
 export default function AICoach() {
   const { user } = useAuth()
+  const [isPro, setIsPro] = useState(false)
+  const [proLoading, setProLoading] = useState(true)
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -51,6 +83,20 @@ export default function AICoach() {
   const [dark, setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+
+  useEffect(() => {
+    const checkPro = async () => {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle()
+      setIsPro(!!data)
+      setProLoading(false)
+    }
+    checkPro()
+  }, [user.id])
 
   useEffect(() => {
     const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
@@ -111,9 +157,7 @@ export default function AICoach() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-opus-4-20250514',
           max_tokens: 1024,
@@ -152,11 +196,19 @@ export default function AICoach() {
     "How can I reduce my expenses?",
   ]
 
-  if (dataLoading) return (
+  if (proLoading || dataLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
         style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
     </div>
+  )
+
+  if (!isPro) return (
+    <ProGate
+      feature="Stride AI Coach"
+      icon="🤖"
+      description="Get personalized financial advice powered by AI — analyzing your real spending, income, and goals to give you specific, actionable guidance."
+    />
   )
 
   return (
@@ -206,7 +258,6 @@ export default function AICoach() {
           </div>
         )}
 
-        {/* Starter prompts — only show at start */}
         {messages.length === 1 && !loading && (
           <div className="flex flex-wrap gap-2 pt-2">
             {STARTERS.map(s => (
