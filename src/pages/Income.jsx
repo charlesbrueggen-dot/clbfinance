@@ -151,7 +151,7 @@ export default function Income() {
                 stroke={dark ? 'transparent' : '#000'} strokeWidth={dark ? 0 : 1.5}>
                 {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
               </Pie>
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} />
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} itemStyle={{ color: '#10b981' }} labelStyle={{ color: '#10b981' }} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
