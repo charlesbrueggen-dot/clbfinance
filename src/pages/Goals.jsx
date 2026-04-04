@@ -6,7 +6,16 @@ const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: '
 const CATEGORIES = ['Emergency Fund', 'Vacation', 'Car', 'Home', 'Education', 'Retirement', 'Investment', 'Other']
 const PRIORITIES = ['low', 'medium', 'high']
 const PRIO_COLORS = { low: '#10b981', medium: '#f59e0b', high: '#ef4444' }
-const GOAL_ICONS = ['🚗','🏠','✈️','🎓','💍','💻','🏖️','💰','🎯','📱','🏋️','🌍']
+const CATEGORY_ICONS = {
+  'Emergency Fund': '🛡️',
+  'Vacation': '✈️',
+  'Car': '🚗',
+  'Home': '🏠',
+  'Education': '🎓',
+  'Retirement': '💰',
+  'Investment': '📈',
+  'Other': '🎯',
+}
 
 export default function Goals() {
   const { user } = useAuth()
@@ -78,7 +87,7 @@ export default function Goals() {
           {goals.map(goal => {
             const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
             const dl = daysLeft(goal.target_date)
-            const icon = GOAL_ICONS[Math.abs(goal.title.charCodeAt(0)) % GOAL_ICONS.length]
+            const icon = CATEGORY_ICONS[goal.category] || CATEGORY_ICONS['Other']
 
             return (
               <div key={goal.id} className="card p-5">
@@ -166,9 +175,12 @@ export default function Goals() {
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <div>
                   <label className="label">Category</label>
-                  <select className="input-field" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{CATEGORY_ICONS[form.category] || CATEGORY_ICONS['Other']}</span>
+                    <select className="input-field flex-1" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="label">Priority</label>
