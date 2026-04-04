@@ -21,14 +21,15 @@ const frequencyIcon  = f => FREQUENCY_OPTIONS.find(o => o.value === f)?.icon  ||
 
 export default function Income() {
   const { user } = useAuth()
-  const [income, setIncome]     = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
+  const [income, setIncome]         = useState([])   // manual income table
+  const [plaidIncome, setPlaidIncome] = useState([]) // from account_transactions
+  const [loading, setLoading]       = useState(true)
+  const [showModal, setShowModal]   = useState(false)
+  const [editItem, setEditItem]     = useState(null)
   const [form, setForm] = useState({ source: '', amount: '', date: today(), frequency: 'one-time', next_date: '' })
-  const [saving, setSaving]     = useState(false)
-  const [error, setError]       = useState('')
-  const [dark, setDarkDetect]   = useState(document.documentElement.classList.contains('dark'))
+  const [saving, setSaving]   = useState(false)
+  const [error, setError]     = useState('')
+  const [dark, setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
 
   useEffect(() => {
     const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
@@ -37,8 +38,12 @@ export default function Income() {
   }, [])
 
   const load = async () => {
-    const { data } = await supabase.from('income').select('*').eq('user_id', user.id).order('date', { ascending: false })
-    setIncome(data || [])
+    const [{ data: manualData }, { data: plaidData }] = await Promise.all([
+      supabase.from('income').select('*').eq('user_id', user.id).order('date', { ascending: false }),
+      supabase.from('account_transactions').select('*').eq('user_id', user.id).eq('kind', 'income').order('date', { ascending: false }),
+    ])
+    setIncome(manualData || [])
+    setPlaidIncome(plaidData || [])
     setLoading(false)
   }
   useEffect(() => { load() }, [user.id])
@@ -85,16 +90,22 @@ export default function Income() {
     load()
   }
 
-  const totalIncome = income.reduce((s, i) => s + i.amount, 0)
-  const recurring   = income.filter(i => i.frequency && i.frequency !== 'one-time')
-  const oneTime     = income.filter(i => !i.frequency || i.frequency === 'one-time')
+  // Combine both sources for totals and pie chart
+  const manualTotal = income.reduce((s, i) => s + Number(i.amount), 0)
+  const plaidTotal  = plaidIncome.reduce((s, i) => s + Number(i.amount), 0)
+  const totalIncome = manualTotal + plaidTotal
 
+  const recurring = income.filter(i => i.frequency && i.frequency !== 'one-time')
+  const oneTime   = income.filter(i => !i.frequency || i.frequency === 'one-time')
+
+  // Pie: merge manual sources + plaid sources
   const normalizeSource = source => {
     if (!source) return 'Other'
     return source.trim().toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
   }
   const srcMap = {}
-  income.forEach(i => { const key = normalizeSource(i.source); srcMap[key] = (srcMap[key] || 0) + i.amount })
+  income.forEach(i => { const key = normalizeSource(i.source); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
+  plaidIncome.forEach(i => { const key = normalizeSource(i.source || i.description || 'Bank Income'); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
   const pieData   = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
@@ -122,13 +133,16 @@ export default function Income() {
         </div>
         <p className="text-muted text-sm mb-1">Total Income</p>
         <p className="text-4xl font-black text-primary">{fmt(totalIncome)}</p>
-        <p className="text-muted text-sm mt-2">{recurring.length} recurring · {oneTime.length} one-time</p>
+        <p className="text-muted text-sm mt-2">
+          {recurring.length} recurring · {oneTime.length} one-time
+          {plaidIncome.length > 0 && <span> · {plaidIncome.length} from bank</span>}
+        </p>
       </div>
 
       {/* Frequency breakdown mini-stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {['weekly','biweekly','monthly'].map(freq => {
-          const total = recurring.filter(i => i.frequency === freq).reduce((s, i) => s + i.amount, 0)
+          const total = recurring.filter(i => i.frequency === freq).reduce((s, i) => s + Number(i.amount), 0)
           return (
             <div key={freq} className="card p-4">
               <p className="text-muted text-xs mb-1">{frequencyLabel(freq)}</p>
@@ -159,7 +173,37 @@ export default function Income() {
         )}
       </div>
 
-      {/* Recurring */}
+      {/* Plaid / Bank income */}
+      {plaidIncome.length > 0 && (
+        <div className="mb-4">
+          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">🏦 Bank Income</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {plaidIncome.map(item => (
+              <div key={item.id} className="card p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold"
+                      style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981' }}>
+                      🏦
+                    </div>
+                    <div>
+                      <p className="font-bold text-primary">{item.source || item.description}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                        Auto-synced
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-2xl font-black text-primary">{fmt(item.amount)}</p>
+                <p className="text-muted text-sm mt-1">{item.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recurring manual */}
       {recurring.length > 0 && (
         <div className="mb-4">
           <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">🔁 Recurring Income</h2>
@@ -169,7 +213,7 @@ export default function Income() {
         </div>
       )}
 
-      {/* One-time */}
+      {/* One-time manual */}
       {oneTime.length > 0 && (
         <div className="mb-4">
           <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">💵 One-Time Income</h2>
@@ -179,7 +223,7 @@ export default function Income() {
         </div>
       )}
 
-      {income.length === 0 && (
+      {income.length === 0 && plaidIncome.length === 0 && (
         <div className="text-center py-12 text-muted">No income entries yet. Add your first above!</div>
       )}
 
@@ -195,7 +239,6 @@ export default function Income() {
             </div>
             <form onSubmit={handleSave}>
 
-              {/* Frequency selector */}
               <div className="mb-4">
                 <label className="label">Frequency</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -206,8 +249,8 @@ export default function Income() {
                         form.frequency === opt.value ? 'text-primary' : 'text-muted'
                       }`}
                       style={{
-                        borderColor:  form.frequency === opt.value ? '#10b981' : 'var(--card-border)',
-                        background:   form.frequency === opt.value ? 'rgba(16,185,129,0.1)' : undefined,
+                        borderColor: form.frequency === opt.value ? '#10b981' : 'var(--card-border)',
+                        background:  form.frequency === opt.value ? 'rgba(16,185,129,0.1)' : undefined,
                       }}>
                       <span className="text-xs font-bold" style={{ color: form.frequency === opt.value ? '#10b981' : 'inherit' }}>{opt.icon}</span>
                       <span className="text-xs">{opt.label}</span>
