@@ -1,10 +1,6 @@
 // src/hooks/useTransactions.js
-// ─────────────────────────────────────────────────────────────────────────────
-//  Shared data hook used by Accounts, Expenses, Analytics, NetWorth, Dashboard.
-//  Fetches account_transactions + accounts in one place; components subscribe.
-//  No Redux/Zustand needed — simple React context pattern.
-// ─────────────────────────────────────────────────────────────────────────────
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+// Zero JSX — uses createElement so this file stays plain .js (no rename needed)
+import { createContext, useContext, useState, useEffect, useCallback, createElement } from 'react'
 import { supabase } from '../lib/supabase'
 
 // ── Intelligent auto-categorizer ─────────────────────────────────────────────
@@ -111,15 +107,14 @@ export function TransactionProvider({ userId, children }) {
     return { error }
   }
 
-  return (
-    <TxnContext.Provider value={{
-      transactions, expenseTxns, incomeTxns,
-      accounts, loading, reload: load,
-      addTransaction, updateTransaction, deleteTransaction,
-    }}>
-      {children}
-    </TxnContext.Provider>
-  )
+  const value = {
+    transactions, expenseTxns, incomeTxns,
+    accounts, loading, reload: load,
+    addTransaction, updateTransaction, deleteTransaction,
+  }
+
+  // createElement instead of JSX — keeps this file valid as plain .js
+  return createElement(TxnContext.Provider, { value }, children)
 }
 
 export function useTransactions() {
