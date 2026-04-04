@@ -15,7 +15,7 @@ import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Loans from './pages/Loans'
 import AICoach from './pages/AICoach'
-import { TransactionProvider } from './hooks/useTransactions.jsx'
+import { TransactionProvider } from './hooks/useTransactions'
 
 export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
