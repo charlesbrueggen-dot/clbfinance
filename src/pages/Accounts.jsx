@@ -1,117 +1,655 @@
-import { useState, useEffect } from 'react'
+// src/pages/Accounts.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+//  Full Accounts & Cards Integration
+//  • Real bank accounts with card metadata (last 4, type, color)
+//  • Per-account transaction log
+//  • Auto-categorized transaction entry (intelligent rules engine)
+//  • Manual categorization override with labels/descriptions
+//  • Expenses flow to Expenses page; income flows to income totals
+//  • Credit/debit card auto-detection from account type
+// ─────────────────────────────────────────────────────────────────────────────
+import { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
+import { useTransactions, autoCategorize } from '../hooks/useTransactions'
 
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
-const ACCOUNT_TYPES = ['Checking', 'Savings', 'Credit Card', 'Investment', 'Cash', 'Other']
-const TYPE_ICONS = { Checking: '🏦', Savings: '💰', 'Credit Card': '💳', Investment: '📈', Cash: '💵', Other: '🏛' }
+const fmt   = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
+const today = () => new Date().toISOString().split('T')[0]
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+const ACCOUNT_TYPES  = ['Checking', 'Savings', 'Credit Card', 'Investment', 'Cash', 'Other']
+const CARD_TYPES     = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other']
+const CARD_COLORS    = ['#1a1a2e', '#16213e', '#0f3460', '#533483', '#2b2d42', '#8d99ae', '#2a9d8f', '#e9c46a']
+const TXN_KINDS      = ['expense', 'income', 'transfer']
+
+const CATEGORIES = {
+  expense: {
+    Needs:   ['Rent', 'Groceries', 'Utilities', 'Transportation', 'Healthcare', 'Insurance', 'Other'],
+    Wants:   ['Dining', 'Entertainment', 'Shopping', 'Travel', 'Subscriptions', 'Other'],
+    Savings: ['Emergency Fund', 'Retirement', 'Investment', 'Vacation', 'Other'],
+  },
+}
+const INCOME_SOURCES = ['Salary', 'Freelance', 'Investment Return', 'Refund', 'Cashback', 'Transfer In', 'Other']
+
+const TYPE_ICONS = {
+  Checking: '🏦', Savings: '💰', 'Credit Card': '💳',
+  Investment: '📈', Cash: '💵', Other: '🏛',
+}
+
+const KIND_COLOR = { expense: '#ef4444', income: '#10b981', transfer: '#f59e0b' }
+const KIND_ICON  = { expense: '↘', income: '↗', transfer: '⇄' }
+
+// ── Blank form factories ──────────────────────────────────────────────────────
+const blankAccount = () => ({
+  name: '', type: 'Checking', balance: '',
+  institution: '', card_last4: '', card_type: 'Visa',
+  color: CARD_COLORS[0], notes: '',
+})
+
+const blankTxn = () => ({
+  description: '', amount: '', kind: 'expense',
+  category: 'Wants', subcategory: 'Other', source: 'Other',
+  date: today(), label: '', notes: '',
+  merchant: '', card_last4: '', account_id: '',
+})
+
+// ── CardVisual ────────────────────────────────────────────────────────────────
+function CardVisual({ account }) {
+  const isCard = account.type === 'Credit Card'
+  const bg     = account.color || '#1a1a2e'
+  return (
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden flex-shrink-0"
+      style={{ background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 100%)`, width: 240, height: 145 }}
+    >
+      {/* shine */}
+      <div className="absolute inset-0 opacity-10"
+        style={{ background: 'linear-gradient(135deg, #fff 0%, transparent 60%)' }} />
+
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <p className="text-white text-xs opacity-70 font-medium">{account.institution || 'Bank'}</p>
+          <p className="text-white text-sm font-bold mt-0.5">{account.name}</p>
+        </div>
+        <span className="text-white text-xl opacity-80">{TYPE_ICONS[account.type]}</span>
+      </div>
+
+      {isCard && account.card_last4 && (
+        <p className="text-white text-sm tracking-widest opacity-80 mb-3">
+          •••• •••• •••• {account.card_last4}
+        </p>
+      )}
+      <div className="absolute bottom-4 left-5 right-5 flex justify-between items-end">
+        <div>
+          <p className="text-white text-xs opacity-60">{account.type === 'Credit Card' ? 'Balance Owed' : 'Balance'}</p>
+          <p className="text-white font-black text-lg">{fmt(account.balance)}</p>
+        </div>
+        {isCard && (
+          <p className="text-white text-sm font-bold opacity-80">{account.card_type || 'Card'}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function Accounts() {
   const { user } = useAuth()
-  const [accounts, setAccounts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editItem, setEditItem] = useState(null)
-  const [form, setForm] = useState({ name: '', type: 'Checking', balance: '', institution: '', notes: '' })
-  const [saving, setSaving] = useState(false)
+  const { transactions, accounts, loading, reload, addTransaction } = useTransactions()
 
-  const load = async () => {
-    const { data } = await supabase.from('accounts').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-    setAccounts(data || [])
-    setLoading(false)
+  // Account modal state
+  const [showAccModal, setShowAccModal] = useState(false)
+  const [editAcc,      setEditAcc]      = useState(null)
+  const [accForm,      setAccForm]      = useState(blankAccount())
+  const [savingAcc,    setSavingAcc]    = useState(false)
+
+  // Transaction modal state
+  const [showTxnModal, setShowTxnModal] = useState(false)
+  const [editTxn,      setEditTxn]      = useState(null)
+  const [txnForm,      setTxnForm]      = useState(blankTxn())
+  const [savingTxn,    setSavingTxn]    = useState(false)
+  const [autoSuggest,  setAutoSuggest]  = useState(null)
+
+  // UI state
+  const [selectedAcc,  setSelectedAcc]  = useState(null)  // account id filter
+  const [txnFilter,    setTxnFilter]    = useState('all')  // 'all'|'expense'|'income'|'transfer'
+  const [search,       setSearch]       = useState('')
+
+  // ── Account CRUD ────────────────────────────────────────────────────────────
+  const openAddAcc  = () => { setEditAcc(null); setAccForm(blankAccount()); setShowAccModal(true) }
+  const openEditAcc = a  => { setEditAcc(a); setAccForm({ name: a.name, type: a.type, balance: a.balance, institution: a.institution || '', card_last4: a.card_last4 || '', card_type: a.card_type || 'Visa', color: a.color || CARD_COLORS[0], notes: a.notes || '' }); setShowAccModal(true) }
+
+  const handleSaveAcc = async e => {
+    e.preventDefault(); setSavingAcc(true)
+    const payload = {
+      name:        accForm.name.trim(),
+      type:        accForm.type,
+      balance:     parseFloat(accForm.balance) || 0,
+      institution: accForm.institution.trim(),
+      card_last4:  accForm.card_last4.replace(/\D/g, '').slice(-4) || null,
+      card_type:   accForm.type === 'Credit Card' ? accForm.card_type : null,
+      color:       accForm.color || null,
+      notes:       accForm.notes,
+      user_id:     user.id,
+    }
+    if (editAcc) await supabase.from('accounts').update(payload).eq('id', editAcc.id).eq('user_id', user.id)
+    else         await supabase.from('accounts').insert(payload)
+    setSavingAcc(false); setShowAccModal(false); reload()
   }
-  useEffect(() => { load() }, [user.id])
 
-  const openAdd = () => { setEditItem(null); setForm({ name: '', type: 'Checking', balance: '', institution: '', notes: '' }); setShowModal(true) }
-  const openEdit = item => { setEditItem(item); setForm({ name: item.name, type: item.type, balance: item.balance, institution: item.institution || '', notes: item.notes || '' }); setShowModal(true) }
-
-  const handleSave = async e => {
-    e.preventDefault()
-    setSaving(true)
-    const payload = { name: form.name.trim(), type: form.type, balance: parseFloat(form.balance) || 0, institution: form.institution.trim(), notes: form.notes, user_id: user.id }
-    if (editItem) await supabase.from('accounts').update(payload).eq('id', editItem.id).eq('user_id', user.id)
-    else await supabase.from('accounts').insert(payload)
-    setSaving(false); setShowModal(false); load()
-  }
-
-  const handleDelete = async id => {
+  const handleDeleteAcc = async id => {
+    if (!confirm('Delete this account? Its transactions will be kept but unlinked.')) return
     await supabase.from('accounts').delete().eq('id', id).eq('user_id', user.id)
-    load()
+    if (selectedAcc === id) setSelectedAcc(null)
+    reload()
   }
 
-  const totalBalance = accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0)
-  const totalDebt = accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + a.balance, 0)
+  // ── Transaction CRUD ────────────────────────────────────────────────────────
+  const openAddTxn = (accountId = '') => {
+    setEditTxn(null)
+    setAutoSuggest(null)
+    setTxnForm({ ...blankTxn(), account_id: accountId })
+    setShowTxnModal(true)
+  }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
+  const openEditTxn = t => {
+    setEditTxn(t)
+    setAutoSuggest(null)
+    setTxnForm({
+      description: t.description, amount: t.amount, kind: t.kind,
+      category: t.category || 'Wants', subcategory: t.subcategory || 'Other',
+      source: t.source || 'Other', date: t.date, label: t.label || '',
+      notes: t.notes || '', merchant: t.merchant || '',
+      card_last4: t.card_last4 || '', account_id: t.account_id || '',
+    })
+    setShowTxnModal(true)
+  }
+
+  // Live auto-categorize as user types description
+  const handleDescChange = val => {
+    setTxnForm(f => ({ ...f, description: val }))
+    if (val.length >= 3) {
+      const suggestion = autoCategorize(val, txnForm.merchant)
+      setAutoSuggest(suggestion)
+    } else {
+      setAutoSuggest(null)
+    }
+  }
+
+  const applyAutoSuggest = () => {
+    if (!autoSuggest) return
+    setTxnForm(f => ({
+      ...f,
+      kind:        autoSuggest.kind,
+      category:    autoSuggest.category    || f.category,
+      subcategory: autoSuggest.subcategory || f.subcategory,
+      source:      autoSuggest.source      || f.source,
+    }))
+    setAutoSuggest(null)
+  }
+
+  const handleSaveTxn = async e => {
+    e.preventDefault(); setSavingTxn(true)
+
+    // Resolve auto-categorization for new transactions if not overridden
+    let finalCat = { category: txnForm.category, subcategory: txnForm.subcategory, source: txnForm.source, auto_categorized: false }
+    if (!editTxn && autoSuggest) {
+      finalCat = {
+        category:    autoSuggest.category    || txnForm.category,
+        subcategory: autoSuggest.subcategory || txnForm.subcategory,
+        source:      autoSuggest.source      || txnForm.source,
+        auto_categorized: autoSuggest.auto,
+      }
+    }
+
+    // Detect card info from linked account
+    const linkedAcc = accounts.find(a => a.id === txnForm.account_id)
+    const card_last4 = txnForm.card_last4 || linkedAcc?.card_last4 || null
+    const card_type  = linkedAcc?.card_type || null
+
+    const payload = {
+      description:      txnForm.description.trim(),
+      amount:           parseFloat(txnForm.amount),
+      kind:             txnForm.kind,
+      category:         txnForm.kind === 'expense' ? finalCat.category    : null,
+      subcategory:      txnForm.kind === 'expense' ? finalCat.subcategory : null,
+      source:           txnForm.kind === 'income'  ? txnForm.source       : null,
+      date:             txnForm.date,
+      label:            txnForm.label.trim() || null,
+      notes:            txnForm.notes || null,
+      merchant:         txnForm.merchant.trim() || null,
+      card_last4,
+      card_type,
+      account_id:       txnForm.account_id || null,
+      auto_categorized: finalCat.auto_categorized,
+      source_type:      'manual',
+      user_id:          user.id,
+    }
+
+    if (editTxn) {
+      await supabase.from('account_transactions').update(payload).eq('id', editTxn.id).eq('user_id', user.id)
+    } else {
+      await addTransaction(payload)
+    }
+
+    // Also update account balance
+    if (linkedAcc) {
+      const delta = txnForm.kind === 'expense' ? -payload.amount : txnForm.kind === 'income' ? payload.amount : 0
+      await supabase.from('accounts')
+        .update({ balance: linkedAcc.balance + delta })
+        .eq('id', linkedAcc.id)
+        .eq('user_id', user.id)
+    }
+
+    setSavingTxn(false); setShowTxnModal(false); reload()
+  }
+
+  const handleDeleteTxn = async id => {
+    await supabase.from('account_transactions').delete().eq('id', id).eq('user_id', user.id)
+    reload()
+  }
+
+  // ── Derived data ────────────────────────────────────────────────────────────
+  const totalAssets = accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0)
+  const totalDebt   = accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + a.balance, 0)
+
+  const visibleTxns = useMemo(() => {
+    return transactions.filter(t => {
+      const matchAcc    = !selectedAcc || t.account_id === selectedAcc
+      const matchFilter = txnFilter === 'all' || t.kind === txnFilter
+      const matchSearch = !search   || t.description.toLowerCase().includes(search.toLowerCase()) || (t.merchant || '').toLowerCase().includes(search.toLowerCase()) || (t.label || '').toLowerCase().includes(search.toLowerCase())
+      return matchAcc && matchFilter && matchSearch
+    })
+  }, [transactions, selectedAcc, txnFilter, search])
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
+    </div>
+  )
+
+  const isCard = accForm.type === 'Credit Card'
 
   return (
     <div>
+      {/* ── Header ── */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">My Accounts</h1>
-        <p className="text-muted text-sm mt-1">Manage your connected bank accounts</p>
+        <h1 className="text-2xl font-black text-primary tracking-tight">Accounts & Cards</h1>
+        <p className="text-muted text-sm mt-1">Connected accounts, card tracking & transactions</p>
       </div>
 
-      <button onClick={openAdd} className="btn-primary mb-6">+ Add Account</button>
-
+      {/* ── Summary Bar ── */}
       {accounts.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-5">
           <div className="card p-4">
             <p className="text-muted text-xs mb-1">Total Assets</p>
-            <p className="text-2xl font-bold text-primary">{fmt(totalBalance)}</p>
+            <p className="text-2xl font-black text-primary">{fmt(totalAssets)}</p>
+            <p className="text-xs text-muted mt-1">{accounts.filter(a => a.type !== 'Credit Card').length} accounts</p>
           </div>
           <div className="card p-4">
             <p className="text-muted text-xs mb-1">Total Debt</p>
-            <p className="text-2xl font-bold text-red-500">{fmt(totalDebt)}</p>
+            <p className="text-2xl font-black text-red-500">{fmt(totalDebt)}</p>
+            <p className="text-xs text-muted mt-1">{accounts.filter(a => a.type === 'Credit Card').length} cards</p>
           </div>
         </div>
       )}
 
+      {/* ── Action Buttons ── */}
+      <div className="flex gap-3 mb-5">
+        <button onClick={openAddAcc} className="btn-primary flex-1 justify-center">+ Add Account</button>
+        <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-secondary flex-1 justify-center">+ Log Transaction</button>
+      </div>
+
+      {/* ── Account Cards Scroll ── */}
       {accounts.length === 0 ? (
-        <div className="card p-12 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-          <p className="font-bold text-primary text-lg mb-2">No accounts yet</p>
-          <p className="text-muted text-sm mb-4">Add a bank account to start tracking your finances.</p>
-          <button onClick={openAdd} className="btn-primary">+ Add your first account</button>
+        <div className="card p-12 text-center mb-5" style={{ border: '2px dashed var(--card-border)' }}>
+          <p className="text-4xl mb-3">🏦</p>
+          <p className="font-black text-primary text-lg mb-2">No accounts yet</p>
+          <p className="text-muted text-sm mb-4">Add your first bank account or card to start tracking.</p>
+          <button onClick={openAddAcc} className="btn-primary">+ Add Account</button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {accounts.map(acc => (
-            <div key={acc.id} className="card p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                  {TYPE_ICONS[acc.type] || '🏦'}
+        <>
+          {/* Card-style visual scroll */}
+          <div className="flex gap-3 overflow-x-auto pb-3 mb-4 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+            <button
+              onClick={() => setSelectedAcc(null)}
+              className="flex-shrink-0 rounded-2xl px-5 py-3 text-sm font-bold transition-all"
+              style={{
+                background: !selectedAcc ? 'var(--text-primary)' : 'var(--input-bg)',
+                color:      !selectedAcc ? 'var(--bg-primary)'   : 'var(--text-muted)',
+                border:     '1px solid var(--card-border)',
+              }}
+            >
+              All ({accounts.length})
+            </button>
+            {accounts.map(acc => (
+              <button key={acc.id} onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)} className="flex-shrink-0">
+                <CardVisual account={acc} />
+                {acc.id === selectedAcc && (
+                  <div className="mt-2 flex gap-2 justify-center">
+                    <button onClick={e => { e.stopPropagation(); openEditAcc(acc) }} className="text-xs text-muted hover:text-primary px-2 py-1 rounded border" style={{ borderColor: 'var(--card-border)' }}>Edit</button>
+                    <button onClick={e => { e.stopPropagation(); handleDeleteAcc(acc.id) }} className="text-xs text-muted hover:text-red-500 px-2 py-1 rounded border" style={{ borderColor: 'var(--card-border)' }}>Delete</button>
+                    <button onClick={e => { e.stopPropagation(); openAddTxn(acc.id) }} className="text-xs text-primary px-2 py-1 rounded border" style={{ borderColor: 'var(--card-border)' }}>+ Txn</button>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Account list (compact) */}
+          <div className="space-y-2 mb-5">
+            {accounts.map(acc => (
+              <div key={acc.id} className="card p-4 flex items-center justify-between"
+                onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
+                style={{ cursor: 'pointer', borderColor: selectedAcc === acc.id ? 'var(--text-primary)' : undefined }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+                    {TYPE_ICONS[acc.type] || '🏦'}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-primary text-sm">{acc.name}</p>
+                    <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-primary">{acc.name}</p>
-                  <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}</p>
-                  {acc.notes && <p className="text-xs text-muted">{acc.notes}</p>}
-                </div>
+                <p className={`font-black ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>{fmt(acc.balance)}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <p className={`font-bold text-lg ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>{fmt(acc.balance)}</p>
-                <button onClick={() => openEdit(acc)} className="text-muted hover:text-primary text-sm">✎</button>
-                <button onClick={() => handleDelete(acc.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
-              </div>
-            </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ── Transaction Log ── */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-black text-primary">
+            Transactions
+            {selectedAcc && <span className="text-muted font-normal text-sm ml-2">· {accounts.find(a => a.id === selectedAcc)?.name}</span>}
+          </h2>
+          <span className="text-xs text-muted">{visibleTxns.length} entries</span>
+        </div>
+
+        {/* Filter + Search */}
+        <div className="flex gap-2 mb-3">
+          <input
+            className="input-field flex-1 text-sm"
+            placeholder="Search transactions…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {['all', 'expense', 'income', 'transfer'].map(k => (
+            <button key={k} onClick={() => setTxnFilter(k)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all"
+              style={{
+                background: txnFilter === k ? (KIND_COLOR[k] || 'var(--text-primary)') : 'var(--input-bg)',
+                color:      txnFilter === k ? '#fff' : 'var(--text-muted)',
+                border:     '1px solid var(--card-border)',
+              }}>
+              {k === 'all' ? `All (${transactions.length})` : k}
+            </button>
           ))}
+        </div>
+
+        {visibleTxns.length === 0 ? (
+          <div className="card p-10 text-center" style={{ border: '2px dashed var(--card-border)' }}>
+            <p className="text-3xl mb-2">📋</p>
+            <p className="font-bold text-primary mb-1">No transactions yet</p>
+            <p className="text-muted text-sm mb-4">Log a transaction to start tracking your cash flow.</p>
+            <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-primary">+ Log Transaction</button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {visibleTxns.map(txn => {
+              const acc = accounts.find(a => a.id === txn.account_id)
+              return (
+                <div key={txn.id} className="card p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0"
+                      style={{ background: `${KIND_COLOR[txn.kind]}22`, color: KIND_COLOR[txn.kind] }}>
+                      {KIND_ICON[txn.kind]}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-sm text-primary truncate">{txn.description}</p>
+                        {txn.label && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
+                            {txn.label}
+                          </span>
+                        )}
+                        {txn.auto_categorized && (
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                            style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                            ✦ auto
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted">
+                        {txn.kind === 'expense'
+                          ? `${txn.category || ''} · ${txn.subcategory || ''}`
+                          : txn.kind === 'income'
+                          ? txn.source || 'Income'
+                          : 'Transfer'}
+                        {' · '}{txn.date}
+                        {acc ? ` · ${acc.name}` : ''}
+                        {txn.card_last4 ? ` ··${txn.card_last4}` : ''}
+                      </p>
+                      {txn.notes && <p className="text-xs text-muted truncate">{txn.notes}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <p className="font-black text-sm" style={{ color: KIND_COLOR[txn.kind] }}>
+                      {txn.kind === 'expense' ? '-' : txn.kind === 'income' ? '+' : ''}{fmt(txn.amount)}
+                    </p>
+                    <button onClick={() => openEditTxn(txn)} className="text-muted hover:text-primary text-sm">✎</button>
+                    <button onClick={() => handleDeleteTxn(txn.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════ ACCOUNT MODAL ══════════════════════════ */}
+      {showAccModal && (
+        <div className="modal-overlay" onClick={() => setShowAccModal(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <p className="accent-text font-black text-lg">{editAcc ? 'Edit Account' : 'Add Account'}</p>
+              <button onClick={() => setShowAccModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+            </div>
+
+            {/* Card preview */}
+            {isCard && (
+              <div className="flex justify-center mb-5">
+                <CardVisual account={{ ...editAcc, ...accForm, balance: parseFloat(accForm.balance) || 0 }} />
+              </div>
+            )}
+
+            <form onSubmit={handleSaveAcc}>
+              <div className="mb-4">
+                <label className="label">Account Name</label>
+                <input className="input-field" placeholder="e.g., Chase Checking" value={accForm.name} onChange={e => setAccForm(f => ({ ...f, name: e.target.value }))} required />
+              </div>
+
+              <div className="mb-4">
+                <label className="label">Account Type</label>
+                <select className="input-field" value={accForm.type} onChange={e => setAccForm(f => ({ ...f, type: e.target.value }))}>
+                  {ACCOUNT_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="label">Current Balance ($)</label>
+                <input className="input-field" type="number" step="0.01" placeholder="0.00" value={accForm.balance} onChange={e => setAccForm(f => ({ ...f, balance: e.target.value }))} required />
+              </div>
+
+              <div className="mb-4">
+                <label className="label">Institution (optional)</label>
+                <input className="input-field" placeholder="e.g., Chase, Bank of America" value={accForm.institution} onChange={e => setAccForm(f => ({ ...f, institution: e.target.value }))} />
+              </div>
+
+              {/* Card-specific fields */}
+              {isCard && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label className="label">Last 4 Digits</label>
+                      <input className="input-field" placeholder="1234" maxLength={4} value={accForm.card_last4} onChange={e => setAccForm(f => ({ ...f, card_last4: e.target.value.replace(/\D/g, '') }))} />
+                    </div>
+                    <div>
+                      <label className="label">Card Network</label>
+                      <select className="input-field" value={accForm.card_type} onChange={e => setAccForm(f => ({ ...f, card_type: e.target.value }))}>
+                        {CARD_TYPES.map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="label">Card Color</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {CARD_COLORS.map(c => (
+                        <button key={c} type="button" onClick={() => setAccForm(f => ({ ...f, color: c }))}
+                          className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+                          style={{ background: c, borderColor: accForm.color === c ? '#fff' : 'transparent' }} />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="mb-6">
+                <label className="label">Notes (optional)</label>
+                <input className="input-field" placeholder="Any additional notes" value={accForm.notes} onChange={e => setAccForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setShowAccModal(false)} className="btn-secondary justify-center">Cancel</button>
+                <button type="submit" disabled={savingAcc} className="btn-primary justify-center">{savingAcc ? 'Saving…' : editAcc ? 'Save Changes' : 'Add Account'}</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+      {/* ══════════════════════════ TRANSACTION MODAL ══════════════════════════ */}
+      {showTxnModal && (
+        <div className="modal-overlay" onClick={() => setShowTxnModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <p className="accent-text font-semibold text-lg">{editItem ? 'Edit Account' : 'Add Account'}</p>
-              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+            <div className="flex items-center justify-between mb-5">
+              <p className="accent-text font-black text-lg">{editTxn ? 'Edit Transaction' : 'Log Transaction'}</p>
+              <button onClick={() => setShowTxnModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
             </div>
-            <form onSubmit={handleSave}>
-              <div className="mb-4"><label className="label">Account Name</label><input className="input-field" placeholder="e.g., Chase Checking" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>
-              <div className="mb-4"><label className="label">Account Type</label><select className="input-field" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>{ACCOUNT_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
-              <div className="mb-4"><label className="label">Current Balance ($)</label><input className="input-field" type="number" step="0.01" placeholder="0.00" value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))} required /></div>
-              <div className="mb-4"><label className="label">Institution (optional)</label><input className="input-field" placeholder="e.g., Chase Bank" value={form.institution} onChange={e => setForm(f => ({ ...f, institution: e.target.value }))} /></div>
-              <div className="mb-6"><label className="label">Notes (optional)</label><input className="input-field" placeholder="Any additional notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
+
+            <form onSubmit={handleSaveTxn}>
+              {/* Kind selector */}
+              <div className="mb-4">
+                <label className="label">Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {TXN_KINDS.map(k => (
+                    <button key={k} type="button" onClick={() => setTxnForm(f => ({ ...f, kind: k }))}
+                      className="py-2 rounded-xl text-sm font-bold capitalize transition-all"
+                      style={{
+                        background: txnForm.kind === k ? KIND_COLOR[k] : 'var(--input-bg)',
+                        color:      txnForm.kind === k ? '#fff' : 'var(--text-muted)',
+                        border:     '1px solid var(--card-border)',
+                      }}>
+                      {KIND_ICON[k]} {k}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description + auto-suggest */}
+              <div className="mb-4">
+                <label className="label">Description</label>
+                <input className="input-field" placeholder="e.g., Nike shoes, Netflix, Salary deposit"
+                  value={txnForm.description} onChange={e => handleDescChange(e.target.value)} required />
+                {autoSuggest && (
+                  <div className="mt-2 flex items-center justify-between rounded-xl px-3 py-2"
+                    style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                    <p className="text-xs" style={{ color: '#3b82f6' }}>
+                      ✦ Suggested: <strong>{autoSuggest.kind}</strong>
+                      {autoSuggest.category ? ` · ${autoSuggest.category} › ${autoSuggest.subcategory}` : ''}
+                      {autoSuggest.source   ? ` · ${autoSuggest.source}` : ''}
+                    </p>
+                    <button type="button" onClick={applyAutoSuggest}
+                      className="text-xs font-bold ml-3 px-2 py-1 rounded"
+                      style={{ background: '#3b82f6', color: '#fff' }}>Apply</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-4">
+                <label className="label">Amount ($)</label>
+                <input className="input-field" type="number" step="0.01" min="0" placeholder="0.00"
+                  value={txnForm.amount} onChange={e => setTxnForm(f => ({ ...f, amount: e.target.value }))} required />
+              </div>
+
+              {/* Category fields — conditional on kind */}
+              {txnForm.kind === 'expense' && (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="label">Category</label>
+                    <select className="input-field" value={txnForm.category}
+                      onChange={e => setTxnForm(f => ({ ...f, category: e.target.value, subcategory: CATEGORIES.expense[e.target.value]?.[0] || 'Other' }))}>
+                      {Object.keys(CATEGORIES.expense).map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Subcategory</label>
+                    <select className="input-field" value={txnForm.subcategory}
+                      onChange={e => setTxnForm(f => ({ ...f, subcategory: e.target.value }))}>
+                      {(CATEGORIES.expense[txnForm.category] || ['Other']).map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+              {txnForm.kind === 'income' && (
+                <div className="mb-4">
+                  <label className="label">Income Source</label>
+                  <select className="input-field" value={txnForm.source} onChange={e => setTxnForm(f => ({ ...f, source: e.target.value }))}>
+                    {INCOME_SOURCES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <label className="label">Account (optional)</label>
+                <select className="input-field" value={txnForm.account_id} onChange={e => setTxnForm(f => ({ ...f, account_id: e.target.value }))}>
+                  <option value="">No account</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.card_last4 ? ` ··${a.card_last4}` : ''}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="label">Date</label>
+                  <input className="input-field" type="date" value={txnForm.date} onChange={e => setTxnForm(f => ({ ...f, date: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="label">Label (optional)</label>
+                  <input className="input-field" placeholder="e.g., work trip" value={txnForm.label} onChange={e => setTxnForm(f => ({ ...f, label: e.target.value }))} />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="label">Merchant (optional)</label>
+                <input className="input-field" placeholder="e.g., Nike, Amazon, Whole Foods"
+                  value={txnForm.merchant} onChange={e => setTxnForm(f => ({ ...f, merchant: e.target.value }))} />
+              </div>
+
+              <div className="mb-6">
+                <label className="label">Notes (optional)</label>
+                <textarea className="input-field resize-none" rows={2} placeholder="Any details…"
+                  value={txnForm.notes} onChange={e => setTxnForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary justify-center">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary justify-center">{saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Account'}</button>
+                <button type="button" onClick={() => setShowTxnModal(false)} className="btn-secondary justify-center">Cancel</button>
+                <button type="submit" disabled={savingTxn} className="btn-primary justify-center">{savingTxn ? 'Saving…' : editTxn ? 'Save Changes' : 'Log Transaction'}</button>
               </div>
             </form>
           </div>

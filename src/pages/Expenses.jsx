@@ -1,20 +1,29 @@
-import { useState, useEffect } from 'react'
+// src/pages/Expenses.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+//  Expenses — unified view of:
+//   1. Legacy manual expenses (expenses table — unchanged)
+//   2. Account transactions tagged kind='expense' (account_transactions table)
+//  Both sources rendered together, sorted by date.
+//  Account transactions show a 💳 badge and link to the account.
+// ─────────────────────────────────────────────────────────────────────────────
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
+import { useTransactions } from '../hooks/useTransactions'
 
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
+const fmt  = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 const QUICK_AMOUNTS = [1, 5, 10, 50, 100, 500]
 
 const QUICK_CATS = [
-  { label: 'Rent/Mortgage', icon: '🏠', category: 'Needs', sub: 'Rent' },
-  { label: 'Groceries',     icon: '🛒', category: 'Needs', sub: 'Groceries' },
-  { label: 'Utilities',     icon: '⚡', category: 'Needs', sub: 'Utilities' },
-  { label: 'Transportation',icon: '🚗', category: 'Needs', sub: 'Transportation' },
-  { label: 'Healthcare',    icon: '🏥', category: 'Needs', sub: 'Healthcare' },
+  { label: 'Rent/Mortgage',   icon: '🏠', category: 'Needs', sub: 'Rent' },
+  { label: 'Groceries',       icon: '🛒', category: 'Needs', sub: 'Groceries' },
+  { label: 'Utilities',       icon: '⚡', category: 'Needs', sub: 'Utilities' },
+  { label: 'Transportation',  icon: '🚗', category: 'Needs', sub: 'Transportation' },
+  { label: 'Healthcare',      icon: '🏥', category: 'Needs', sub: 'Healthcare' },
 ]
 
-const CATEGORIES = ['Needs', 'Wants', 'Savings']
+const CATEGORIES    = ['Needs', 'Wants', 'Savings']
 const SUBCATEGORIES = {
   Needs:   ['Rent', 'Groceries', 'Utilities', 'Transportation', 'Healthcare', 'Insurance', 'Other'],
   Wants:   ['Dining', 'Entertainment', 'Shopping', 'Travel', 'Subscriptions', 'Other'],
@@ -23,8 +32,8 @@ const SUBCATEGORIES = {
 const FILTER_TABS = ['All', 'Needs', 'Wants', 'Savings']
 
 const FREQUENCY_OPTIONS = [
-  { value: 'none',     label: 'One-Time',  icon: '1x' },
-  { value: 'weekly',   label: 'Weekly',    icon: '7d' },
+  { value: 'none',     label: 'One-Time',  icon: '1x'  },
+  { value: 'weekly',   label: 'Weekly',    icon: '7d'  },
   { value: 'biweekly', label: 'Bi-Weekly', icon: '14d' },
   { value: 'monthly',  label: 'Monthly',   icon: '30d' },
 ]
@@ -41,50 +50,73 @@ const calcNextDue = (startDate, frequency) => {
   return d.toISOString().split('T')[0]
 }
 
-const isDueSoon = nextDate => {
-  if (!nextDate) return false
-  const diff = (new Date(nextDate) - new Date()) / (1000 * 60 * 60 * 24)
-  return diff >= 0 && diff <= 7
-}
-
 export default function Expenses() {
-  const { user } = useAuth()
-  const [expenses, setExpenses] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
-  const [tab, setTab]           = useState('All')
-  const [step, setStep]         = useState(null)
+  const { user }                                   = useAuth()
+  const { expenseTxns, accounts, reload: reloadTxns } = useTransactions()
+
+  // Legacy expenses table
+  const [legacyExpenses, setLegacyExpenses] = useState([])
+  const [loading,        setLoading]        = useState(true)
+
+  const [search,   setSearch]   = useState('')
+  const [tab,      setTab]      = useState('All')
+  const [step,     setStep]     = useState(null)
   const [editItem, setEditItem] = useState(null)
-  const [form, setForm] = useState({
+  const [form,     setForm]     = useState({
     description: '', amount: '', category: 'Needs', subcategory: 'Other',
     date: today(), notes: '', frequency: 'none', next_due: '',
   })
   const [saving, setSaving] = useState(false)
 
-  const load = async () => {
+  // Which source are we editing: 'legacy' | 'account_txn'
+  const [editSource, setEditSource] = useState('legacy')
+
+  const loadLegacy = async () => {
     const { data } = await supabase.from('expenses').select('*').eq('user_id', user.id).order('date', { ascending: false })
-    setExpenses(data || [])
+    setLegacyExpenses(data || [])
     setLoading(false)
   }
-  useEffect(() => { load() }, [user.id])
+  useEffect(() => { loadLegacy() }, [user.id])
 
+  // ── Merge both sources ──────────────────────────────────────────────────────
+  const allExpenses = useMemo(() => {
+    const legacy = legacyExpenses.map(e => ({ ...e, _source: 'legacy' }))
+    const accTxns = expenseTxns.map(t => ({
+      id:          t.id,
+      description: t.description,
+      amount:      t.amount,
+      category:    t.category || 'Wants',
+      subcategory: t.subcategory || 'Other',
+      date:        t.date,
+      notes:       t.notes || '',
+      frequency:   'none',
+      next_due:    null,
+      recurring:   false,
+      label:       t.label,
+      merchant:    t.merchant,
+      card_last4:  t.card_last4,
+      account_id:  t.account_id,
+      _source:     'account_txn',
+      _account:    accounts.find(a => a.id === t.account_id),
+    }))
+    return [...legacy, ...accTxns].sort((a, b) => new Date(b.date) - new Date(a.date))
+  }, [legacyExpenses, expenseTxns, accounts])
+
+  // ── CRUD — legacy ──────────────────────────────────────────────────────────
   const openAdd = () => {
-    setEditItem(null)
+    setEditItem(null); setEditSource('legacy')
     setForm({ description: '', amount: '', category: 'Needs', subcategory: 'Other', date: today(), notes: '', frequency: 'none', next_due: '' })
     setStep('quick')
   }
 
   const openEdit = item => {
     setEditItem(item)
+    setEditSource(item._source)
     setForm({
-      description: item.description,
-      amount:      item.amount,
-      category:    item.category,
-      subcategory: item.subcategory || 'Other',
-      date:        item.date,
-      notes:       item.notes || '',
-      frequency:   item.frequency || 'none',
-      next_due:    item.next_due || '',
+      description: item.description, amount: item.amount,
+      category:    item.category,    subcategory: item.subcategory || 'Other',
+      date:        item.date,        notes: item.notes || '',
+      frequency:   item.frequency || 'none', next_due: item.next_due || '',
     })
     setStep('form')
   }
@@ -98,49 +130,67 @@ export default function Expenses() {
     e.preventDefault()
     if (!form.description.trim() || !form.amount) return
     setSaving(true)
-    const payload = {
-      description: form.description.trim(),
-      amount:      parseFloat(form.amount),
-      category:    form.category,
-      subcategory: form.subcategory,
-      date:        form.date,
-      notes:       form.notes,
-      frequency:   form.frequency,
-      next_due:    form.frequency !== 'none' ? (form.next_due || calcNextDue(form.date, form.frequency) || null) : null,
-      recurring:   form.frequency !== 'none',
-      user_id:     user.id,
+
+    if (editSource === 'account_txn' && editItem) {
+      // Update in account_transactions
+      await supabase.from('account_transactions').update({
+        description: form.description.trim(),
+        amount:      parseFloat(form.amount),
+        category:    form.category,
+        subcategory: form.subcategory,
+        date:        form.date,
+        notes:       form.notes,
+      }).eq('id', editItem.id).eq('user_id', user.id)
+      await reloadTxns()
+    } else {
+      // Legacy expenses table
+      const payload = {
+        description: form.description.trim(), amount: parseFloat(form.amount),
+        category:    form.category,           subcategory: form.subcategory,
+        date:        form.date,               notes: form.notes,
+        frequency:   form.frequency,
+        next_due:    form.frequency !== 'none' ? (form.next_due || calcNextDue(form.date, form.frequency) || null) : null,
+        recurring:   form.frequency !== 'none',
+        user_id:     user.id,
+      }
+      if (editItem) await supabase.from('expenses').update(payload).eq('id', editItem.id).eq('user_id', user.id)
+      else          await supabase.from('expenses').insert(payload)
+      await loadLegacy()
     }
-    if (editItem) await supabase.from('expenses').update(payload).eq('id', editItem.id).eq('user_id', user.id)
-    else          await supabase.from('expenses').insert(payload)
-    setSaving(false)
-    setStep(null)
-    load()
+
+    setSaving(false); setStep(null)
   }
 
-  const handleDelete = async id => {
-    await supabase.from('expenses').delete().eq('id', id).eq('user_id', user.id)
-    load()
+  const handleDelete = async item => {
+    if (item._source === 'account_txn') {
+      await supabase.from('account_transactions').delete().eq('id', item.id).eq('user_id', user.id)
+      reloadTxns()
+    } else {
+      await supabase.from('expenses').delete().eq('id', item.id).eq('user_id', user.id)
+      loadLegacy()
+    }
   }
 
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
-  const needs   = expenses.filter(e => e.category === 'Needs').reduce((s, e) => s + e.amount, 0)
-  const wants   = expenses.filter(e => e.category === 'Wants').reduce((s, e) => s + e.amount, 0)
-  const savings = expenses.filter(e => e.category === 'Savings').reduce((s, e) => s + e.amount, 0)
+  // ── Totals ─────────────────────────────────────────────────────────────────
+  const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
+  const needs         = allExpenses.filter(e => e.category === 'Needs').reduce((s, e) => s + parseFloat(e.amount), 0)
+  const wants         = allExpenses.filter(e => e.category === 'Wants').reduce((s, e) => s + parseFloat(e.amount), 0)
+  const savings       = allExpenses.filter(e => e.category === 'Savings').reduce((s, e) => s + parseFloat(e.amount), 0)
 
-  const filtered = expenses.filter(e => {
+  const filtered = allExpenses.filter(e => {
     const matchTab    = tab === 'All' || e.category === tab
     const matchSearch = !search || e.description.toLowerCase().includes(search.toLowerCase())
     return matchTab && matchSearch
   })
 
-  const upcoming = expenses
+  const upcoming = legacyExpenses
     .filter(e => e.frequency && e.frequency !== 'none' && e.next_due)
     .sort((a, b) => new Date(a.next_due) - new Date(b.next_due))
     .slice(0, 5)
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
@@ -148,7 +198,7 @@ export default function Expenses() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-primary">Expenses</h1>
-        <p className="text-muted text-sm mt-1">Track and categorize all your spending</p>
+        <p className="text-muted text-sm mt-1">All spending — manual entries & account transactions</p>
       </div>
 
       <button onClick={openAdd} className="btn-primary mb-6">+ Add Expense</button>
@@ -158,39 +208,42 @@ export default function Expenses() {
         <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Total Expenses</p>
           <p className="text-2xl font-bold text-primary">{fmt(totalExpenses)}</p>
+          <p className="text-xs text-muted mt-1">{allExpenses.length} entries</p>
         </div>
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Needs</p><div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981' }}></div></div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-muted text-xs">Needs</p>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981' }} />
+          </div>
           <p className="font-bold text-primary">{fmt(needs)}</p>
         </div>
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Wants</p><div className="w-2.5 h-2.5 rounded-full" style={{ background: '#8b5cf6' }}></div></div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-muted text-xs">Wants</p>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#f59e0b' }} />
+          </div>
           <p className="font-bold text-primary">{fmt(wants)}</p>
         </div>
         <div className="card p-4">
-          <div className="flex items-center justify-between mb-1"><p className="text-muted text-xs">Savings</p><div className="w-2.5 h-2.5 rounded-full" style={{ background: '#34d399' }}></div></div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-muted text-xs">Savings</p>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#3b82f6' }} />
+          </div>
           <p className="font-bold text-primary">{fmt(savings)}</p>
         </div>
       </div>
 
-      {/* Upcoming Recurring */}
+      {/* Upcoming recurring */}
       {upcoming.length > 0 && (
-        <div className="card p-5 mb-6">
-          <div className="flex items-center gap-2 mb-3 font-semibold text-primary">
-            <span>🔁</span><span>Upcoming Recurring</span>
-          </div>
+        <div className="card p-4 mb-6">
+          <p className="font-bold text-primary text-sm mb-3">⏰ Upcoming Recurring</p>
           <div className="space-y-2">
-            {upcoming.map(item => (
-              <div key={item.id} className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid var(--card-border)' }}>
-                <div>
-                  <p className="text-sm font-medium text-primary">{item.description}</p>
-                  <p className="text-xs text-muted">{frequencyLabel(item.frequency)} · Due {item.next_due}</p>
-                </div>
+            {upcoming.map(e => (
+              <div key={e.id} className="flex justify-between text-sm">
+                <span className="text-muted">{e.description}</span>
                 <div className="flex items-center gap-2">
-                  {isDueSoon(item.next_due) && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>Due soon</span>
-                  )}
-                  <span className="font-bold text-sm text-red-500">-{fmt(item.amount)}</span>
+                  <span className="text-primary font-medium">{fmt(e.amount)}</span>
+                  <span className="text-muted text-xs">due {e.next_due}</span>
                 </div>
               </div>
             ))}
@@ -198,46 +251,72 @@ export default function Expenses() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="flex gap-3 mb-4">
-        <div className="flex-1 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">🔍</span>
-          <input className="input-field pl-9" placeholder="Search expenses..." value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Source legend */}
+      {expenseTxns.length > 0 && (
+        <div className="flex gap-3 mb-4 text-xs">
+          <span className="flex items-center gap-1.5 text-muted">
+            <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#ef4444' }} /> Manual entry
+          </span>
+          <span className="flex items-center gap-1.5 text-muted">
+            <span className="text-blue-500">💳</span> From account
+          </span>
         </div>
+      )}
+
+      {/* Filter tabs + search */}
+      <div className="flex items-center gap-2 overflow-x-auto mb-4 pb-1" style={{ scrollbarWidth: 'none' }}>
+        {FILTER_TABS.map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all"
+            style={{
+              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
+              color:      tab === t ? 'var(--bg-primary)'   : 'var(--text-muted)',
+              border:     '1px solid var(--card-border)',
+            }}>
+            {t}
+          </button>
+        ))}
+        <input className="input-field flex-1 text-sm min-w-32" placeholder="Search…"
+          value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* Expense History */}
-      <div className="card p-5">
-        <div className="flex items-center gap-2 mb-4 accent-text font-semibold">
-          <span>$</span><span>Expense History ({filtered.length})</span>
-        </div>
-        <div className="grid grid-cols-4 gap-1 mb-4 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
-          {FILTER_TABS.map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`py-2 rounded-lg text-sm font-semibold transition-all ${tab === t ? 'bg-white dark:bg-gray-900 shadow text-primary' : 'text-muted'}`}>
-              {t}
-            </button>
-          ))}
-        </div>
-
+      {/* Expense list */}
+      <div className="card p-4">
         {filtered.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-4xl mb-3">🧾</div>
             <p className="font-semibold text-primary">No expenses yet</p>
-            <p className="text-muted text-sm mt-1">Start tracking your spending to better manage your budget</p>
-            <button onClick={openAdd} className="btn-primary mt-4">+ Add Your First Expense</button>
+            <p className="text-muted text-sm mt-1">Start tracking your spending</p>
+            <button onClick={openAdd} className="btn-primary mt-4">+ Add Expense</button>
           </div>
         ) : (
           <div className="space-y-2">
             {filtered.map(item => {
               const isRecurring = item.frequency && item.frequency !== 'none'
+              const isAccTxn    = item._source === 'account_txn'
               return (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--card-border)' }}>
-                  <div>
+                <div key={`${item._source}-${item.id}`}
+                  className="flex items-center justify-between p-3 rounded-xl border"
+                  style={{ borderColor: 'var(--card-border)' }}>
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-sm text-primary">{item.description}</p>
+                      {isAccTxn && (
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                          style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                          💳 {item._account?.name || 'Account'}
+                          {item.card_last4 ? ` ··${item.card_last4}` : ''}
+                        </span>
+                      )}
+                      {item.label && (
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                          style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
+                          {item.label}
+                        </span>
+                      )}
                       {isRecurring && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+                        <span className="text-xs px-1.5 py-0.5 rounded font-semibold"
+                          style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
                           🔁 {frequencyLabel(item.frequency)}
                         </span>
                       )}
@@ -248,10 +327,10 @@ export default function Expenses() {
                     </p>
                     {item.notes && <p className="text-xs text-muted">{item.notes}</p>}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                     <span className="font-bold text-red-500">-{fmt(item.amount)}</span>
                     <button onClick={() => openEdit(item)} className="text-muted hover:text-primary text-sm">✎</button>
-                    <button onClick={() => handleDelete(item.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                    <button onClick={() => handleDelete(item)} className="text-muted hover:text-red-500 text-sm">🗑</button>
                   </div>
                 </div>
               )
@@ -260,7 +339,7 @@ export default function Expenses() {
         )}
       </div>
 
-      {/* STEP 1: Quick Category */}
+      {/* ── Quick Category Modal ── */}
       {step === 'quick' && (
         <div className="modal-overlay" onClick={() => setStep(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
@@ -284,12 +363,15 @@ export default function Expenses() {
         </div>
       )}
 
-      {/* STEP 2: Full Form */}
+      {/* ── Full Form Modal ── */}
       {step === 'form' && (
         <div className="modal-overlay" onClick={() => setStep(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2 accent-text font-semibold"><span>$</span><span>{editItem ? 'Edit Expense' : 'Add Expense'}</span></div>
+              <div className="flex items-center gap-2 accent-text font-semibold">
+                <span>$</span><span>{editItem ? 'Edit Expense' : 'Add Expense'}</span>
+                {editSource === 'account_txn' && <span className="text-xs text-blue-500 ml-1">💳 Account Txn</span>}
+              </div>
               <button onClick={() => setStep(null)} className="text-muted hover:text-primary text-xl">✕</button>
             </div>
             <form onSubmit={handleSave}>
@@ -306,8 +388,9 @@ export default function Expenses() {
                 <div className="flex flex-wrap gap-2">
                   {QUICK_AMOUNTS.map(a => (
                     <button key={a} type="button" onClick={() => setForm(f => ({ ...f, amount: String((parseFloat(f.amount) || 0) + a) }))}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-primary" style={{ borderColor: 'var(--card-border)' }}>
-                      + USD{a}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-primary"
+                      style={{ borderColor: 'var(--card-border)' }}>
+                      + ${a}
                     </button>
                   ))}
                 </div>
@@ -327,54 +410,49 @@ export default function Expenses() {
                 </div>
               </div>
 
-              {/* Frequency */}
-              <div className="mb-4">
-                <label className="label">Frequency</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {FREQUENCY_OPTIONS.map(opt => (
-                    <button key={opt.value} type="button"
-                      onClick={() => {
-                        const next = opt.value !== 'none' ? calcNextDue(form.date, opt.value) : ''
-                        setForm(f => ({ ...f, frequency: opt.value, next_due: next }))
-                      }}
-                      className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-semibold transition-all"
-                      style={{
-                        borderColor: form.frequency === opt.value ? '#10b981' : 'var(--card-border)',
-                        background:  form.frequency === opt.value ? 'rgba(16,185,129,0.1)' : undefined,
-                        color:       form.frequency === opt.value ? '#10b981' : 'var(--text-muted)',
-                      }}>
-                      <span className="font-bold">{opt.icon}</span>
-                      <span>{opt.label}</span>
-                    </button>
-                  ))}
+              {/* Hide frequency for account_txn edits */}
+              {editSource !== 'account_txn' && (
+                <div className="mb-4">
+                  <label className="label">Frequency</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {FREQUENCY_OPTIONS.map(opt => (
+                      <button key={opt.value} type="button"
+                        onClick={() => { const next = opt.value !== 'none' ? calcNextDue(form.date, opt.value) : ''; setForm(f => ({ ...f, frequency: opt.value, next_due: next })) }}
+                        className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-semibold transition-all"
+                        style={{
+                          borderColor: form.frequency === opt.value ? '#10b981' : 'var(--card-border)',
+                          background:  form.frequency === opt.value ? 'rgba(16,185,129,0.1)' : undefined,
+                          color:       form.frequency === opt.value ? '#10b981' : 'var(--text-muted)',
+                        }}>
+                        <span className="font-bold">{opt.icon}</span>
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="mb-4">
                 <label className="label">Date</label>
                 <input className="input-field" type="date" value={form.date}
-                  onChange={e => {
-                    const next = form.frequency !== 'none' ? calcNextDue(e.target.value, form.frequency) : ''
-                    setForm(f => ({ ...f, date: e.target.value, next_due: next || f.next_due }))
-                  }} required />
+                  onChange={e => { const next = form.frequency !== 'none' ? calcNextDue(e.target.value, form.frequency) : ''; setForm(f => ({ ...f, date: e.target.value, next_due: next || f.next_due })) }} required />
               </div>
 
-              {form.frequency !== 'none' && (
+              {form.frequency !== 'none' && editSource !== 'account_txn' && (
                 <div className="mb-4">
-                  <label className="label">Next Due Date <span className="text-muted font-normal">(auto-calculated, editable)</span></label>
-                  <input className="input-field" type="date" value={form.next_due}
-                    onChange={e => setForm(f => ({ ...f, next_due: e.target.value }))} />
+                  <label className="label">Next Due Date</label>
+                  <input className="input-field" type="date" value={form.next_due} onChange={e => setForm(f => ({ ...f, next_due: e.target.value }))} />
                 </div>
               )}
 
               <div className="mb-4">
                 <label className="label">Notes (optional)</label>
-                <textarea className="input-field resize-none" rows={2} placeholder="Any extra details..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+                <textarea className="input-field resize-none" rows={2} placeholder="Any extra details…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <button type="button" onClick={() => setStep(null)} className="btn-secondary justify-center">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary justify-center">{saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Expense'}</button>
+                <button type="submit" disabled={saving} className="btn-primary justify-center">{saving ? 'Saving…' : editItem ? 'Save Changes' : 'Add Expense'}</button>
               </div>
             </form>
           </div>
