@@ -15,6 +15,7 @@ import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Loans from './pages/Loans'
 import AICoach from './pages/AICoach'
+import { TransactionProvider } from './hooks/useTransactions'
 
 export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -62,7 +63,9 @@ export default function App() {
           <Route path="/auth" element={user && !loading ? <Navigate to="/" replace /> : <Auth />} />
           <Route path="/" element={
             <ProtectedRoute>
-              <Layout dark={dark} setDark={setDark} />
+              <TransactionProvider userId={user?.id}>
+                <Layout dark={dark} setDark={setDark} />
+              </TransactionProvider>
             </ProtectedRoute>
           }>
             <Route index element={<Dashboard />} />
@@ -84,3 +87,4 @@ export default function App() {
     </AuthContext.Provider>
   )
 }
+
