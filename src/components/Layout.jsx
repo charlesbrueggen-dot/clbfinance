@@ -5,6 +5,7 @@ import { useAuth } from '../App'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '⊞' },
+  { path: '/coach', label: 'AI Coach', icon: '✦' },
   { path: '/income', label: 'Income', icon: '↗' },
   { path: '/expenses', label: 'Expenses', icon: '↘' },
   { path: '/balance', label: 'Balance', icon: '✨' },
@@ -38,6 +39,15 @@ export default function Layout({ dark, setDark }) {
             <span className="font-black text-lg text-primary hidden sm:block tracking-tight">Stride</span>
           </Link>
           <div className="flex items-center gap-3">
+            {/* AI Coach quick-access button */}
+            <Link to="/coach" className="no-underline">
+              <button
+                className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-opacity hover:opacity-80"
+                style={{ background: dark ? '#10b981' : 'rgba(255,255,255,0.18)', color: dark ? '#000' : '#fff', border: '1px solid rgba(255,255,255,0.3)' }}
+              >
+                ✦ Coach
+              </button>
+            </Link>
             <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
               style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.85)' }}>
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>
@@ -78,16 +88,28 @@ export default function Layout({ dark, setDark }) {
             <nav className="flex-1 overflow-y-auto py-4 px-3">
               {NAV_ITEMS.map(item => {
                 const active = location.pathname === item.path
+                const isCoach = item.path === '/coach'
                 return (
                   <Link key={item.path} to={item.path} onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl mb-1 no-underline transition-colors"
                     style={{
-                      background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
-                      color: active ? 'white' : 'rgba(255,255,255,0.62)',
-                      fontWeight: active ? 700 : 500,
+                      background: active
+                        ? 'rgba(255,255,255,0.18)'
+                        : isCoach
+                          ? dark ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.08)'
+                          : 'transparent',
+                      color: active ? 'white' : isCoach ? (dark ? '#10b981' : 'rgba(255,255,255,0.9)') : 'rgba(255,255,255,0.62)',
+                      fontWeight: active || isCoach ? 700 : 500,
+                      border: isCoach && !active ? '1px solid rgba(255,255,255,0.15)' : '1px solid transparent',
                     }}>
                     <span className="text-lg w-6 text-center">{item.icon}</span>
                     <span className="text-sm">{item.label}</span>
+                    {isCoach && !active && (
+                      <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold"
+                        style={{ background: dark ? '#10b981' : 'rgba(255,255,255,0.2)', color: dark ? '#000' : '#fff', fontSize: '10px' }}>
+                        AI
+                      </span>
+                    )}
                   </Link>
                 )
               })}

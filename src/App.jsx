@@ -14,6 +14,7 @@ import Import from './pages/Import'
 import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Loans from './pages/Loans'
+import AICoach from './pages/AICoach'
 
 export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="goals" element={<Goals />} />
             <Route path="loans" element={<Loans />} />
             <Route path="balance" element={<Balance />} />
+            <Route path="coach" element={<AICoach />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

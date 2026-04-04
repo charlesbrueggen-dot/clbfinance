@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [income,   setIncome]   = useState([])
   const [expenses, setExpenses] = useState([])
   const [goals,    setGoals]    = useState([])
-  const [balance,  setBalance]  = useState([]) // NEW: separate balance entries
+  const [balance,  setBalance]  = useState([])
   const [loading,  setLoading]  = useState(true)
   const [dark, setDarkDetect]   = useState(document.documentElement.classList.contains('dark'))
 
@@ -41,25 +41,20 @@ export default function Dashboard() {
     load()
   }, [user.id])
 
-  // Income = sum of all income entries
   const totalIncome   = income.reduce((s, i) => s + i.amount, 0)
-  // Balance = actual money held (separate table)
   const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
   const thisMonth     = new Date().toISOString().slice(0, 7)
   const monthExp      = expenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + e.amount, 0)
 
-  // Savings rate uses income as denominator, falls back to balance if no income
   const savingsBase   = totalIncome > 0 ? totalIncome : totalBalance
   const savingsPct    = savingsBase > 0 ? ((savingsBase - totalExpenses) / savingsBase * 100).toFixed(1) : '0.0'
 
-  // Pie for income sources
   const srcMap = {}
   income.forEach(i => { srcMap[i.source] = (srcMap[i.source] || 0) + i.amount })
   const pieData   = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
-  // Expense breakdown
   const catMap   = {}
   expenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount })
   const sorted   = Object.entries(catMap).sort((a, b) => b[1] - a[1])
@@ -70,7 +65,6 @@ export default function Dashboard() {
     ...expenses.map(e => ({ ...e, kind: 'expense' })),
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
 
-  // Surplus: balance minus expenses (or income minus expenses if no balance table)
   const surplusBase  = totalBalance > 0 ? totalBalance : totalIncome
   const surplus      = surplusBase - totalExpenses
   const surplusColor = surplus >= 0 ? (dark ? '#10b981' : '#059669') : '#ef4444'
@@ -96,9 +90,35 @@ export default function Dashboard() {
         <Link to="/income" className="btn-primary justify-center text-sm no-underline">⊕ Add</Link>
       </div>
 
+      {/* ── AI COACH BANNER ── */}
+      <Link to="/coach" className="no-underline block mb-4">
+        <div
+          className="rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-opacity hover:opacity-90"
+          style={{
+            background: dark
+              ? 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)'
+              : 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 100%)',
+            border: dark ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.4)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0"
+              style={{ background: dark ? '#10b981' : 'rgba(255,255,255,0.9)', color: dark ? '#000' : '#1a5a94' }}>
+              ✦
+            </div>
+            <div>
+              <p className="font-black text-sm" style={{ color: dark ? '#10b981' : '#fff' }}>Stride Coach</p>
+              <p className="text-xs" style={{ color: dark ? '#34d399' : 'rgba(255,255,255,0.75)' }}>
+                Your AI finance coach is ready · ask it anything
+              </p>
+            </div>
+          </div>
+          <span className="text-lg" style={{ color: dark ? '#10b981' : 'rgba(255,255,255,0.8)' }}>→</span>
+        </div>
+      </Link>
+
       {/* Income + Balance hero side-by-side */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        {/* Income card */}
         <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/income')}>
           <p className="text-muted text-xs mb-1">Total Income</p>
           <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
@@ -109,7 +129,6 @@ export default function Dashboard() {
             </p>
           )}
         </div>
-        {/* Balance card */}
         <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/balance')}>
           <p className="text-muted text-xs mb-1">Balance</p>
           <p className="text-2xl font-black text-primary">{fmt(totalBalance)}</p>
