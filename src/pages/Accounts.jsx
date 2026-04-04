@@ -1,22 +1,15 @@
 // src/pages/Accounts.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-//  Full Accounts & Cards Integration
-//  • Real bank accounts with card metadata (last 4, type, color)
-//  • Per-account transaction log
-//  • Auto-categorized transaction entry (intelligent rules engine)
-//  • Manual categorization override with labels/descriptions
-//  • Expenses flow to Expenses page; income flows to income totals
-//  • Credit/debit card auto-detection from account type
-// ─────────────────────────────────────────────────────────────────────────────
+// Full Plaid integration — connects real banks, auto-syncs transactions
+// Manual accounts still supported alongside Plaid-connected ones
 import { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
+import { usePlaid } from '../hooks/usePlaid'
 
 const fmt   = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 
-// ── Constants ─────────────────────────────────────────────────────────────────
 const ACCOUNT_TYPES  = ['Checking', 'Savings', 'Credit Card', 'Investment', 'Cash', 'Other']
 const CARD_TYPES     = ['Visa', 'Mastercard', 'Amex', 'Discover', 'Other']
 const CARD_COLORS    = ['#1a1a2e', '#16213e', '#0f3460', '#533483', '#2b2d42', '#8d99ae', '#2a9d8f', '#e9c46a']
@@ -39,7 +32,6 @@ const TYPE_ICONS = {
 const KIND_COLOR = { expense: '#ef4444', income: '#10b981', transfer: '#f59e0b' }
 const KIND_ICON  = { expense: '↘', income: '↗', transfer: '⇄' }
 
-// ── Blank form factories ──────────────────────────────────────────────────────
 const blankAccount = () => ({
   name: '', type: 'Checking', balance: '',
   institution: '', card_last4: '', card_type: 'Visa',
@@ -53,7 +45,6 @@ const blankTxn = () => ({
   merchant: '', card_last4: '', account_id: '',
 })
 
-// ── CardVisual ────────────────────────────────────────────────────────────────
 function CardVisual({ account }) {
   const isCard = account.type === 'Credit Card'
   const bg     = account.color || '#1a1a2e'
@@ -62,10 +53,8 @@ function CardVisual({ account }) {
       className="relative rounded-2xl p-5 overflow-hidden flex-shrink-0"
       style={{ background: `linear-gradient(135deg, ${bg} 0%, ${bg}cc 100%)`, width: 240, height: 145 }}
     >
-      {/* shine */}
       <div className="absolute inset-0 opacity-10"
         style={{ background: 'linear-gradient(135deg, #fff 0%, transparent 60%)' }} />
-
       <div className="flex justify-between items-start mb-4">
         <div>
           <p className="text-white text-xs opacity-70 font-medium">{account.institution || 'Bank'}</p>
@@ -73,7 +62,6 @@ function CardVisual({ account }) {
         </div>
         <span className="text-white text-xl opacity-80">{TYPE_ICONS[account.type]}</span>
       </div>
-
       {isCard && account.card_last4 && (
         <p className="text-white text-sm tracking-widest opacity-80 mb-3">
           •••• •••• •••• {account.card_last4}
@@ -92,32 +80,41 @@ function CardVisual({ account }) {
   )
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
 export default function Accounts() {
   const { user } = useAuth()
   const { transactions, accounts, loading, reload, addTransaction } = useTransactions()
+  const {
+    connectedItems, syncing, connecting, syncResult, error: plaidError,
+    connectBank, syncTransactions, disconnectBank,
+  } = usePlaid(user?.id)
 
-  // Account modal state
   const [showAccModal, setShowAccModal] = useState(false)
   const [editAcc,      setEditAcc]      = useState(null)
   const [accForm,      setAccForm]      = useState(blankAccount())
   const [savingAcc,    setSavingAcc]    = useState(false)
 
-  // Transaction modal state
   const [showTxnModal, setShowTxnModal] = useState(false)
   const [editTxn,      setEditTxn]      = useState(null)
   const [txnForm,      setTxnForm]      = useState(blankTxn())
   const [savingTxn,    setSavingTxn]    = useState(false)
   const [autoSuggest,  setAutoSuggest]  = useState(null)
 
-  // UI state
-  const [selectedAcc,  setSelectedAcc]  = useState(null)  // account id filter
-  const [txnFilter,    setTxnFilter]    = useState('all')  // 'all'|'expense'|'income'|'transfer'
-  const [search,       setSearch]       = useState('')
+  const [selectedAcc, setSelectedAcc] = useState(null)
+  const [txnFilter,   setTxnFilter]   = useState('all')
+  const [search,      setSearch]      = useState('')
+  const [tab,         setTab]         = useState('accounts') // 'accounts' | 'connect'
 
-  // ── Account CRUD ────────────────────────────────────────────────────────────
+  // ── Account CRUD ──────────────────────────────────────────────────────────
   const openAddAcc  = () => { setEditAcc(null); setAccForm(blankAccount()); setShowAccModal(true) }
-  const openEditAcc = a  => { setEditAcc(a); setAccForm({ name: a.name, type: a.type, balance: a.balance, institution: a.institution || '', card_last4: a.card_last4 || '', card_type: a.card_type || 'Visa', color: a.color || CARD_COLORS[0], notes: a.notes || '' }); setShowAccModal(true) }
+  const openEditAcc = a  => {
+    setEditAcc(a)
+    setAccForm({
+      name: a.name, type: a.type, balance: a.balance,
+      institution: a.institution || '', card_last4: a.card_last4 || '',
+      card_type: a.card_type || 'Visa', color: a.color || CARD_COLORS[0], notes: a.notes || '',
+    })
+    setShowAccModal(true)
+  }
 
   const handleSaveAcc = async e => {
     e.preventDefault(); setSavingAcc(true)
@@ -144,17 +141,15 @@ export default function Accounts() {
     reload()
   }
 
-  // ── Transaction CRUD ────────────────────────────────────────────────────────
+  // ── Transaction CRUD ──────────────────────────────────────────────────────
   const openAddTxn = (accountId = '') => {
-    setEditTxn(null)
-    setAutoSuggest(null)
+    setEditTxn(null); setAutoSuggest(null)
     setTxnForm({ ...blankTxn(), account_id: accountId })
     setShowTxnModal(true)
   }
 
   const openEditTxn = t => {
-    setEditTxn(t)
-    setAutoSuggest(null)
+    setEditTxn(t); setAutoSuggest(null)
     setTxnForm({
       description: t.description, amount: t.amount, kind: t.kind,
       category: t.category || 'Wants', subcategory: t.subcategory || 'Other',
@@ -165,15 +160,10 @@ export default function Accounts() {
     setShowTxnModal(true)
   }
 
-  // Live auto-categorize as user types description
   const handleDescChange = val => {
     setTxnForm(f => ({ ...f, description: val }))
-    if (val.length >= 3) {
-      const suggestion = autoCategorize(val, txnForm.merchant)
-      setAutoSuggest(suggestion)
-    } else {
-      setAutoSuggest(null)
-    }
+    if (val.length >= 3) setAutoSuggest(autoCategorize(val, txnForm.merchant))
+    else setAutoSuggest(null)
   }
 
   const applyAutoSuggest = () => {
@@ -191,21 +181,18 @@ export default function Accounts() {
   const handleSaveTxn = async e => {
     e.preventDefault(); setSavingTxn(true)
 
-    // Resolve auto-categorization for new transactions if not overridden
     let finalCat = { category: txnForm.category, subcategory: txnForm.subcategory, source: txnForm.source, auto_categorized: false }
     if (!editTxn && autoSuggest) {
       finalCat = {
-        category:    autoSuggest.category    || txnForm.category,
-        subcategory: autoSuggest.subcategory || txnForm.subcategory,
-        source:      autoSuggest.source      || txnForm.source,
+        category:         autoSuggest.category    || txnForm.category,
+        subcategory:      autoSuggest.subcategory || txnForm.subcategory,
+        source:           autoSuggest.source      || txnForm.source,
         auto_categorized: autoSuggest.auto,
       }
     }
 
-    // Detect card info from linked account
     const linkedAcc = accounts.find(a => a.id === txnForm.account_id)
     const card_last4 = txnForm.card_last4 || linkedAcc?.card_last4 || null
-    const card_type  = linkedAcc?.card_type || null
 
     const payload = {
       description:      txnForm.description.trim(),
@@ -219,7 +206,7 @@ export default function Accounts() {
       notes:            txnForm.notes || null,
       merchant:         txnForm.merchant.trim() || null,
       card_last4,
-      card_type,
+      card_type:        linkedAcc?.card_type || null,
       account_id:       txnForm.account_id || null,
       auto_categorized: finalCat.auto_categorized,
       source_type:      'manual',
@@ -230,15 +217,10 @@ export default function Accounts() {
       await supabase.from('account_transactions').update(payload).eq('id', editTxn.id).eq('user_id', user.id)
     } else {
       await addTransaction(payload)
-    }
-
-    // Also update account balance
-    if (linkedAcc) {
-      const delta = txnForm.kind === 'expense' ? -payload.amount : txnForm.kind === 'income' ? payload.amount : 0
-      await supabase.from('accounts')
-        .update({ balance: linkedAcc.balance + delta })
-        .eq('id', linkedAcc.id)
-        .eq('user_id', user.id)
+      if (linkedAcc) {
+        const delta = txnForm.kind === 'expense' ? -payload.amount : txnForm.kind === 'income' ? payload.amount : 0
+        await supabase.from('accounts').update({ balance: linkedAcc.balance + delta }).eq('id', linkedAcc.id).eq('user_id', user.id)
+      }
     }
 
     setSavingTxn(false); setShowTxnModal(false); reload()
@@ -249,15 +231,23 @@ export default function Accounts() {
     reload()
   }
 
-  // ── Derived data ────────────────────────────────────────────────────────────
+  // ── Sync and reload ───────────────────────────────────────────────────────
+  const handleSync = async () => {
+    await syncTransactions()
+    reload()
+  }
+
+  // ── Derived data ──────────────────────────────────────────────────────────
   const totalAssets = accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0)
   const totalDebt   = accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + a.balance, 0)
+  const plaidAccounts  = accounts.filter(a => a.plaid_account_id)
+  const manualAccounts = accounts.filter(a => !a.plaid_account_id)
 
   const visibleTxns = useMemo(() => {
     return transactions.filter(t => {
       const matchAcc    = !selectedAcc || t.account_id === selectedAcc
       const matchFilter = txnFilter === 'all' || t.kind === txnFilter
-      const matchSearch = !search   || t.description.toLowerCase().includes(search.toLowerCase()) || (t.merchant || '').toLowerCase().includes(search.toLowerCase()) || (t.label || '').toLowerCase().includes(search.toLowerCase())
+      const matchSearch = !search || t.description.toLowerCase().includes(search.toLowerCase()) || (t.merchant || '').toLowerCase().includes(search.toLowerCase())
       return matchAcc && matchFilter && matchSearch
     })
   }, [transactions, selectedAcc, txnFilter, search])
@@ -268,17 +258,15 @@ export default function Accounts() {
     </div>
   )
 
-  const isCard = accForm.type === 'Credit Card'
-
   return (
     <div>
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-black text-primary tracking-tight">Accounts & Cards</h1>
-        <p className="text-muted text-sm mt-1">Connected accounts, card tracking & transactions</p>
+        <p className="text-muted text-sm mt-1">Connect your bank or track accounts manually</p>
       </div>
 
-      {/* ── Summary Bar ── */}
+      {/* Summary Bar */}
       {accounts.length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-5">
           <div className="card p-4">
@@ -294,237 +282,418 @@ export default function Accounts() {
         </div>
       )}
 
-      {/* ── Action Buttons ── */}
-      <div className="flex gap-3 mb-5">
-        <button onClick={openAddAcc} className="btn-primary flex-1 justify-center">+ Add Account</button>
-        <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-secondary flex-1 justify-center">+ Log Transaction</button>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-5">
+        {[['accounts', '🏦 Accounts'], ['connect', '🔗 Connect Bank']].map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)}
+            className="px-4 py-2 rounded-full text-sm font-bold transition-all"
+            style={{
+              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
+              color:      tab === t ? 'var(--bg-primary)'   : 'var(--text-muted)',
+              border:     '1px solid var(--card-border)',
+            }}>
+            {label}
+            {t === 'connect' && connectedItems.length > 0 && (
+              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-bold"
+                style={{ background: '#10b981', color: '#000' }}>
+                {connectedItems.length}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* ── Account Cards Scroll ── */}
-      {accounts.length === 0 ? (
-        <div className="card p-12 text-center mb-5" style={{ border: '2px dashed var(--card-border)' }}>
-          <p className="text-4xl mb-3">🏦</p>
-          <p className="font-black text-primary text-lg mb-2">No accounts yet</p>
-          <p className="text-muted text-sm mb-4">Add your first bank account or card to start tracking.</p>
-          <button onClick={openAddAcc} className="btn-primary">+ Add Account</button>
-        </div>
-      ) : (
-        <>
-          {/* Card-style visual scroll */}
-          <div className="flex gap-3 overflow-x-auto pb-3 mb-4 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+      {/* ══════════════════ CONNECT BANK TAB ══════════════════ */}
+      {tab === 'connect' && (
+        <div>
+          {/* Plaid connect card */}
+          <div className="card p-6 mb-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                🏦
+              </div>
+              <div>
+                <p className="font-black text-primary">Connect Real Bank</p>
+                <p className="text-muted text-xs">Powered by Plaid · 12,000+ institutions · bank-level security</p>
+              </div>
+            </div>
+
+            <p className="text-muted text-sm mb-4">
+              Connect Chase, Bank of America, Wells Fargo, and more. Your transactions will sync automatically and be categorized intelligently.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {['Chase', 'Bank of America', 'Wells Fargo', 'Capital One', 'Citi', 'US Bank'].map(bank => (
+                <div key={bank} className="flex items-center gap-2 text-xs text-muted">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"></span>
+                  {bank}
+                </div>
+              ))}
+              <div className="flex items-center gap-2 text-xs text-muted col-span-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"></span>
+                + 12,000 more institutions
+              </div>
+            </div>
+
+            {plaidError && (
+              <div className="mb-4 p-3 rounded-xl text-xs font-medium"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                ⚠ {plaidError}
+              </div>
+            )}
+
             <button
-              onClick={() => setSelectedAcc(null)}
-              className="flex-shrink-0 rounded-2xl px-5 py-3 text-sm font-bold transition-all"
-              style={{
-                background: !selectedAcc ? 'var(--text-primary)' : 'var(--input-bg)',
-                color:      !selectedAcc ? 'var(--bg-primary)'   : 'var(--text-muted)',
-                border:     '1px solid var(--card-border)',
-              }}
+              onClick={connectBank}
+              disabled={connecting}
+              className="btn-primary w-full justify-center"
             >
-              All ({accounts.length})
+              {connecting ? '⟳ Opening bank connection…' : '+ Connect a Bank Account'}
             </button>
-            {accounts.map(acc => (
-              <button key={acc.id} onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)} className="flex-shrink-0">
-                <CardVisual account={acc} />
-                {acc.id === selectedAcc && (
-                  <div className="mt-2 flex gap-2 justify-center">
-                    <button onClick={e => { e.stopPropagation(); openEditAcc(acc) }} className="text-xs text-muted hover:text-primary px-2 py-1 rounded border" style={{ borderColor: 'var(--card-border)' }}>Edit</button>
-                    <button onClick={e => { e.stopPropagation(); handleDeleteAcc(acc.id) }} className="text-xs text-muted hover:text-red-500 px-2 py-1 rounded border" style={{ borderColor: 'var(--card-border)' }}>Delete</button>
-                    <button onClick={e => { e.stopPropagation(); openAddTxn(acc.id) }} className="text-xs text-primary px-2 py-1 rounded border" style={{ borderColor: 'var(--card-border)' }}>+ Txn</button>
-                  </div>
-                )}
-              </button>
-            ))}
           </div>
 
-          {/* Account list (compact) */}
-          <div className="space-y-2 mb-5">
-            {accounts.map(acc => (
-              <div key={acc.id} className="card p-4 flex items-center justify-between"
-                onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
-                style={{ cursor: 'pointer', borderColor: selectedAcc === acc.id ? 'var(--text-primary)' : undefined }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                    {TYPE_ICONS[acc.type] || '🏦'}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-primary text-sm">{acc.name}</p>
-                    <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
-                  </div>
-                </div>
-                <p className={`font-black ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>{fmt(acc.balance)}</p>
+          {/* Connected institutions */}
+          {connectedItems.length > 0 && (
+            <div className="card p-5 mb-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-black text-primary">Connected Banks</p>
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="btn-secondary text-xs px-3 py-1.5"
+                >
+                  {syncing ? '⟳ Syncing…' : '↻ Sync All'}
+                </button>
               </div>
-            ))}
+
+              {syncResult && (
+                <div className="mb-3 p-3 rounded-xl text-xs font-medium"
+                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+                  ✓ Synced {syncResult.synced} transaction{syncResult.synced !== 1 ? 's' : ''}
+                  {syncResult.removed > 0 ? `, removed ${syncResult.removed}` : ''}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {connectedItems.map(item => (
+                  <div key={item.id} className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ border: '1px solid var(--card-border)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+                        style={{ background: 'rgba(16,185,129,0.1)' }}>
+                        🏦
+                      </div>
+                      <div>
+                        <p className="font-semibold text-primary text-sm">{item.institution_name || 'Bank'}</p>
+                        <p className="text-xs text-muted">
+                          {item.last_synced_at
+                            ? `Last synced ${new Date(item.last_synced_at).toLocaleDateString()}`
+                            : 'Never synced'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-1 rounded-full font-medium"
+                        style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                        ✓ Connected
+                      </span>
+                      <button
+                        onClick={() => disconnectBank(item.id)}
+                        className="text-xs text-muted hover:text-red-400 transition-colors px-2 py-1 rounded"
+                        style={{ border: '1px solid var(--card-border)' }}>
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Plaid accounts breakdown */}
+          {plaidAccounts.length > 0 && (
+            <div className="card p-5">
+              <p className="font-bold text-primary text-sm mb-3">Synced Accounts ({plaidAccounts.length})</p>
+              <div className="space-y-2">
+                {plaidAccounts.map(acc => (
+                  <div key={acc.id} className="flex justify-between items-center py-2 border-b last:border-b-0"
+                    style={{ borderColor: 'var(--card-border)' }}>
+                    <div className="flex items-center gap-2">
+                      <span>{TYPE_ICONS[acc.type] || '🏦'}</span>
+                      <div>
+                        <p className="text-sm font-medium text-primary">{acc.name}</p>
+                        <p className="text-xs text-muted">{acc.type}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
+                      </div>
+                    </div>
+                    <p className={`font-bold text-sm ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                      {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {connectedItems.length === 0 && (
+            <div className="card p-8 text-center" style={{ border: '2px dashed var(--card-border)' }}>
+              <p className="text-3xl mb-2">🔗</p>
+              <p className="font-bold text-primary mb-1">No banks connected yet</p>
+              <p className="text-muted text-sm">Connect your bank above to start syncing real transactions automatically.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════ ACCOUNTS TAB ══════════════════ */}
+      {tab === 'accounts' && (
+        <>
+          <div className="flex gap-3 mb-5">
+            <button onClick={openAddAcc} className="btn-primary flex-1 justify-center">+ Add Manual Account</button>
+            <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-secondary flex-1 justify-center">+ Log Transaction</button>
+          </div>
+
+          {/* Plaid-synced accounts */}
+          {plaidAccounts.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">🔗 Bank Synced</p>
+                <button onClick={handleSync} disabled={syncing}
+                  className="text-xs text-muted hover:text-primary transition-colors">
+                  {syncing ? '⟳ Syncing…' : '↻ Sync Now'}
+                </button>
+              </div>
+              <div className="space-y-2">
+                {plaidAccounts.map(acc => (
+                  <div key={acc.id}
+                    className="card p-4 flex items-center justify-between cursor-pointer"
+                    onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
+                    style={{ borderColor: selectedAcc === acc.id ? '#10b981' : undefined }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                        style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+                        {TYPE_ICONS[acc.type] || '🏦'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-primary text-sm">{acc.name}</p>
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                            style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                            auto
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
+                      </div>
+                    </div>
+                    <p className={`font-black ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                      {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manual accounts */}
+          {manualAccounts.length > 0 && (
+            <div className="mb-4">
+              {plaidAccounts.length > 0 && (
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">✏ Manual</p>
+              )}
+              <div className="space-y-2">
+                {manualAccounts.map(acc => (
+                  <div key={acc.id}
+                    className="card p-4 flex items-center justify-between cursor-pointer"
+                    onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
+                    style={{ borderColor: selectedAcc === acc.id ? 'var(--text-primary)' : undefined }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                        style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+                        {TYPE_ICONS[acc.type] || '🏦'}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-primary text-sm">{acc.name}</p>
+                        <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <p className={`font-black ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                        {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
+                      </p>
+                      {selectedAcc === acc.id && (
+                        <div className="flex gap-1">
+                          <button onClick={e => { e.stopPropagation(); openEditAcc(acc) }}
+                            className="text-xs text-muted hover:text-primary px-2 py-1 rounded border"
+                            style={{ borderColor: 'var(--card-border)' }}>Edit</button>
+                          <button onClick={e => { e.stopPropagation(); handleDeleteAcc(acc.id) }}
+                            className="text-xs text-muted hover:text-red-500 px-2 py-1 rounded border"
+                            style={{ borderColor: 'var(--card-border)' }}>Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {accounts.length === 0 && (
+            <div className="card p-12 text-center mb-5" style={{ border: '2px dashed var(--card-border)' }}>
+              <p className="text-4xl mb-3">🏦</p>
+              <p className="font-black text-primary text-lg mb-2">No accounts yet</p>
+              <p className="text-muted text-sm mb-4">Connect your bank automatically or add accounts manually.</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => setTab('connect')} className="btn-primary">🔗 Connect Bank</button>
+                <button onClick={openAddAcc} className="btn-secondary">+ Add Manually</button>
+              </div>
+            </div>
+          )}
+
+          {/* Transaction Log */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-black text-primary">
+                Transactions
+                {selectedAcc && <span className="text-muted font-normal text-sm ml-2">· {accounts.find(a => a.id === selectedAcc)?.name}</span>}
+              </h2>
+              <span className="text-xs text-muted">{visibleTxns.length} entries</span>
+            </div>
+
+            <div className="flex gap-2 mb-3">
+              <input className="input-field flex-1 text-sm" placeholder="Search transactions…"
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+              {['all', 'expense', 'income', 'transfer'].map(k => (
+                <button key={k} onClick={() => setTxnFilter(k)}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all"
+                  style={{
+                    background: txnFilter === k ? (KIND_COLOR[k] || 'var(--text-primary)') : 'var(--input-bg)',
+                    color:      txnFilter === k ? '#fff' : 'var(--text-muted)',
+                    border:     '1px solid var(--card-border)',
+                  }}>
+                  {k === 'all' ? `All (${transactions.length})` : k}
+                </button>
+              ))}
+            </div>
+
+            {visibleTxns.length === 0 ? (
+              <div className="card p-10 text-center" style={{ border: '2px dashed var(--card-border)' }}>
+                <p className="text-3xl mb-2">📋</p>
+                <p className="font-bold text-primary mb-1">No transactions yet</p>
+                <p className="text-muted text-sm mb-4">Connect a bank to auto-sync, or log one manually.</p>
+                <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-primary">+ Log Transaction</button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {visibleTxns.map(txn => {
+                  const acc = accounts.find(a => a.id === txn.account_id)
+                  return (
+                    <div key={txn.id} className="card p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0"
+                          style={{ background: `${KIND_COLOR[txn.kind]}22`, color: KIND_COLOR[txn.kind] }}>
+                          {KIND_ICON[txn.kind]}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm text-primary truncate">{txn.description}</p>
+                            {txn.source_type === 'plaid' && (
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                                style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                                🔗 Plaid
+                              </span>
+                            )}
+                            {txn.pending && (
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                                style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                                pending
+                              </span>
+                            )}
+                            {txn.auto_categorized && (
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                                style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                                ✦ auto
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted">
+                            {txn.kind === 'expense'
+                              ? `${txn.category || ''} · ${txn.subcategory || ''}`
+                              : txn.kind === 'income' ? txn.source || 'Income' : 'Transfer'}
+                            {' · '}{txn.date}
+                            {acc ? ` · ${acc.name}` : ''}
+                            {txn.card_last4 ? ` ··${txn.card_last4}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <p className="font-black text-sm" style={{ color: KIND_COLOR[txn.kind] }}>
+                          {txn.kind === 'expense' ? '-' : txn.kind === 'income' ? '+' : ''}{fmt(txn.amount)}
+                        </p>
+                        <button onClick={() => openEditTxn(txn)} className="text-muted hover:text-primary text-sm">✎</button>
+                        <button onClick={() => handleDeleteTxn(txn.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
 
-      {/* ── Transaction Log ── */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-black text-primary">
-            Transactions
-            {selectedAcc && <span className="text-muted font-normal text-sm ml-2">· {accounts.find(a => a.id === selectedAcc)?.name}</span>}
-          </h2>
-          <span className="text-xs text-muted">{visibleTxns.length} entries</span>
-        </div>
-
-        {/* Filter + Search */}
-        <div className="flex gap-2 mb-3">
-          <input
-            className="input-field flex-1 text-sm"
-            placeholder="Search transactions…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          {['all', 'expense', 'income', 'transfer'].map(k => (
-            <button key={k} onClick={() => setTxnFilter(k)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all"
-              style={{
-                background: txnFilter === k ? (KIND_COLOR[k] || 'var(--text-primary)') : 'var(--input-bg)',
-                color:      txnFilter === k ? '#fff' : 'var(--text-muted)',
-                border:     '1px solid var(--card-border)',
-              }}>
-              {k === 'all' ? `All (${transactions.length})` : k}
-            </button>
-          ))}
-        </div>
-
-        {visibleTxns.length === 0 ? (
-          <div className="card p-10 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-            <p className="text-3xl mb-2">📋</p>
-            <p className="font-bold text-primary mb-1">No transactions yet</p>
-            <p className="text-muted text-sm mb-4">Log a transaction to start tracking your cash flow.</p>
-            <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-primary">+ Log Transaction</button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {visibleTxns.map(txn => {
-              const acc = accounts.find(a => a.id === txn.account_id)
-              return (
-                <div key={txn.id} className="card p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0"
-                      style={{ background: `${KIND_COLOR[txn.kind]}22`, color: KIND_COLOR[txn.kind] }}>
-                      {KIND_ICON[txn.kind]}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-sm text-primary truncate">{txn.description}</p>
-                        {txn.label && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
-                            {txn.label}
-                          </span>
-                        )}
-                        {txn.auto_categorized && (
-                          <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
-                            style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
-                            ✦ auto
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted">
-                        {txn.kind === 'expense'
-                          ? `${txn.category || ''} · ${txn.subcategory || ''}`
-                          : txn.kind === 'income'
-                          ? txn.source || 'Income'
-                          : 'Transfer'}
-                        {' · '}{txn.date}
-                        {acc ? ` · ${acc.name}` : ''}
-                        {txn.card_last4 ? ` ··${txn.card_last4}` : ''}
-                      </p>
-                      {txn.notes && <p className="text-xs text-muted truncate">{txn.notes}</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <p className="font-black text-sm" style={{ color: KIND_COLOR[txn.kind] }}>
-                      {txn.kind === 'expense' ? '-' : txn.kind === 'income' ? '+' : ''}{fmt(txn.amount)}
-                    </p>
-                    <button onClick={() => openEditTxn(txn)} className="text-muted hover:text-primary text-sm">✎</button>
-                    <button onClick={() => handleDeleteTxn(txn.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ══════════════════════════ ACCOUNT MODAL ══════════════════════════ */}
+      {/* ══════════════════ ACCOUNT MODAL ══════════════════ */}
       {showAccModal && (
         <div className="modal-overlay" onClick={() => setShowAccModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <p className="accent-text font-black text-lg">{editAcc ? 'Edit Account' : 'Add Account'}</p>
+              <p className="accent-text font-black text-lg">{editAcc ? 'Edit Account' : 'Add Manual Account'}</p>
               <button onClick={() => setShowAccModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
             </div>
-
-            {/* Card preview */}
-            {isCard && (
-              <div className="flex justify-center mb-5">
-                <CardVisual account={{ ...editAcc, ...accForm, balance: parseFloat(accForm.balance) || 0 }} />
-              </div>
-            )}
 
             <form onSubmit={handleSaveAcc}>
               <div className="mb-4">
                 <label className="label">Account Name</label>
                 <input className="input-field" placeholder="e.g., Chase Checking" value={accForm.name} onChange={e => setAccForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
-
               <div className="mb-4">
                 <label className="label">Account Type</label>
                 <select className="input-field" value={accForm.type} onChange={e => setAccForm(f => ({ ...f, type: e.target.value }))}>
                   {ACCOUNT_TYPES.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
-
               <div className="mb-4">
                 <label className="label">Current Balance ($)</label>
                 <input className="input-field" type="number" step="0.01" placeholder="0.00" value={accForm.balance} onChange={e => setAccForm(f => ({ ...f, balance: e.target.value }))} required />
               </div>
-
               <div className="mb-4">
                 <label className="label">Institution (optional)</label>
                 <input className="input-field" placeholder="e.g., Chase, Bank of America" value={accForm.institution} onChange={e => setAccForm(f => ({ ...f, institution: e.target.value }))} />
               </div>
-
-              {/* Card-specific fields */}
-              {isCard && (
-                <>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                      <label className="label">Last 4 Digits</label>
-                      <input className="input-field" placeholder="1234" maxLength={4} value={accForm.card_last4} onChange={e => setAccForm(f => ({ ...f, card_last4: e.target.value.replace(/\D/g, '') }))} />
-                    </div>
-                    <div>
-                      <label className="label">Card Network</label>
-                      <select className="input-field" value={accForm.card_type} onChange={e => setAccForm(f => ({ ...f, card_type: e.target.value }))}>
-                        {CARD_TYPES.map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
+              {accForm.type === 'Credit Card' && (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="label">Last 4 Digits</label>
+                    <input className="input-field" placeholder="1234" maxLength={4} value={accForm.card_last4} onChange={e => setAccForm(f => ({ ...f, card_last4: e.target.value.replace(/\D/g, '') }))} />
                   </div>
-                  <div className="mb-4">
-                    <label className="label">Card Color</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {CARD_COLORS.map(c => (
-                        <button key={c} type="button" onClick={() => setAccForm(f => ({ ...f, color: c }))}
-                          className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
-                          style={{ background: c, borderColor: accForm.color === c ? '#fff' : 'transparent' }} />
-                      ))}
-                    </div>
+                  <div>
+                    <label className="label">Card Network</label>
+                    <select className="input-field" value={accForm.card_type} onChange={e => setAccForm(f => ({ ...f, card_type: e.target.value }))}>
+                      {CARD_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
                   </div>
-                </>
+                </div>
               )}
-
               <div className="mb-6">
-                <label className="label">Notes (optional)</label>
-                <input className="input-field" placeholder="Any additional notes" value={accForm.notes} onChange={e => setAccForm(f => ({ ...f, notes: e.target.value }))} />
+                <label className="label">Card Color</label>
+                <div className="flex gap-2 flex-wrap">
+                  {CARD_COLORS.map(c => (
+                    <button key={c} type="button" onClick={() => setAccForm(f => ({ ...f, color: c }))}
+                      className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{ background: c, borderColor: accForm.color === c ? '#fff' : 'transparent' }} />
+                  ))}
+                </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <button type="button" onClick={() => setShowAccModal(false)} className="btn-secondary justify-center">Cancel</button>
                 <button type="submit" disabled={savingAcc} className="btn-primary justify-center">{savingAcc ? 'Saving…' : editAcc ? 'Save Changes' : 'Add Account'}</button>
@@ -534,7 +703,7 @@ export default function Accounts() {
         </div>
       )}
 
-      {/* ══════════════════════════ TRANSACTION MODAL ══════════════════════════ */}
+      {/* ══════════════════ TRANSACTION MODAL ══════════════════ */}
       {showTxnModal && (
         <div className="modal-overlay" onClick={() => setShowTxnModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
@@ -542,9 +711,7 @@ export default function Accounts() {
               <p className="accent-text font-black text-lg">{editTxn ? 'Edit Transaction' : 'Log Transaction'}</p>
               <button onClick={() => setShowTxnModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
             </div>
-
             <form onSubmit={handleSaveTxn}>
-              {/* Kind selector */}
               <div className="mb-4">
                 <label className="label">Type</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -562,7 +729,6 @@ export default function Accounts() {
                 </div>
               </div>
 
-              {/* Description + auto-suggest */}
               <div className="mb-4">
                 <label className="label">Description</label>
                 <input className="input-field" placeholder="e.g., Nike shoes, Netflix, Salary deposit"
@@ -573,7 +739,6 @@ export default function Accounts() {
                     <p className="text-xs" style={{ color: '#3b82f6' }}>
                       ✦ Suggested: <strong>{autoSuggest.kind}</strong>
                       {autoSuggest.category ? ` · ${autoSuggest.category} › ${autoSuggest.subcategory}` : ''}
-                      {autoSuggest.source   ? ` · ${autoSuggest.source}` : ''}
                     </p>
                     <button type="button" onClick={applyAutoSuggest}
                       className="text-xs font-bold ml-3 px-2 py-1 rounded"
@@ -588,7 +753,6 @@ export default function Accounts() {
                   value={txnForm.amount} onChange={e => setTxnForm(f => ({ ...f, amount: e.target.value }))} required />
               </div>
 
-              {/* Category fields — conditional on kind */}
               {txnForm.kind === 'expense' && (
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
@@ -633,12 +797,6 @@ export default function Accounts() {
                   <label className="label">Label (optional)</label>
                   <input className="input-field" placeholder="e.g., work trip" value={txnForm.label} onChange={e => setTxnForm(f => ({ ...f, label: e.target.value }))} />
                 </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="label">Merchant (optional)</label>
-                <input className="input-field" placeholder="e.g., Nike, Amazon, Whole Foods"
-                  value={txnForm.merchant} onChange={e => setTxnForm(f => ({ ...f, merchant: e.target.value }))} />
               </div>
 
               <div className="mb-6">
