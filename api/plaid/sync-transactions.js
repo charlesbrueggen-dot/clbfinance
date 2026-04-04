@@ -54,8 +54,8 @@ export default async function handler(req, res) {
  
         if (toUpsert.length > 0) {
           const { error: upsertErr } = await supabase.from('account_transactions').upsert(toUpsert, { onConflict: 'plaid_txn_id', ignoreDuplicates: false })
-          if (upsertErr) console.error('Upsert error:', upsertErr)
-          totalSynced += toUpsert.length
+          if (upsertErr) throw new Error(`Upsert failed: ${upsertErr.message}`)
+            totalSynced += toUpsert.length
         }
  
         for (const r of removed) {
