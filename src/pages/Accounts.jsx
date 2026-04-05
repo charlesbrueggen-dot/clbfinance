@@ -131,6 +131,20 @@ export default function Accounts() {
   const [search,      setSearch]      = useState('')
   const [tab,         setTab]         = useState('accounts') // 'accounts' | 'connect'
 
+  const [isPro, setIsPro] = useState(false)
+  const [proLoading, setProLoading] = useState(true)
+
+  useEffect(() => {
+    const checkPro = async () => {
+      const { data } = await supabase
+        .from('subscriptions').select('status')
+        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
+      setIsPro(!!data)
+      setProLoading(false)
+    }
+    checkPro()
+  }, [user.id])
+
   // ── Account CRUD ──────────────────────────────────────────────────────────
   const openAddAcc  = () => { setEditAcc(null); setAccForm(blankAccount()); setShowAccModal(true) }
   const openEditAcc = a  => {
