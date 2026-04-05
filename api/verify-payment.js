@@ -1,26 +1,24 @@
+import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   res.setHeader('Content-Type', 'application/json');
 
   try {
-    const { default: Stripe } = await import('stripe');
-    const { createClient } = await import('@supabase/supabase-js');
-
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+      process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
-);
     );
 
-    // Parse body manually in case Vercel doesn't auto-parse
     let sessionId = req.body?.sessionId;
     if (!sessionId) {
       const raw = await new Promise((resolve, reject) => {
-        let data = '';
-        req.on('data', c => (data += c));
-        req.on('end', () => resolve(data));
+        let d = '';
+        req.on('data', c => (d += c));
+        req.on('end', () => resolve(d));
         req.on('error', reject);
       });
       try { sessionId = JSON.parse(raw).sessionId; } catch {}
@@ -31,7 +29,7 @@ export default async function handler(req, res) {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== 'paid') {
-      return res.status(400).json({ error: `Payment not complete: ${session.payment_status}` });
+      return res.status(400).json({ error: `Not paid: ${session.payment_status}` });
     }
 
     const userId = session.client_reference_id;
