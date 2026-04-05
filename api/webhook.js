@@ -7,6 +7,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const getRawBody = (req) =>
+  new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk) => (data += chunk));
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -14,12 +22,14 @@ export default async function handler(req, res) {
   let event;
 
   try {
+    const rawBody = await getRawBody(req);
     event = stripe.webhooks.constructEvent(
-      req.body,
+      rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
+    console.error('Webhook signature error:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -27,7 +37,7 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
 
-    await supabase.from('subscriptions').upsert({
+    const { error } = await supabase.from('subscriptions').upsert({
       user_id: session.client_reference_id,
       stripe_customer_id: session.customer,
       stripe_subscription_id: session.subscription,
@@ -35,10 +45,14 @@ export default async function handler(req, res) {
       price_id: subscription.items.data[0].price.id,
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     }, { onConflict: 'user_id' });
+
+    if (error) console.error('Supabase upsert error:', error);
   }
 
-  if (event.type === 'customer.subscription.updated' ||
-      event.type === 'customer.subscription.deleted') {
+  if (
+    event.type === 'customer.subscription.updated' ||
+    event.type === 'customer.subscription.deleted'
+  ) {
     const subscription = event.data.object;
 
     await supabase.from('subscriptions').upsert({
@@ -50,5 +64,3 @@ export default async function handler(req, res) {
 
   res.json({ received: true });
 }
-
-export const config = { api: { bodyParser: false } };
