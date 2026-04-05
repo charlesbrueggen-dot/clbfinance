@@ -15,6 +15,8 @@ import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Loans from './pages/Loans'
 import AICoach from './pages/AICoach'
+import Success from './pages/Success'
+import Cancel from './pages/Cancel'
 import { TransactionProvider } from './hooks/useTransactions'
 
 export const AuthContext = createContext(null)
@@ -61,6 +63,11 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={user && !loading ? <Navigate to="/" replace /> : <Auth />} />
+
+          {/* Payment result pages — outside Layout so no nav/sidebar */}
+          <Route path="/success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
+          <Route path="/cancel" element={<ProtectedRoute><Cancel /></ProtectedRoute>} />
+
           <Route path="/" element={
             <ProtectedRoute>
               <TransactionProvider userId={user?.id}>
