@@ -16,7 +16,6 @@ const getRawBody = (req) =>
   });
 
 const getPeriodEnd = (subscription) => {
-  // Newer Stripe API versions (2024+) moved current_period_end to items.data[0]
   const fromItem = subscription.items?.data?.[0]?.current_period_end;
   const fromTop = subscription.current_period_end;
   const timestamp = fromItem ?? fromTop;
@@ -31,13 +30,8 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = await getRawBody(req);
-    event = stripe.webhooks.constructEvent(
-      rawBody,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error('Webhook signature error:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -45,7 +39,7 @@ export default async function handler(req, res) {
     const session = event.data.object;
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
 
-    const { error } = await supabase.from('subscriptions').upsert({
+    await supabase.from('subscriptions').upsert({
       user_id: session.client_reference_id,
       stripe_customer_id: session.customer,
       stripe_subscription_id: session.subscription,
@@ -53,8 +47,6 @@ export default async function handler(req, res) {
       price_id: subscription.items.data[0].price.id,
       current_period_end: getPeriodEnd(subscription),
     }, { onConflict: 'user_id' });
-
-    if (error) console.error('Supabase upsert error (checkout):', error);
   }
 
   if (
@@ -63,13 +55,13 @@ export default async function handler(req, res) {
   ) {
     const subscription = event.data.object;
 
-    const { error } = await supabase.from('subscriptions').upsert({
-      stripe_subscription_id: subscription.id,
-      status: subscription.status,
-      current_period_end: getPeriodEnd(subscription),
-    }, { onConflict: 'stripe_subscription_id' });
-
-    if (error) console.error('Supabase upsert error (subscription update):', error);
+    // Use UPDATE not upsert — only touch rows that already exist
+    await supabase.from('subscriptions')
+      .update({
+        status: subscription.status,
+        current_period_end: getPeriodEnd(subscription),
+      })
+      .eq('stripe_subscription_id', subscription.id);
   }
 
   res.json({ received: true });
