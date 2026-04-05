@@ -36,13 +36,17 @@ Guidelines:
 - Never make up financial data — only use what's provided above
 - Format numbers in USD when referencing amounts`
 
-function ProGate({ feature, icon, description }) {
+function ProGate({ feature, icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
 
   const handleUpgrade = async () => {
     setUpgrading(true)
     try {
-      const res = await fetch('/api/checkout', { method: 'POST' })
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
       const data = await res.json()
       if (data.url) window.location.href = data.url
     } catch {
@@ -208,6 +212,7 @@ export default function AICoach() {
       feature="Stride AI Coach"
       icon="🤖"
       description="Get personalized financial advice powered by AI — analyzing your real spending, income, and goals to give you specific, actionable guidance."
+      userId={user.id}
     />
   )
 

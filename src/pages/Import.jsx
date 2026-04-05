@@ -4,13 +4,17 @@ import { useAuth } from '../App'
 
 const today = () => new Date().toISOString().split('T')[0]
 
-function ProGate({ feature, icon, description }) {
+function ProGate({ feature, icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
 
   const handleUpgrade = async () => {
     setUpgrading(true)
     try {
-      const res = await fetch('/api/checkout', { method: 'POST' })
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
       const data = await res.json()
       if (data.url) window.location.href = data.url
     } catch {
@@ -141,6 +145,7 @@ export default function Import() {
       feature="Import Transactions"
       icon="📂"
       description="Upload CSV or Excel files from your bank and instantly import hundreds of transactions in seconds."
+      userId={user.id}
     />
   )
 

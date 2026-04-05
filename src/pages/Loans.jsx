@@ -12,12 +12,16 @@ const calcWithInterest = (principal, rate, startDate) => {
   return principal * Math.pow(1 + rate / 100, years)
 }
 
-function ProGate({ feature, icon, description }) {
+function ProGate({ feature, icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
     try {
-      const res = await fetch('/api/checkout', { method: 'POST' })
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
       const data = await res.json()
       if (data.url) window.location.href = data.url
     } catch { setUpgrading(false) }
@@ -102,6 +106,7 @@ export default function Loans() {
       feature="Loans & Debts"
       icon="🤝"
       description="Track money you've lent or borrowed with automatic interest calculations and settlement tracking."
+      userId={user.id}
     />
   )
 

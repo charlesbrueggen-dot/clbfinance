@@ -16,12 +16,16 @@ const TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'Mutual Fund']
 const SECTORS = ['Technology','Healthcare','Finance','Energy','Consumer','Real Estate','Utilities','Materials','Communication','Industrials','Other']
 
 
-function ProGate({ feature, icon, description }) {
+function ProGate({ feature, icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
     try {
-      const res = await fetch('/api/checkout', { method: 'POST' })
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
       const data = await res.json()
       if (data.url) window.location.href = data.url
     } catch { setUpgrading(false) }
@@ -770,6 +774,7 @@ export default function Investments() {
       feature="Investments"
       icon="📈"
       description="Track your full portfolio — stocks, ETFs, crypto, bonds, and mutual funds — with live price refresh and performance charts."
+      userId={user.id}
     />
   )
 

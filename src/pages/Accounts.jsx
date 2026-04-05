@@ -46,12 +46,16 @@ const blankTxn = () => ({
 })
 
 
-function ProGate({ feature, icon, description }) {
+function ProGate({ feature, icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
     try {
-      const res = await fetch('/api/checkout', { method: 'POST' })
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
       const data = await res.json()
       if (data.url) window.location.href = data.url
     } catch { setUpgrading(false) }
@@ -304,6 +308,7 @@ export default function Accounts() {
       feature="Accounts & Cards"
       icon="🏦"
       description="Connect your real bank accounts via Plaid, track balances, and log transactions across all your accounts and credit cards."
+      userId={user.id}
     />
   )
 
