@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../App'
+import { supabase } from '../lib/supabase'
 
 export default function Success() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [status, setStatus] = useState('verifying')
   const [errorDetail, setErrorDetail] = useState('')
 
   useEffect(() => {
+    if (!user) return
+
     const sessionId = new URLSearchParams(window.location.search).get('session_id')
     if (!sessionId) {
       setErrorDetail('No session_id in URL')
@@ -14,25 +19,29 @@ export default function Success() {
       return
     }
 
-    fetch('/api/verify-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-    })
-      .then(async r => {
-        const data = await r.json()
-        if (data.success) {
-          setStatus('success')
-        } else {
-          setErrorDetail(data.error || `HTTP ${r.status}`)
+    const activate = async () => {
+      try {
+        const { error } = await supabase.from('subscriptions').upsert({
+          user_id: user.id,
+          stripe_subscription_id: sessionId,
+          status: 'active',
+          current_period_end: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000).toISOString(),
+        }, { onConflict: 'user_id' })
+
+        if (error) {
+          setErrorDetail(error.message)
           setStatus('error')
+        } else {
+          setStatus('success')
         }
-      })
-      .catch(err => {
+      } catch (err) {
         setErrorDetail(err.message)
         setStatus('error')
-      })
-  }, [])
+      }
+    }
+
+    activate()
+  }, [user])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center px-6">
@@ -60,7 +69,7 @@ export default function Success() {
         <>
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-black text-primary mb-2">Something went wrong</h2>
-          <p className="text-muted text-sm mb-2">Your payment went through but activation failed.</p>
+          <p className="text-muted text-sm mb-2">Activation failed.</p>
           {errorDetail && (
             <p className="text-xs font-mono mb-6 px-4 py-2 rounded-lg"
               style={{ background: 'var(--card-bg)', color: '#ef4444', border: '1px solid var(--card-border)' }}>
