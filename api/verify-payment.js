@@ -4,8 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  res.setHeader('Content-Type', 'application/json');
-
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const supabase = createClient(
@@ -13,23 +11,13 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    let sessionId = req.body?.sessionId;
-    if (!sessionId) {
-      const raw = await new Promise((resolve, reject) => {
-        let d = '';
-        req.on('data', c => (d += c));
-        req.on('end', () => resolve(d));
-        req.on('error', reject);
-      });
-      try { sessionId = JSON.parse(raw).sessionId; } catch {}
-    }
-
+    const sessionId = req.body?.sessionId;
     if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
 
+    // Verify with Stripe — cannot be faked
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-
     if (session.payment_status !== 'paid') {
-      return res.status(400).json({ error: `Not paid: ${session.payment_status}` });
+      return res.status(400).json({ error: 'Payment not complete' });
     }
 
     const userId = session.client_reference_id;
@@ -40,7 +28,7 @@ export default async function handler(req, res) {
       subscription.items?.data?.[0]?.current_period_end ??
       subscription.current_period_end;
 
-    const { error: dbError } = await supabase.from('subscriptions').upsert({
+    const { error } = await supabase.from('subscriptions').upsert({
       user_id: userId,
       stripe_customer_id: session.customer,
       stripe_subscription_id: session.subscription,
@@ -49,8 +37,7 @@ export default async function handler(req, res) {
       current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     }, { onConflict: 'user_id' });
 
-    if (dbError) return res.status(500).json({ error: `DB: ${dbError.message}` });
-
+    if (error) return res.status(500).json({ error: error.message });
     return res.json({ success: true });
 
   } catch (err) {
