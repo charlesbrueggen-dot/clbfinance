@@ -15,6 +15,14 @@ const getRawBody = (req) =>
     req.on('error', reject);
   });
 
+const getPeriodEnd = (subscription) => {
+  // Newer Stripe API versions (2024+) moved current_period_end to items.data[0]
+  const fromItem = subscription.items?.data?.[0]?.current_period_end;
+  const fromTop = subscription.current_period_end;
+  const timestamp = fromItem ?? fromTop;
+  return timestamp ? new Date(timestamp * 1000).toISOString() : null;
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -43,10 +51,10 @@ export default async function handler(req, res) {
       stripe_subscription_id: session.subscription,
       status: subscription.status,
       price_id: subscription.items.data[0].price.id,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_end: getPeriodEnd(subscription),
     }, { onConflict: 'user_id' });
 
-    if (error) console.error('Supabase upsert error:', error);
+    if (error) console.error('Supabase upsert error (checkout):', error);
   }
 
   if (
@@ -55,11 +63,13 @@ export default async function handler(req, res) {
   ) {
     const subscription = event.data.object;
 
-    await supabase.from('subscriptions').upsert({
+    const { error } = await supabase.from('subscriptions').upsert({
       stripe_subscription_id: subscription.id,
       status: subscription.status,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_end: getPeriodEnd(subscription),
     }, { onConflict: 'stripe_subscription_id' });
+
+    if (error) console.error('Supabase upsert error (subscription update):', error);
   }
 
   res.json({ received: true });
