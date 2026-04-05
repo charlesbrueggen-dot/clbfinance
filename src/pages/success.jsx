@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 
 export default function Success() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState('verifying') // verifying | success | error
+  const [status, setStatus] = useState('verifying')
+  const [errorDetail, setErrorDetail] = useState('')
 
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get('session_id')
     if (!sessionId) {
+      setErrorDetail('No session_id in URL')
       setStatus('error')
       return
     }
@@ -17,12 +19,19 @@ export default function Success() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId }),
     })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) setStatus('success')
-        else setStatus('error')
+      .then(async r => {
+        const data = await r.json()
+        if (data.success) {
+          setStatus('success')
+        } else {
+          setErrorDetail(data.error || `HTTP ${r.status}`)
+          setStatus('error')
+        }
       })
-      .catch(() => setStatus('error'))
+      .catch(err => {
+        setErrorDetail(err.message)
+        setStatus('error')
+      })
   }, [])
 
   return (
@@ -41,10 +50,7 @@ export default function Success() {
           <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-2xl font-black text-primary mb-2">You're Pro!</h2>
           <p className="text-muted text-sm mb-8">Your Stride AI Coach is now unlocked.</p>
-          <button
-            onClick={() => navigate('/ai-coach')}
-            className="btn-primary px-8"
-          >
+          <button onClick={() => navigate('/coach')} className="btn-primary px-8">
             Open AI Coach →
           </button>
         </>
@@ -54,7 +60,13 @@ export default function Success() {
         <>
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-black text-primary mb-2">Something went wrong</h2>
-          <p className="text-muted text-sm mb-8">Your payment went through but we couldn't activate Pro automatically. Please contact support.</p>
+          <p className="text-muted text-sm mb-2">Your payment went through but activation failed.</p>
+          {errorDetail && (
+            <p className="text-xs font-mono mb-6 px-4 py-2 rounded-lg"
+              style={{ background: 'var(--card-bg)', color: '#ef4444', border: '1px solid var(--card-border)' }}>
+              {errorDetail}
+            </p>
+          )}
           <button onClick={() => navigate('/')} className="btn-primary px-8">Go Home</button>
         </>
       )}
