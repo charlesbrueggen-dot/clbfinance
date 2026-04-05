@@ -1,29 +1,16 @@
-import { useRouter } from 'next/router'
+import { useNavigate } from 'react-router-dom'
 
 export default function Cancel() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center px-6">
       <div className="text-6xl mb-4">😕</div>
-      <h1 className="text-2xl font-black text-primary mb-2">Payment Cancelled</h1>
-      <p className="text-muted text-sm mb-8 max-w-sm">
-        No worries — you haven't been charged. You can upgrade to Pro anytime you're ready.
-      </p>
-      <div className="flex gap-3">
-        <button
-          onClick={() => router.push('/')}
-          className="btn-secondary px-6"
-        >
-          Back to App
-        </button>
-        <button
-          onClick={() => router.back()}
-          className="btn-primary px-6"
-        >
-          Try Again
-        </button>
-      </div>
+      <h2 className="text-xl font-black text-primary mb-2">Payment cancelled</h2>
+      <p className="text-muted text-sm mb-8">No worries — you haven't been charged. You can upgrade anytime.</p>
+      <button onClick={() => navigate('/')} className="btn-primary px-8">
+        Back to Stride
+      </button>
     </div>
   )
 }
