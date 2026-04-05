@@ -7,21 +7,34 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const getBody = (req) =>
+  new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => (data += chunk));
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)); }
+      catch { resolve({}); }
+    });
+    req.on('error', reject);
+  });
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { sessionId } = req.body;
-  if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
-
   try {
+    const body = req.body && req.body.sessionId ? req.body : await getBody(req);
+    const { sessionId } = body;
+
+    if (!sessionId) return res.status(400).json({ error: 'Missing sessionId' });
+
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== 'paid') {
-      return res.status(400).json({ error: 'Payment not completed' });
+      return res.status(400).json({ error: `Payment status: ${session.payment_status}` });
     }
 
     const userId = session.client_reference_id;
-    if (!userId) return res.status(400).json({ error: 'Missing user ID on session' });
+    if (!userId) return res.status(400).json({ error: 'No user ID on session - checkout.js may not be passing userId' });
 
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
     const periodEnd =
@@ -37,14 +50,10 @@ export default async function handler(req, res) {
       current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     }, { onConflict: 'user_id' });
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(500).json({ error: 'Database error' });
-    }
+    if (error) return res.status(500).json({ error: `Supabase: ${error.message}` });
 
     return res.json({ success: true });
   } catch (err) {
-    console.error('Verify payment error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
