@@ -1,60 +1,61 @@
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../App'
+import { useNavigate } from 'react-router-dom'
 
 export default function Success() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [checking, setChecking] = useState(true)
+  const navigate = useNavigate()
+  const [status, setStatus] = useState('verifying') // verifying | success | error
 
   useEffect(() => {
-    // Poll subscriptions table for up to 10 seconds until webhook saves it
-    let attempts = 0
-    const interval = setInterval(async () => {
-      attempts++
-      const { data } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user?.id)
-        .eq('status', 'active')
-        .maybeSingle()
+    const sessionId = new URLSearchParams(window.location.search).get('session_id')
+    if (!sessionId) {
+      setStatus('error')
+      return
+    }
 
-      if (data || attempts >= 10) {
-        clearInterval(interval)
-        setChecking(false)
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [user])
+    fetch('/api/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setStatus('success')
+        else setStatus('error')
+      })
+      .catch(() => setStatus('error'))
+  }, [])
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen text-center px-6">
-      {checking ? (
+      {status === 'verifying' && (
         <>
           <div className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin mb-6"
             style={{ borderColor: '#10b981', borderTopColor: 'transparent' }} />
-          <p className="text-primary font-bold text-lg">Activating your Pro account…</p>
+          <h2 className="text-xl font-black text-primary">Activating your Pro account…</h2>
           <p className="text-muted text-sm mt-2">Just a moment</p>
         </>
-      ) : (
+      )}
+
+      {status === 'success' && (
         <>
           <div className="text-6xl mb-4">🎉</div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-4"
-            style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-            ✦ You're now Pro
-          </div>
-          <h1 className="text-3xl font-black text-primary mb-2">Welcome to Stride Pro!</h1>
-          <p className="text-muted text-sm mb-8 max-w-sm">
-            You now have full access to AI Coach, Import, Investments, Loans, and Accounts.
-          </p>
+          <h2 className="text-2xl font-black text-primary mb-2">You're Pro!</h2>
+          <p className="text-muted text-sm mb-8">Your Stride AI Coach is now unlocked.</p>
           <button
-            onClick={() => router.push('/')}
-            className="btn-primary px-10 py-3 text-base"
+            onClick={() => navigate('/ai-coach')}
+            className="btn-primary px-8"
           >
-            Go to my Dashboard →
+            Open AI Coach →
           </button>
+        </>
+      )}
+
+      {status === 'error' && (
+        <>
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-black text-primary mb-2">Something went wrong</h2>
+          <p className="text-muted text-sm mb-8">Your payment went through but we couldn't activate Pro automatically. Please contact support.</p>
+          <button onClick={() => navigate('/')} className="btn-primary px-8">Go Home</button>
         </>
       )}
     </div>
