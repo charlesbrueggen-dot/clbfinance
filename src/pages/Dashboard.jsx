@@ -5,7 +5,7 @@ import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
-const PIE_COLORS_LIGHT = ['#1a3a6b','#2e6da4','#4a9fd4','#f0a500','#e05c2a','#7b2d8b','#2a8b5a','#c0392b','#16a085','#8e44ad']
+const PIE_COLORS_LIGHT = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#2563eb','#1d4ed8','#1e40af','#dbeafe','#93c5fd','#60a5fa']
 const PIE_COLORS_DARK  = ['#10b981','#34d399','#6ee7b7','#a7f3d0','#059669','#047857','#065f46','#d1fae5','#6ee7b7','#34d399']
 
 export default function Dashboard() {
