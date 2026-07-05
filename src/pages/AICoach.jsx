@@ -163,7 +163,7 @@ export default function AICoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-opus-4-20250514',
+          model: 'claude-sonnet-5',
           max_tokens: 1024,
           system: SYSTEM_PROMPT(financialData),
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
