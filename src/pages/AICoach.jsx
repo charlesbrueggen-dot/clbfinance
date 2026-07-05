@@ -176,7 +176,8 @@ export default function AICoach() {
       }
 
       const data = await response.json()
-      const reply = data.content?.[0]?.text || 'Sorry, I could not generate a response.'
+      const textBlock = data.content?.find(block => block.type === 'text')
+      const reply = textBlock?.text || 'Sorry, I could not generate a response.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${err.message}` }])
