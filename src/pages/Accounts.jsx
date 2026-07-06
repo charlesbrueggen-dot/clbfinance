@@ -303,15 +303,6 @@ export default function Accounts() {
     </div>
   )
 
-  if (!isPro) return (
-    <ProGate
-      feature="Accounts & Cards"
-      icon="🏦"
-      description="Connect your real bank accounts via Plaid, track balances, and log transactions across all your accounts and credit cards."
-      userId={user.id}
-    />
-  )
-
   return (
     <div>
       {/* Header */}
@@ -353,14 +344,29 @@ export default function Accounts() {
                 {connectedItems.length}
               </span>
             )}
+            {t === 'connect' && connectedItems.length === 0 && !isPro && (
+              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-bold"
+                style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                PRO
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* ══════════════════ CONNECT BANK TAB ══════════════════ */}
-      {tab === 'connect' && (
+      {tab === 'connect' && !isPro && (
+        <ProGate
+          feature="Automatic Bank Sync"
+          icon="🔗"
+          description="Connect your real bank accounts automatically and let transactions sync and categorize themselves — no manual entry required."
+          userId={user.id}
+        />
+      )}
+
+      {tab === 'connect' && isPro && (
         <div>
-          {/* Plaid connect card */}
+          {/* Bank connect card */}
           <div className="card p-6 mb-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
@@ -369,7 +375,7 @@ export default function Accounts() {
               </div>
               <div>
                 <p className="font-black text-primary">Connect Real Bank</p>
-                <p className="text-muted text-xs">Powered by Plaid · 12,000+ institutions · bank-level security</p>
+                <p className="text-muted text-xs">12,000+ institutions · bank-level security</p>
               </div>
             </div>
 
@@ -654,7 +660,7 @@ export default function Accounts() {
                             {txn.source_type === 'plaid' && (
                               <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
                                 style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                                🔗 Plaid
+                                🔗 Synced
                               </span>
                             )}
                             {txn.pending && (
