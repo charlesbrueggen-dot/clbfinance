@@ -14,6 +14,7 @@ import Import from './pages/Import'
 import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Loans from './pages/Loans'
+import Subscriptions from './pages/Subscriptions'
 import AICoach from './pages/AICoach'
 import Success from './pages/success'
 import Cancel from './pages/cancel'
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="goals" element={<Goals />} />
             <Route path="loans" element={<Loans />} />
+            <Route path="subscriptions" element={<Subscriptions />} />
             <Route path="balance" element={<Balance />} />
             <Route path="coach" element={<AICoach />} />
           </Route>

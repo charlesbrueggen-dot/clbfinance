@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { path: '/analytics', label: 'Analytics', icon: '◑' },
   { path: '/goals', label: 'Goals', icon: '◎' },
   { path: '/loans', label: 'Loans & Debts', icon: '⊕' },
+  { path: '/subscriptions', label: 'Subscriptions', icon: '🔁' },
 ]
 
 export default function Layout({ dark, setDark }) {
