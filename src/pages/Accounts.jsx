@@ -116,7 +116,7 @@ export default function Accounts() {
   const { transactions, accounts, loading, reload, addTransaction } = useTransactions()
   const {
     connectedItems, syncing, connecting, syncResult, error: tellerError,
-    mockMode, connectBank, syncTransactions, disconnectBank,
+    mockMode, canSync, cooldownSecondsLeft, connectBank, syncTransactions, disconnectBank,
   } = useTeller(user?.id)
 
   const [showAccModal, setShowAccModal] = useState(false)
@@ -426,10 +426,11 @@ export default function Accounts() {
                 <p className="font-black text-primary">Connected Banks</p>
                 <button
                   onClick={handleSync}
-                  disabled={syncing}
+                  disabled={syncing || !canSync}
                   className="btn-secondary text-xs px-3 py-1.5"
+                  title={!canSync && !syncing ? `Rate-limit safeguard — available again in ${cooldownSecondsLeft}s` : undefined}
                 >
-                  {syncing ? '⟳ Syncing…' : '↻ Sync All'}
+                  {syncing ? '⟳ Syncing…' : !canSync ? `⏳ Wait ${cooldownSecondsLeft}s` : '↻ Sync All'}
                 </button>
               </div>
 
@@ -530,9 +531,10 @@ export default function Accounts() {
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-muted uppercase tracking-wider">🔗 Bank Synced</p>
-                <button onClick={handleSync} disabled={syncing}
-                  className="text-xs text-muted hover:text-primary transition-colors">
-                  {syncing ? '⟳ Syncing…' : '↻ Sync Now'}
+                <button onClick={handleSync} disabled={syncing || !canSync}
+                  className="text-xs text-muted hover:text-primary transition-colors"
+                  title={!canSync && !syncing ? `Rate-limit safeguard — available again in ${cooldownSecondsLeft}s` : undefined}>
+                  {syncing ? '⟳ Syncing…' : !canSync ? `⏳ Wait ${cooldownSecondsLeft}s` : '↻ Sync Now'}
                 </button>
               </div>
               <div className="space-y-2">

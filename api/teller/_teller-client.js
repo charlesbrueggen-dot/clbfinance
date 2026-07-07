@@ -6,6 +6,27 @@
 // webhook.js) goes through the functions exported here, so when Teller
 // credentials arrive there is exactly one place to wire them up.
 //
+// ── COST / CALL MANIFEST (keep this updated when adding new Teller calls) ───
+//   GET    /accounts                     listAccounts()      flat-fee Transactions
+//   GET    /accounts/:id/transactions    listTransactions()  product ($0.30/enrollment
+//                                                             /month) — call volume
+//                                                             does NOT affect cost.
+//   DELETE /accounts/:id                 deleteAccount()     revokes access; stops
+//                                                             future billing for that
+//                                                             account/enrollment.
+//   GET    /accounts/:id/balances        NOT IMPLEMENTED     $0.10/call — see the
+//                                                             getAccountBalances()
+//                                                             tripwire below. Balance
+//                                                             is derived from
+//                                                             running_balance instead
+//                                                             (_sync-core.js).
+// Callers: listAccounts/listTransactions/deleteAccount are only ever invoked from
+// syncEnrollment() in _sync-core.js (deleteAccount is also called directly from
+// disconnect.js). syncEnrollment is called by enroll.js (initial import),
+// sync-transactions.js (manual "Sync All"), and webhook.js (Teller-pushed events).
+// Every real network call is logged at runtime with a `[teller:api]` prefix —
+// check Vercel function logs to see actual usage.
+//
 // MOCK MODE (current default):
 //   Until TELLER_USE_MOCKS=false is set, every function returns realistic
 //   sample data from ./_mock-data.js and never makes a network call. This lets
@@ -44,6 +65,12 @@ export function isMockMode() {
   return process.env.TELLER_USE_MOCKS !== 'false'
 }
 
+function logRealCall(method, path, note) {
+  // Visible in Vercel function logs — an audit trail of actual Teller usage,
+  // separate from the static cost comments above.
+  console.log(`[teller:api] ${method} ${path}${note ? ` — ${note}` : ''}`)
+}
+
 // ── Low-level request helper (real mode only) ────────────────────────────────
 let cachedAgent = null
 function mtlsAgent() {
@@ -73,6 +100,17 @@ function tellerRequest(path, accessToken, method = 'GET') {
         let json = null
         try { json = body ? JSON.parse(body) : null } catch { /* non-JSON body */ }
         if (res.statusCode >= 200 && res.statusCode < 300) return resolve(json)
+
+        if (res.statusCode === 429) {
+          // Distinct from other failures so callers can back off instead of
+          // just showing a generic "sync failed" error.
+          const err = new Error('Teller API rate limit hit (429) — back off before retrying')
+          err.statusCode = 429
+          err.rateLimited = true
+          err.retryAfterSeconds = res.headers['retry-after'] ? Number(res.headers['retry-after']) : null
+          return reject(err)
+        }
+
         const message = json?.error?.message || `Teller API ${method} ${path} failed (${res.statusCode})`
         const err = new Error(message)
         err.statusCode = res.statusCode
@@ -89,23 +127,39 @@ function tellerRequest(path, accessToken, method = 'GET') {
 // List accounts for an enrollment. GET /accounts
 export async function listAccounts(accessToken) {
   if (isMockMode()) return mockAccounts()
+  logRealCall('GET', '/accounts', 'flat-fee product, no per-call cost')
   return tellerRequest('/accounts', accessToken)
 }
 
 // List transactions for one account, newest first.
 // GET /accounts/:id/transactions?count=N
-// NOTE: intentionally no wrapper for GET /accounts/:id/balances — that endpoint
-// costs $0.10/call. Balances are derived from the newest posted transaction's
-// running_balance in _sync-core.js instead.
 export async function listTransactions(accessToken, accountId, { count = 200 } = {}) {
   if (isMockMode()) return mockTransactions(accountId, count)
+  logRealCall('GET', `/accounts/${accountId}/transactions`, 'flat-fee product, no per-call cost')
   return tellerRequest(`/accounts/${accountId}/transactions?count=${count}`, accessToken)
 }
 
 // Revoke API access to a single account. DELETE /accounts/:id
+// Once every account under an enrollment has been revoked, Teller stops
+// billing for that enrollment — see disconnect.js for why we only drop our
+// local record after *every* account here has succeeded.
 export async function deleteAccount(accessToken, accountId) {
   if (isMockMode()) return { success: true }
+  logRealCall('DELETE', `/accounts/${accountId}`, 'revokes access, stops future billing for this account')
   return tellerRequest(`/accounts/${accountId}`, accessToken, 'DELETE')
+}
+
+// Deliberately NOT implemented: GET /accounts/:id/balances costs $0.10/call.
+// Balance is derived from account_transactions.running_balance instead (see
+// syncEnrollment in _sync-core.js). This stub exists so an accidental future
+// call fails loudly at commit/PR-review time instead of silently costing
+// money in production.
+export function getAccountBalances() {
+  throw new Error(
+    "getAccountBalances() is intentionally not implemented — Teller's /accounts/:id/balances " +
+    'endpoint costs $0.10/call. Derive balance from the running_balance of the newest posted ' +
+    'transaction instead (see syncEnrollment in _sync-core.js).'
+  )
 }
 
 // Verify a Teller webhook signature.

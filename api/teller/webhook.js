@@ -61,8 +61,17 @@ export default async function handler(req, res) {
     }
 
     if (type === 'transactions.processed') {
-      const result = await syncEnrollment(supabase, enrollment)
-      return res.status(200).json({ received: true, synced: result.synced })
+      try {
+        const result = await syncEnrollment(supabase, enrollment)
+        return res.status(200).json({ received: true, synced: result.synced, skipped: result.skipped })
+      } catch (err) {
+        // Ack with 200 anyway — a 5xx/429 here would make Teller retry the
+        // webhook delivery, which would just re-trigger the same (possibly
+        // still rate-limited) sync again. The next legitimate webhook or
+        // manual sync will pick up whatever this attempt missed.
+        console.error(`teller/webhook: sync failed for enrollment ${enrollment.id}:`, err.message)
+        return res.status(200).json({ received: true, synced: 0, error: err.message })
+      }
     }
 
     if (type === 'enrollment.disconnected') {

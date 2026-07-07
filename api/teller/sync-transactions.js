@@ -26,13 +26,36 @@ export default async function handler(req, res) {
       return res.status(200).json({ synced: 0, message: 'No connected banks' })
     }
 
+    // Each enrollment is synced independently — one rate-limited or broken
+    // enrollment shouldn't block the others from syncing.
     let totalSynced = 0
+    let anySkipped = false
+    let rateLimitedMs = 0
     for (const enrollment of enrollments) {
-      const result = await syncEnrollment(supabase, enrollment)
-      totalSynced += result.synced
+      try {
+        const result = await syncEnrollment(supabase, enrollment)
+        totalSynced += result.synced
+        if (result.skipped) anySkipped = true
+      } catch (err) {
+        if (err.rateLimited) {
+          rateLimitedMs = Math.max(rateLimitedMs, (err.retryAfterSeconds || 60) * 1000)
+          console.error(`teller/sync: rate limited by Teller on enrollment ${enrollment.id}`)
+        } else {
+          console.error(`teller/sync: enrollment ${enrollment.id} failed:`, err.message)
+        }
+      }
     }
 
-    res.status(200).json({ synced: totalSynced, mock: isMockMode() })
+    if (rateLimitedMs > 0) {
+      return res.status(429).json({
+        error: 'Teller rate limit reached — please wait before syncing again.',
+        rateLimited: true,
+        retryAfterMs: rateLimitedMs,
+        synced: totalSynced,
+      })
+    }
+
+    res.status(200).json({ synced: totalSynced, skipped: anySkipped, mock: isMockMode() })
   } catch (err) {
     console.error('teller/sync error:', err.message)
     res.status(500).json({ error: err.message })

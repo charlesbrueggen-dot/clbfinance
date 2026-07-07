@@ -48,13 +48,31 @@ export default async function handler(req, res) {
     if (enrollErr) throw enrollErr
 
     // Initial import: accounts + transactions + balances in one go
-    const result = await syncEnrollment(supabase, enrollment)
+    let result
+    try {
+      result = await syncEnrollment(supabase, enrollment)
+    } catch (err) {
+      if (err.rateLimited) {
+        // The enrollment itself is saved above, so the user isn't stuck —
+        // only the first data pull is delayed. Ack with 429 so the frontend
+        // extends its own cooldown instead of retrying immediately.
+        console.error('teller/enroll: rate limited by Teller during initial sync:', err.message)
+        return res.status(429).json({
+          error: 'Bank connected, but Teller rate-limited the initial sync — try Sync in a minute.',
+          rateLimited: true,
+          retryAfterMs: (err.retryAfterSeconds || 60) * 1000,
+          enrollmentId: enrollment.id,
+        })
+      }
+      throw err
+    }
 
     res.status(200).json({
       success: true,
       enrollmentId: enrollment.id,
       accountCount: result.accounts,
       synced: result.synced,
+      skipped: result.skipped,
       mock: isMockMode(),
     })
   } catch (err) {

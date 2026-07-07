@@ -1,8 +1,18 @@
 // api/teller/_sync-core.js
-// Shared sync logic used by both sync-transactions.js (user-triggered) and
-// webhook.js (Teller-triggered). Pulls accounts + transactions for one
-// enrollment through _teller-client.js and mirrors them into Supabase.
+// Shared sync logic used by enroll.js (initial import), sync-transactions.js
+// (user-triggered "Sync All"), and webhook.js (Teller-triggered). Pulls
+// accounts + transactions for one enrollment through _teller-client.js and
+// mirrors them into Supabase.
 import { listAccounts, listTransactions } from './_teller-client.js'
+
+// Minimum time between real Teller calls for the SAME enrollment, enforced
+// here so it applies uniformly no matter which of the three callers above
+// triggers a sync — rapid button clicks, multiple browser tabs, duplicate
+// webhook deliveries, or a user hitting the API directly all hit this same
+// gate. This is a rate-limit safeguard only; Teller's Transactions product is
+// a flat $0.30/enrollment/month regardless of call volume, so this doesn't
+// change cost — it exists purely to avoid HTTP 429s.
+export const SYNC_COOLDOWN_MS = 30_000
 
 // ── Teller → app account type mapping ────────────────────────────────────────
 export function mapTellerAccountType(type, subtype) {
@@ -56,14 +66,39 @@ function classifyTransaction(txn, kind) {
 }
 
 // ── Sync one enrollment ───────────────────────────────────────────────────────
-// 1. Upserts the enrollment's accounts
-// 2. Upserts transactions (keyed on teller_txn_id)
-// 3. Prunes local pending txns that Teller no longer returns (pending txns
+// 1. Skips entirely (no Teller calls at all) if synced too recently — see
+//    SYNC_COOLDOWN_MS above.
+// 2. Upserts the enrollment's accounts
+// 3. Upserts transactions (keyed on teller_txn_id)
+// 4. Prunes local pending txns that Teller no longer returns (pending txns
 //    get a NEW id when they post, so the stale pending copy must be removed)
-// 4. Sets each account's balance from the newest POSTED transaction's
+// 5. Sets each account's balance from the newest POSTED transaction's
 //    running_balance — deliberately NOT Teller's /balances endpoint, which
 //    costs $0.10/call. Guaranteed-live balance isn't needed here.
 export async function syncEnrollment(supabase, enrollment) {
+  if (enrollment.last_synced_at) {
+    const msSinceSync = Date.now() - new Date(enrollment.last_synced_at).getTime()
+    if (msSinceSync < SYNC_COOLDOWN_MS) {
+      const cooldownRemainingMs = SYNC_COOLDOWN_MS - msSinceSync
+      console.log(`[teller:sync] enrollment ${enrollment.id}: skipped, ${Math.ceil(cooldownRemainingMs / 1000)}s of cooldown remaining`)
+      return { synced: 0, accounts: 0, skipped: true, cooldownRemainingMs }
+    }
+  }
+
+  // Claim this sync BEFORE calling Teller (not after) so a second request
+  // arriving moments later — a double-click, a second tab, an overlapping
+  // webhook delivery — sees a fresh last_synced_at and skips instead of
+  // racing us into a duplicate round of Teller calls. This narrows the race
+  // window to the gap between two near-simultaneous requests' cooldown
+  // checks; it isn't a true distributed lock, but that's an acceptable
+  // trade-off at this app's scale.
+  await supabase
+    .from('teller_enrollments')
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq('id', enrollment.id)
+
+  console.log(`[teller:sync] enrollment ${enrollment.id} (${enrollment.institution_name || 'unknown bank'}): starting sync`)
+
   const tellerAccounts = await listAccounts(enrollment.access_token)
   let synced = 0
 
@@ -147,10 +182,6 @@ export async function syncEnrollment(supabase, enrollment) {
     }
   }
 
-  await supabase
-    .from('teller_enrollments')
-    .update({ last_synced_at: new Date().toISOString() })
-    .eq('id', enrollment.id)
-
-  return { synced, accounts: tellerAccounts.length }
+  console.log(`[teller:sync] enrollment ${enrollment.id}: synced ${synced} transactions across ${tellerAccounts.length} accounts`)
+  return { synced, accounts: tellerAccounts.length, skipped: false }
 }
