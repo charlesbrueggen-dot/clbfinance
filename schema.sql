@@ -107,3 +107,42 @@ create table if not exists loans (
 );
 alter table loans enable row level security;
 create policy "Users can manage own loans" on loans for all using (auth.uid() = user_id);
+
+-- =============================================
+-- TELLER BANK SYNC (migration: replace_plaid_with_teller, applied 2026-07-06)
+-- Replaces the old Plaid integration. Already applied to the live database;
+-- kept here so the schema file stays a complete reference.
+-- =============================================
+
+-- One row per Teller Connect enrollment (bank login). access_token is used by
+-- the backend (service role) to call the Teller API on the user's behalf.
+create table if not exists teller_enrollments (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  enrollment_id text not null,              -- Teller enrollment id (enr_...)
+  access_token text not null,               -- Teller access token (token_...)
+  institution_id text,
+  institution_name text,
+  status text default 'connected' check (status in ('connected', 'disconnected')),
+  last_synced_at timestamptz,
+  created_at timestamptz default now(),
+  unique (user_id, enrollment_id)
+);
+alter table teller_enrollments enable row level security;
+create policy "Users can view own teller enrollments"
+  on teller_enrollments for select using (auth.uid() = user_id);
+
+-- Teller link columns on accounts
+alter table accounts add column if not exists teller_account_id text;
+alter table accounts add column if not exists teller_enrollment_id uuid references teller_enrollments(id) on delete set null;
+alter table accounts add constraint accounts_user_teller_account_unique unique (user_id, teller_account_id);
+
+-- Teller columns on account_transactions. running_balance is Teller's balance
+-- immediately after the transaction posted — account balances are derived from
+-- the newest posted transaction instead of Teller's paid Balance endpoint.
+alter table account_transactions add column if not exists teller_txn_id text unique;
+alter table account_transactions add column if not exists status text default 'posted' check (status in ('posted', 'pending'));
+alter table account_transactions add column if not exists running_balance numeric(12,2);
+alter table account_transactions drop constraint if exists account_transactions_source_type_check;
+alter table account_transactions add constraint account_transactions_source_type_check
+  check (source_type = any (array['manual'::text, 'csv_import'::text, 'teller'::text]));

@@ -1,11 +1,11 @@
 // src/pages/Accounts.jsx
-// Full Plaid integration — connects real banks, auto-syncs transactions
-// Manual accounts still supported alongside Plaid-connected ones
+// Full Teller integration — connects real banks, auto-syncs transactions
+// Manual accounts still supported alongside Teller-connected ones
 import { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
-import { usePlaid } from '../hooks/usePlaid'
+import { useTeller } from '../hooks/useTeller'
 
 const fmt   = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
@@ -115,9 +115,9 @@ export default function Accounts() {
   const { user } = useAuth()
   const { transactions, accounts, loading, reload, addTransaction } = useTransactions()
   const {
-    connectedItems, syncing, connecting, syncResult, error: plaidError,
-    connectBank, syncTransactions, disconnectBank,
-  } = usePlaid(user?.id)
+    connectedItems, syncing, connecting, syncResult, error: tellerError,
+    mockMode, connectBank, syncTransactions, disconnectBank,
+  } = useTeller(user?.id)
 
   const [showAccModal, setShowAccModal] = useState(false)
   const [editAcc,      setEditAcc]      = useState(null)
@@ -285,8 +285,8 @@ export default function Accounts() {
   // ── Derived data ──────────────────────────────────────────────────────────
   const totalAssets = accounts.filter(a => a.type !== 'Credit Card').reduce((s, a) => s + a.balance, 0)
   const totalDebt   = accounts.filter(a => a.type === 'Credit Card').reduce((s, a) => s + a.balance, 0)
-  const plaidAccounts  = accounts.filter(a => a.plaid_account_id)
-  const manualAccounts = accounts.filter(a => !a.plaid_account_id)
+  const tellerAccounts = accounts.filter(a => a.teller_account_id)
+  const manualAccounts = accounts.filter(a => !a.teller_account_id)
 
   const visibleTxns = useMemo(() => {
     return transactions.filter(t => {
@@ -375,13 +375,20 @@ export default function Accounts() {
               </div>
               <div>
                 <p className="font-black text-primary">Connect Real Bank</p>
-                <p className="text-muted text-xs">12,000+ institutions · bank-level security</p>
+                <p className="text-muted text-xs">Powered by Teller · bank-level security</p>
               </div>
             </div>
 
             <p className="text-muted text-sm mb-4">
               Connect Chase, Bank of America, Wells Fargo, and more. Your transactions will sync automatically and be categorized intelligently.
             </p>
+
+            {mockMode && (
+              <div className="mb-4 p-3 rounded-xl text-xs font-medium"
+                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: '#3b82f6' }}>
+                🧪 Demo mode — Teller credentials not configured yet, so connecting adds a sample bank with realistic test data.
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               {['Chase', 'Bank of America', 'Wells Fargo', 'Capital One', 'Citi', 'US Bank'].map(bank => (
@@ -392,14 +399,14 @@ export default function Accounts() {
               ))}
               <div className="flex items-center gap-2 text-xs text-muted col-span-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"></span>
-                + 12,000 more institutions
+                + thousands more institutions
               </div>
             </div>
 
-            {plaidError && (
+            {tellerError && (
               <div className="mb-4 p-3 rounded-xl text-xs font-medium"
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
-                ⚠ {plaidError}
+                ⚠ {tellerError}
               </div>
             )}
 
@@ -430,7 +437,6 @@ export default function Accounts() {
                 <div className="mb-3 p-3 rounded-xl text-xs font-medium"
                   style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
                   ✓ Synced {syncResult.synced} transaction{syncResult.synced !== 1 ? 's' : ''}
-                  {syncResult.removed > 0 ? `, removed ${syncResult.removed}` : ''}
                 </div>
               )}
 
@@ -453,10 +459,17 @@ export default function Accounts() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                        ✓ Connected
-                      </span>
+                      {item.status === 'disconnected' ? (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium"
+                          style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                          ⚠ Reconnect needed
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 rounded-full font-medium"
+                          style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                          ✓ Connected
+                        </span>
+                      )}
                       <button
                         onClick={() => disconnectBank(item.id)}
                         className="text-xs text-muted hover:text-red-400 transition-colors px-2 py-1 rounded"
@@ -470,12 +483,12 @@ export default function Accounts() {
             </div>
           )}
 
-          {/* Plaid accounts breakdown */}
-          {plaidAccounts.length > 0 && (
+          {/* Teller accounts breakdown */}
+          {tellerAccounts.length > 0 && (
             <div className="card p-5">
-              <p className="font-bold text-primary text-sm mb-3">Synced Accounts ({plaidAccounts.length})</p>
+              <p className="font-bold text-primary text-sm mb-3">Synced Accounts ({tellerAccounts.length})</p>
               <div className="space-y-2">
-                {plaidAccounts.map(acc => (
+                {tellerAccounts.map(acc => (
                   <div key={acc.id} className="flex justify-between items-center py-2 border-b last:border-b-0"
                     style={{ borderColor: 'var(--card-border)' }}>
                     <div className="flex items-center gap-2">
@@ -512,8 +525,8 @@ export default function Accounts() {
             <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-secondary flex-1 justify-center">+ Log Transaction</button>
           </div>
 
-          {/* Plaid-synced accounts */}
-          {plaidAccounts.length > 0 && (
+          {/* Teller-synced accounts */}
+          {tellerAccounts.length > 0 && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-muted uppercase tracking-wider">🔗 Bank Synced</p>
@@ -523,7 +536,7 @@ export default function Accounts() {
                 </button>
               </div>
               <div className="space-y-2">
-                {plaidAccounts.map(acc => (
+                {tellerAccounts.map(acc => (
                   <div key={acc.id}
                     className="card p-4 flex items-center justify-between cursor-pointer"
                     onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
@@ -556,7 +569,7 @@ export default function Accounts() {
           {/* Manual accounts */}
           {manualAccounts.length > 0 && (
             <div className="mb-4">
-              {plaidAccounts.length > 0 && (
+              {tellerAccounts.length > 0 && (
                 <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">✏ Manual</p>
               )}
               <div className="space-y-2">
@@ -657,13 +670,13 @@ export default function Accounts() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-sm text-primary truncate">{txn.description}</p>
-                            {txn.source_type === 'plaid' && (
+                            {txn.source_type === 'teller' && (
                               <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
                                 style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
                                 🔗 Synced
                               </span>
                             )}
-                            {txn.pending && (
+                            {txn.status === 'pending' && (
                               <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
                                 style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
                                 pending

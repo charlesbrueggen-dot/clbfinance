@@ -22,7 +22,7 @@ const frequencyIcon  = f => FREQUENCY_OPTIONS.find(o => o.value === f)?.icon  ||
 export default function Income() {
   const { user } = useAuth()
   const [income, setIncome]         = useState([])   // manual income table
-  const [plaidIncome, setPlaidIncome] = useState([]) // from account_transactions
+  const [bankIncome, setBankIncome] = useState([]) // from account_transactions (Teller-synced + manual)
   const [loading, setLoading]       = useState(true)
   const [showModal, setShowModal]   = useState(false)
   const [editItem, setEditItem]     = useState(null)
@@ -38,12 +38,12 @@ export default function Income() {
   }, [])
 
   const load = async () => {
-    const [{ data: manualData }, { data: plaidData }] = await Promise.all([
+    const [{ data: manualData }, { data: bankData }] = await Promise.all([
       supabase.from('income').select('*').eq('user_id', user.id).order('date', { ascending: false }),
       supabase.from('account_transactions').select('*').eq('user_id', user.id).eq('kind', 'income').order('date', { ascending: false }),
     ])
     setIncome(manualData || [])
-    setPlaidIncome(plaidData || [])
+    setBankIncome(bankData || [])
     setLoading(false)
   }
   useEffect(() => { load() }, [user.id])
@@ -92,20 +92,20 @@ export default function Income() {
 
   // Combine both sources for totals and pie chart
   const manualTotal = income.reduce((s, i) => s + Number(i.amount), 0)
-  const plaidTotal  = plaidIncome.reduce((s, i) => s + Number(i.amount), 0)
-  const totalIncome = manualTotal + plaidTotal
+  const bankTotal   = bankIncome.reduce((s, i) => s + Number(i.amount), 0)
+  const totalIncome = manualTotal + bankTotal
 
   const recurring = income.filter(i => i.frequency && i.frequency !== 'one-time')
   const oneTime   = income.filter(i => !i.frequency || i.frequency === 'one-time')
 
-  // Pie: merge manual sources + plaid sources
+  // Pie: merge manual sources + bank-synced sources
   const normalizeSource = source => {
     if (!source) return 'Other'
     return source.trim().toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
   }
   const srcMap = {}
   income.forEach(i => { const key = normalizeSource(i.source); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
-  plaidIncome.forEach(i => { const key = normalizeSource(i.source || i.description || 'Bank Income'); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
+  bankIncome.forEach(i => { const key = normalizeSource(i.source || i.description || 'Bank Income'); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
   const pieData   = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
@@ -135,7 +135,7 @@ export default function Income() {
         <p className="text-4xl font-black text-primary">{fmt(totalIncome)}</p>
         <p className="text-muted text-sm mt-2">
           {recurring.length} recurring · {oneTime.length} one-time
-          {plaidIncome.length > 0 && <span> · {plaidIncome.length} from bank</span>}
+          {bankIncome.length > 0 && <span> · {bankIncome.length} from bank</span>}
         </p>
       </div>
 
@@ -173,12 +173,12 @@ export default function Income() {
         )}
       </div>
 
-      {/* Plaid / Bank income */}
-      {plaidIncome.length > 0 && (
+      {/* Bank-synced income */}
+      {bankIncome.length > 0 && (
         <div className="mb-4">
           <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">🏦 Bank Income</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {plaidIncome.map(item => (
+            {bankIncome.map(item => (
               <div key={item.id} className="card p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -223,7 +223,7 @@ export default function Income() {
         </div>
       )}
 
-      {income.length === 0 && plaidIncome.length === 0 && (
+      {income.length === 0 && bankIncome.length === 0 && (
         <div className="text-center py-12 text-muted">No income entries yet. Add your first above!</div>
       )}
 
