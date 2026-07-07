@@ -40,12 +40,12 @@ function ProtectedRoute({ children }) {
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [dark, setDark] = useState(() => localStorage.getItem('clb-dark') === 'true')
+  const [dark, setDark] = useState(() => localStorage.getItem('stride-dark') === 'true')
 
   useEffect(() => {
     if (dark) document.documentElement.classList.add('dark')
     else document.documentElement.classList.remove('dark')
-    localStorage.setItem('clb-dark', dark)
+    localStorage.setItem('stride-dark', dark)
   }, [dark])
 
   useEffect(() => {

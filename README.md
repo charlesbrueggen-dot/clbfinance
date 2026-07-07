@@ -1,4 +1,4 @@
-# CLB Finance
+# Stride Finance
 
 Your personal financial dashboard — built with React, Supabase, and Vite.
 

@@ -1,5 +1,5 @@
 -- =============================================
--- CLB Finance - Supabase Database Schema
+-- Stride Finance - Supabase Database Schema
 -- Run this entire file in your Supabase SQL Editor
 -- =============================================
 
