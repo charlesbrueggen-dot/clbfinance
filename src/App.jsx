@@ -9,6 +9,7 @@ import Income from './pages/Income'
 import Expenses from './pages/Expenses'
 import NetWorth from './pages/NetWorth'
 import Accounts from './pages/Accounts'
+import UnderConstruction from './pages/UnderConstruction'
 import Investments from './pages/Investments'
 import Import from './pages/Import'
 import Analytics from './pages/Analytics'
@@ -80,7 +81,9 @@ export default function App() {
             <Route path="income" element={<Income />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="networth" element={<NetWorth />} />
-            <Route path="accounts" element={<Accounts />} />
+            {/* Gated behind UnderConstruction — see src/pages/UnderConstruction.jsx
+                for how to remove this gate later. Accounts itself is untouched. */}
+            <Route path="accounts" element={<UnderConstruction><Accounts /></UnderConstruction>} />
             <Route path="investments" element={<Investments />} />
             <Route path="import" element={<Import />} />
             <Route path="analytics" element={<Analytics />} />
