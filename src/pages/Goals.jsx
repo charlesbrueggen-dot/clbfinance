@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react'
+import {
+  Shield, Plane, Car, Home, GraduationCap, PiggyBank, TrendingUp, Target,
+  Trash2, Clock, DollarSign, X,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
@@ -7,14 +11,14 @@ const CATEGORIES = ['Emergency Fund', 'Vacation', 'Car', 'Home', 'Education', 'R
 const PRIORITIES = ['low', 'medium', 'high']
 const PRIO_COLORS = { low: '#10b981', medium: '#f59e0b', high: '#ef4444' }
 const CATEGORY_ICONS = {
-  'Emergency Fund': '🛡️',
-  'Vacation': '✈️',
-  'Car': '🚗',
-  'Home': '🏠',
-  'Education': '🎓',
-  'Retirement': '💰',
-  'Investment': '📈',
-  'Other': '🎯',
+  'Emergency Fund': Shield,
+  'Vacation': Plane,
+  'Car': Car,
+  'Home': Home,
+  'Education': GraduationCap,
+  'Retirement': PiggyBank,
+  'Investment': TrendingUp,
+  'Other': Target,
 }
 
 export default function Goals() {
@@ -77,7 +81,7 @@ export default function Goals() {
 
       {goals.length === 0 ? (
         <div className="card p-12 text-center">
-          <div className="text-4xl mb-3">🎯</div>
+          <div className="flex justify-center mb-3 text-muted"><Target size={36} /></div>
           <p className="font-semibold text-primary">No goals yet</p>
           <p className="text-muted text-sm mt-1">Set your first financial goal to start tracking progress</p>
           <button onClick={openAdd} className="btn-primary mt-4">+ New Goal</button>
@@ -87,15 +91,15 @@ export default function Goals() {
           {goals.map(goal => {
             const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
             const dl = daysLeft(goal.target_date)
-            const icon = CATEGORY_ICONS[goal.category] || CATEGORY_ICONS['Other']
+            const CatIcon = CATEGORY_ICONS[goal.category] || CATEGORY_ICONS['Other']
 
             return (
               <div key={goal.id} className="card p-5">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                      {icon}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-primary" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+                      <CatIcon size={22} />
                     </div>
                     <div>
                       <p className="font-bold text-primary">{goal.title}</p>
@@ -105,7 +109,7 @@ export default function Goals() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleDelete(goal.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                    <button onClick={() => handleDelete(goal.id)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
                 </div>
 
@@ -125,7 +129,7 @@ export default function Goals() {
                 {/* Days remaining */}
                 {dl !== null && (
                   <div className="flex items-center gap-1.5 text-muted text-xs mb-3">
-                    <span>🕐</span>
+                    <Clock size={13} />
                     <span>{dl < 0 ? `${Math.abs(dl)} days overdue` : `${dl} days remaining`}</span>
                   </div>
                 )}
@@ -138,11 +142,11 @@ export default function Goals() {
                   <div className="flex gap-2">
                     <input className="input-field flex-1" type="number" step="0.01" min="0" placeholder="Amount to add" value={progressAmt} onChange={e => setProgressAmt(e.target.value)} autoFocus />
                     <button onClick={() => handleAddProgress(goal.id)} className="btn-primary px-3 text-sm">Add</button>
-                    <button onClick={() => { setShowProgress(null); setProgressAmt('') }} className="btn-secondary px-3 text-sm">✕</button>
+                    <button onClick={() => { setShowProgress(null); setProgressAmt('') }} className="btn-secondary px-3 text-sm"><X size={16} /></button>
                   </div>
                 ) : (
                   <button onClick={() => setShowProgress(goal.id)} className="w-full py-2.5 rounded-xl border text-sm font-semibold text-primary flex items-center justify-center gap-2 transition-colors" style={{ borderColor: 'var(--card-border)', background: 'var(--input-bg)' }}>
-                    <span>$</span> Add Progress
+                    <DollarSign size={16} /> Add Progress
                   </button>
                 )}
               </div>
@@ -156,8 +160,8 @@ export default function Goals() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2 accent-text font-semibold"><span>◎</span><span>Create New Goal</span></div>
-              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <div className="flex items-center gap-2 accent-text font-semibold"><Target size={18} /><span>Create New Goal</span></div>
+              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSave}>
               <div className="mb-4">
@@ -176,7 +180,7 @@ export default function Goals() {
                 <div>
                   <label className="label">Category</label>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{CATEGORY_ICONS[form.category] || CATEGORY_ICONS['Other']}</span>
+                    {(() => { const FormCatIcon = CATEGORY_ICONS[form.category] || CATEGORY_ICONS['Other']; return <FormCatIcon size={24} className="text-primary flex-shrink-0" /> })()}
                     <select className="input-field flex-1" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                       {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                     </select>

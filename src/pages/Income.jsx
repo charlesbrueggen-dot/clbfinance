@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart as PieChartIcon, Landmark, Repeat, DollarSign, Banknote, X, Pencil, Trash2 } from 'lucide-react'
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const PIE_COLORS_LIGHT = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#2563eb','#1d4ed8','#1e40af','#dbeafe','#93c5fd','#60a5fa']
@@ -129,7 +130,7 @@ export default function Income() {
       <div className="card p-6 mb-6">
         <div className="w-11 h-11 rounded-full flex items-center justify-center mb-4"
           style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-          <span className="text-primary text-lg font-bold">$</span>
+          <DollarSign className="text-primary" size={22} />
         </div>
         <p className="text-muted text-sm mb-1">Total Income</p>
         <p className="text-4xl font-black text-primary">{fmt(totalIncome)}</p>
@@ -156,7 +157,7 @@ export default function Income() {
       {/* Pie */}
       <div className="card p-5 mb-6">
         <div className="flex items-center gap-2 mb-4 font-bold text-primary">
-          <span>◑</span><span>Income Sources Breakdown</span>
+          <PieChartIcon size={16} /><span>Income Sources Breakdown</span>
         </div>
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
@@ -176,7 +177,7 @@ export default function Income() {
       {/* Bank-synced income */}
       {bankIncome.length > 0 && (
         <div className="mb-4">
-          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">🏦 Bank Income</h2>
+          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider flex items-center gap-1.5"><Landmark size={14} /> Bank Income</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {bankIncome.map(item => (
               <div key={item.id} className="card p-4">
@@ -184,7 +185,7 @@ export default function Income() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold"
                       style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981' }}>
-                      🏦
+                      <Landmark size={18} />
                     </div>
                     <div>
                       <p className="font-bold text-primary">{item.source || item.description}</p>
@@ -206,7 +207,7 @@ export default function Income() {
       {/* Recurring manual */}
       {recurring.length > 0 && (
         <div className="mb-4">
-          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">🔁 Recurring Income</h2>
+          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider flex items-center gap-1.5"><Repeat size={14} /> Recurring Income</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {recurring.map(item => <IncomeCard key={item.id} item={item} onEdit={openEdit} onDelete={handleDelete} />)}
           </div>
@@ -216,7 +217,7 @@ export default function Income() {
       {/* One-time manual */}
       {oneTime.length > 0 && (
         <div className="mb-4">
-          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider">💵 One-Time Income</h2>
+          <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider flex items-center gap-1.5"><Banknote size={14} /> One-Time Income</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {oneTime.map(item => <IncomeCard key={item.id} item={item} onEdit={openEdit} onDelete={handleDelete} />)}
           </div>
@@ -235,7 +236,7 @@ export default function Income() {
               <div className="flex items-center gap-2 font-bold text-primary">
                 <span>$</span><span>{editItem ? 'Edit Income' : 'Add Income'}</span>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSave}>
 
@@ -329,7 +330,7 @@ function IncomeCard({ item, onEdit, onDelete }) {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-primary"
             style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-            {isRecurring ? '🔁' : '$'}
+            {isRecurring ? <Repeat size={18} /> : <DollarSign size={18} />}
           </div>
           <div>
             <p className="font-bold text-primary">{item.source}</p>
@@ -342,8 +343,8 @@ function IncomeCard({ item, onEdit, onDelete }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => onEdit(item)} className="text-muted hover:text-primary text-sm transition-colors">✎</button>
-          <button onClick={() => onDelete(item.id)} className="text-sm transition-colors" style={{ color: '#ef4444' }}>🗑</button>
+          <button onClick={() => onEdit(item)} className="text-muted hover:text-primary transition-colors"><Pencil size={14} /></button>
+          <button onClick={() => onDelete(item.id)} className="transition-colors" style={{ color: '#ef4444' }}><Trash2 size={14} /></button>
         </div>
       </div>
       <p className="text-2xl font-black text-primary">{fmt(item.amount)}</p>

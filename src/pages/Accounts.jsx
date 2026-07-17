@@ -2,6 +2,12 @@
 // Full Teller integration — connects real banks, auto-syncs transactions
 // Manual accounts still supported alongside Teller-connected ones
 import { useState, useMemo, useEffect } from 'react'
+import {
+  Landmark, PiggyBank, CreditCard, TrendingUp, Banknote,
+  ArrowUpRight, ArrowDownRight, ArrowLeftRight, Sparkle, Zap, Link2,
+  FlaskConical, AlertTriangle, RefreshCw, Check, Pencil, Trash2, X,
+  ClipboardList, Hourglass,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
@@ -25,12 +31,18 @@ const CATEGORIES = {
 const INCOME_SOURCES = ['Salary', 'Freelance', 'Investment Return', 'Refund', 'Cashback', 'Transfer In', 'Other']
 
 const TYPE_ICONS = {
-  Checking: '🏦', Savings: '💰', 'Credit Card': '💳',
-  Investment: '📈', Cash: '💵', Other: '🏛',
+  Checking: Landmark, Savings: PiggyBank, 'Credit Card': CreditCard,
+  Investment: TrendingUp, Cash: Banknote, Other: Landmark,
 }
 
 const KIND_COLOR = { expense: '#ef4444', income: '#10b981', transfer: '#f59e0b' }
-const KIND_ICON  = { expense: '↘', income: '↗', transfer: '⇄' }
+const KIND_ICON  = { expense: ArrowDownRight, income: ArrowUpRight, transfer: ArrowLeftRight }
+
+// Renders the icon for an account type (falls back to Landmark for unknown types)
+function TypeIcon({ type, size = 20 }) {
+  const Icon = TYPE_ICONS[type] || Landmark
+  return <Icon size={size} />
+}
 
 const blankAccount = () => ({
   name: '', type: 'Checking', balance: '',
@@ -46,7 +58,7 @@ const blankTxn = () => ({
 })
 
 
-function ProGate({ feature, icon, description, userId }) {
+function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
@@ -62,15 +74,15 @@ function ProGate({ feature, icon, description, userId }) {
   }
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
         style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-        ✦ Pro Feature
+        <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
       <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
       <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
       </button>
     </div>
   )
@@ -91,7 +103,7 @@ function CardVisual({ account }) {
           <p className="text-white text-xs opacity-70 font-medium">{account.institution || 'Bank'}</p>
           <p className="text-white text-sm font-bold mt-0.5">{account.name}</p>
         </div>
-        <span className="text-white text-xl opacity-80">{TYPE_ICONS[account.type]}</span>
+        <span className="text-white opacity-80"><TypeIcon type={account.type} size={22} /></span>
       </div>
       {isCard && account.card_last4 && (
         <p className="text-white text-sm tracking-widest opacity-80 mb-3">
@@ -329,15 +341,15 @@ export default function Accounts() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-5">
-        {[['accounts', '🏦 Accounts'], ['connect', '🔗 Connect Bank']].map(([t, label]) => (
+        {[['accounts', Landmark, 'Accounts'], ['connect', Link2, 'Connect Bank']].map(([t, Icon, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className="px-4 py-2 rounded-full text-sm font-bold transition-all"
+            className="px-4 py-2 rounded-full text-sm font-bold transition-all inline-flex items-center gap-1.5"
             style={{
               background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
               color:      tab === t ? 'var(--bg-primary)'   : 'var(--text-muted)',
               border:     '1px solid var(--card-border)',
             }}>
-            {label}
+            <Icon size={15} /> {label}
             {t === 'connect' && connectedItems.length > 0 && (
               <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-bold"
                 style={{ background: '#10b981', color: '#000' }}>
@@ -358,7 +370,7 @@ export default function Accounts() {
       {tab === 'connect' && !isPro && (
         <ProGate
           feature="Automatic Bank Sync"
-          icon="🔗"
+          Icon={Link2}
           description="Connect your real bank accounts automatically and let transactions sync and categorize themselves — no manual entry required."
           userId={user.id}
         />
@@ -369,9 +381,9 @@ export default function Accounts() {
           {/* Bank connect card */}
           <div className="card p-6 mb-5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                🏦
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+                <Landmark size={24} />
               </div>
               <div>
                 <p className="font-black text-primary">Connect Real Bank</p>
@@ -384,9 +396,9 @@ export default function Accounts() {
             </p>
 
             {mockMode && (
-              <div className="mb-4 p-3 rounded-xl text-xs font-medium"
+              <div className="mb-4 p-3 rounded-xl text-xs font-medium flex items-start gap-1.5"
                 style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: '#3b82f6' }}>
-                🧪 Demo mode — Teller credentials not configured yet, so connecting adds a sample bank with realistic test data.
+                <FlaskConical size={14} className="flex-shrink-0 mt-0.5" /> Demo mode — Teller credentials not configured yet, so connecting adds a sample bank with realistic test data.
               </div>
             )}
 
@@ -404,9 +416,9 @@ export default function Accounts() {
             </div>
 
             {tellerError && (
-              <div className="mb-4 p-3 rounded-xl text-xs font-medium"
+              <div className="mb-4 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5"
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
-                ⚠ {tellerError}
+                <AlertTriangle size={14} className="flex-shrink-0" /> {tellerError}
               </div>
             )}
 
@@ -415,7 +427,7 @@ export default function Accounts() {
               disabled={connecting}
               className="btn-primary w-full justify-center"
             >
-              {connecting ? '⟳ Opening bank connection…' : '+ Connect a Bank Account'}
+              {connecting ? <><RefreshCw size={16} className="animate-spin" /> Opening bank connection…</> : '+ Connect a Bank Account'}
             </button>
           </div>
 
@@ -430,14 +442,14 @@ export default function Accounts() {
                   className="btn-secondary text-xs px-3 py-1.5"
                   title={!canSync && !syncing ? `Rate-limit safeguard — available again in ${cooldownSecondsLeft}s` : undefined}
                 >
-                  {syncing ? '⟳ Syncing…' : !canSync ? `⏳ Wait ${cooldownSecondsLeft}s` : '↻ Sync All'}
+                  {syncing ? <><RefreshCw size={13} className="animate-spin" /> Syncing…</> : !canSync ? <><Hourglass size={13} /> Wait {cooldownSecondsLeft}s</> : <><RefreshCw size={13} /> Sync All</>}
                 </button>
               </div>
 
               {syncResult && (
-                <div className="mb-3 p-3 rounded-xl text-xs font-medium"
+                <div className="mb-3 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5"
                   style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
-                  ✓ Synced {syncResult.synced} transaction{syncResult.synced !== 1 ? 's' : ''}
+                  <Check size={14} /> Synced {syncResult.synced} transaction{syncResult.synced !== 1 ? 's' : ''}
                 </div>
               )}
 
@@ -446,9 +458,9 @@ export default function Accounts() {
                   <div key={item.id} className="flex items-center justify-between p-3 rounded-xl"
                     style={{ border: '1px solid var(--card-border)' }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-                        style={{ background: 'rgba(16,185,129,0.1)' }}>
-                        🏦
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                        style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                        <Landmark size={18} />
                       </div>
                       <div>
                         <p className="font-semibold text-primary text-sm">{item.institution_name || 'Bank'}</p>
@@ -461,14 +473,14 @@ export default function Accounts() {
                     </div>
                     <div className="flex items-center gap-2">
                       {item.status === 'disconnected' ? (
-                        <span className="text-xs px-2 py-1 rounded-full font-medium"
+                        <span className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1"
                           style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
-                          ⚠ Reconnect needed
+                          <AlertTriangle size={12} /> Reconnect needed
                         </span>
                       ) : (
-                        <span className="text-xs px-2 py-1 rounded-full font-medium"
+                        <span className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1"
                           style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                          ✓ Connected
+                          <Check size={12} /> Connected
                         </span>
                       )}
                       <button
@@ -493,7 +505,7 @@ export default function Accounts() {
                   <div key={acc.id} className="flex justify-between items-center py-2 border-b last:border-b-0"
                     style={{ borderColor: 'var(--card-border)' }}>
                     <div className="flex items-center gap-2">
-                      <span>{TYPE_ICONS[acc.type] || '🏦'}</span>
+                      <span className="text-primary"><TypeIcon type={acc.type} size={18} /></span>
                       <div>
                         <p className="text-sm font-medium text-primary">{acc.name}</p>
                         <p className="text-xs text-muted">{acc.type}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
@@ -510,7 +522,7 @@ export default function Accounts() {
 
           {connectedItems.length === 0 && (
             <div className="card p-8 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-              <p className="text-3xl mb-2">🔗</p>
+              <div className="flex justify-center mb-2 text-muted"><Link2 size={30} /></div>
               <p className="font-bold text-primary mb-1">No banks connected yet</p>
               <p className="text-muted text-sm">Connect your bank above to start syncing real transactions automatically.</p>
             </div>
@@ -530,11 +542,11 @@ export default function Accounts() {
           {tellerAccounts.length > 0 && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">🔗 Bank Synced</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1"><Link2 size={12} /> Bank Synced</p>
                 <button onClick={handleSync} disabled={syncing || !canSync}
-                  className="text-xs text-muted hover:text-primary transition-colors"
+                  className="text-xs text-muted hover:text-primary transition-colors inline-flex items-center gap-1"
                   title={!canSync && !syncing ? `Rate-limit safeguard — available again in ${cooldownSecondsLeft}s` : undefined}>
-                  {syncing ? '⟳ Syncing…' : !canSync ? `⏳ Wait ${cooldownSecondsLeft}s` : '↻ Sync Now'}
+                  {syncing ? <><RefreshCw size={12} className="animate-spin" /> Syncing…</> : !canSync ? <><Hourglass size={12} /> Wait {cooldownSecondsLeft}s</> : <><RefreshCw size={12} /> Sync Now</>}
                 </button>
               </div>
               <div className="space-y-2">
@@ -544,9 +556,9 @@ export default function Accounts() {
                     onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
                     style={{ borderColor: selectedAcc === acc.id ? '#10b981' : undefined }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary"
                         style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                        {TYPE_ICONS[acc.type] || '🏦'}
+                        <TypeIcon type={acc.type} size={20} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -572,7 +584,7 @@ export default function Accounts() {
           {manualAccounts.length > 0 && (
             <div className="mb-4">
               {tellerAccounts.length > 0 && (
-                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">✏ Manual</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2 flex items-center gap-1"><Pencil size={12} /> Manual</p>
               )}
               <div className="space-y-2">
                 {manualAccounts.map(acc => (
@@ -581,9 +593,9 @@ export default function Accounts() {
                     onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
                     style={{ borderColor: selectedAcc === acc.id ? 'var(--text-primary)' : undefined }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary"
                         style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                        {TYPE_ICONS[acc.type] || '🏦'}
+                        <TypeIcon type={acc.type} size={20} />
                       </div>
                       <div>
                         <p className="font-semibold text-primary text-sm">{acc.name}</p>
@@ -613,11 +625,11 @@ export default function Accounts() {
 
           {accounts.length === 0 && (
             <div className="card p-12 text-center mb-5" style={{ border: '2px dashed var(--card-border)' }}>
-              <p className="text-4xl mb-3">🏦</p>
+              <div className="flex justify-center mb-3 text-muted"><Landmark size={40} /></div>
               <p className="font-black text-primary text-lg mb-2">No accounts yet</p>
               <p className="text-muted text-sm mb-4">Connect your bank automatically or add accounts manually.</p>
               <div className="flex gap-3 justify-center">
-                <button onClick={() => setTab('connect')} className="btn-primary">🔗 Connect Bank</button>
+                <button onClick={() => setTab('connect')} className="btn-primary"><Link2 size={15} /> Connect Bank</button>
                 <button onClick={openAddAcc} className="btn-secondary">+ Add Manually</button>
               </div>
             </div>
@@ -653,7 +665,7 @@ export default function Accounts() {
 
             {visibleTxns.length === 0 ? (
               <div className="card p-10 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-                <p className="text-3xl mb-2">📋</p>
+                <div className="flex justify-center mb-2 text-muted"><ClipboardList size={28} /></div>
                 <p className="font-bold text-primary mb-1">No transactions yet</p>
                 <p className="text-muted text-sm mb-4">Connect a bank to auto-sync, or log one manually.</p>
                 <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-primary">+ Log Transaction</button>
@@ -665,17 +677,17 @@ export default function Accounts() {
                   return (
                     <div key={txn.id} className="card p-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0"
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
                           style={{ background: `${KIND_COLOR[txn.kind]}22`, color: KIND_COLOR[txn.kind] }}>
-                          {KIND_ICON[txn.kind]}
+                          {(() => { const KIcon = KIND_ICON[txn.kind]; return <KIcon size={16} /> })()}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-sm text-primary truncate">{txn.description}</p>
                             {txn.source_type === 'teller' && (
-                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-1"
                                 style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                                🔗 Synced
+                                <Link2 size={11} /> Synced
                               </span>
                             )}
                             {txn.status === 'pending' && (
@@ -685,9 +697,9 @@ export default function Accounts() {
                               </span>
                             )}
                             {txn.auto_categorized && (
-                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                              <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-1"
                                 style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
-                                ✦ auto
+                                <Sparkle size={11} /> auto
                               </span>
                             )}
                           </div>
@@ -705,8 +717,8 @@ export default function Accounts() {
                         <p className="font-black text-sm" style={{ color: KIND_COLOR[txn.kind] }}>
                           {txn.kind === 'expense' ? '-' : txn.kind === 'income' ? '+' : ''}{fmt(txn.amount)}
                         </p>
-                        <button onClick={() => openEditTxn(txn)} className="text-muted hover:text-primary text-sm">✎</button>
-                        <button onClick={() => handleDeleteTxn(txn.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                        <button onClick={() => openEditTxn(txn)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
+                        <button onClick={() => handleDeleteTxn(txn.id)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
                       </div>
                     </div>
                   )
@@ -723,7 +735,7 @@ export default function Accounts() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <p className="accent-text font-black text-lg">{editAcc ? 'Edit Account' : 'Add Manual Account'}</p>
-              <button onClick={() => setShowAccModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowAccModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
 
             <form onSubmit={handleSaveAcc}>
@@ -784,23 +796,26 @@ export default function Accounts() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <p className="accent-text font-black text-lg">{editTxn ? 'Edit Transaction' : 'Log Transaction'}</p>
-              <button onClick={() => setShowTxnModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowTxnModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveTxn}>
               <div className="mb-4">
                 <label className="label">Type</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {TXN_KINDS.map(k => (
-                    <button key={k} type="button" onClick={() => setTxnForm(f => ({ ...f, kind: k }))}
-                      className="py-2 rounded-xl text-sm font-bold capitalize transition-all"
-                      style={{
-                        background: txnForm.kind === k ? KIND_COLOR[k] : 'var(--input-bg)',
-                        color:      txnForm.kind === k ? '#fff' : 'var(--text-muted)',
-                        border:     '1px solid var(--card-border)',
-                      }}>
-                      {KIND_ICON[k]} {k}
-                    </button>
-                  ))}
+                  {TXN_KINDS.map(k => {
+                    const KIcon = KIND_ICON[k]
+                    return (
+                      <button key={k} type="button" onClick={() => setTxnForm(f => ({ ...f, kind: k }))}
+                        className="py-2 rounded-xl text-sm font-bold capitalize transition-all inline-flex items-center justify-center gap-1"
+                        style={{
+                          background: txnForm.kind === k ? KIND_COLOR[k] : 'var(--input-bg)',
+                          color:      txnForm.kind === k ? '#fff' : 'var(--text-muted)',
+                          border:     '1px solid var(--card-border)',
+                        }}>
+                        <KIcon size={14} /> {k}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -811,8 +826,8 @@ export default function Accounts() {
                 {autoSuggest && (
                   <div className="mt-2 flex items-center justify-between rounded-xl px-3 py-2"
                     style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <p className="text-xs" style={{ color: '#3b82f6' }}>
-                      ✦ Suggested: <strong>{autoSuggest.kind}</strong>
+                    <p className="text-xs flex items-center gap-1" style={{ color: '#3b82f6' }}>
+                      <Sparkle size={12} /> Suggested: <strong>{autoSuggest.kind}</strong>
                       {autoSuggest.category ? ` · ${autoSuggest.category} › ${autoSuggest.subcategory}` : ''}
                     </p>
                     <button type="button" onClick={applyAutoSuggest}

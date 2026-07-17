@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import {
+  Sparkle, Zap, Check, Cloud, AlertTriangle, PartyPopper, FolderOpen,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
@@ -15,7 +18,7 @@ const DATE_FORMAT_OPTIONS = [
   { value: 'MONTH_NAME', label: 'Month name (e.g. Jan 5, 2024)' },
 ]
 
-function ProGate({ feature, icon, description, userId }) {
+function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
 
   const handleUpgrade = async () => {
@@ -35,15 +38,15 @@ function ProGate({ feature, icon, description, userId }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
         style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-        ✦ Pro Feature
+        <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
       <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
       <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
       </button>
     </div>
   )
@@ -144,8 +147,8 @@ export default function Import() {
   const badgeFor = (field, currentValue) => {
     if (detected.columns[field] !== currentValue) return null
     const score = detected.confidence[field]
-    if (score >= 100) return { label: '✓ detected', color: '#10b981' }
-    if (score >= 60) return { label: '~ guessed', color: '#f59e0b' }
+    if (score >= 100) return { label: 'detected', color: '#10b981', Icon: Check }
+    if (score >= 60) return { label: '~ guessed', color: '#f59e0b', Icon: null }
     return null
   }
 
@@ -310,7 +313,7 @@ export default function Import() {
   if (!isPro) return (
     <ProGate
       feature="Import Transactions"
-      icon="📂"
+      Icon={FolderOpen}
       description="Upload CSV or Excel files from your bank and instantly import hundreds of transactions in seconds."
       userId={user.id}
     />
@@ -332,7 +335,7 @@ export default function Import() {
             onDrop={handleDrop}
             className={`block mt-4 border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${dragging ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'}`}
           >
-            <div className="text-4xl mb-3">☁️</div>
+            <div className="flex justify-center mb-3 text-muted"><Cloud size={36} /></div>
             <p className="accent-text font-semibold">{loadingFile ? 'Reading file…' : 'Upload a file'}</p>
             <p className="text-muted text-sm mt-1">CSV, XLS, XLSX up to 10MB</p>
             <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={e => handleFile(e.target.files[0])} className="hidden" />
@@ -340,7 +343,7 @@ export default function Import() {
           {fileError && (
             <div className="mt-4 p-3 rounded-xl text-sm"
               style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
-              ⚠️ {fileError}
+              <AlertTriangle size={14} className="inline mr-1" /> {fileError}
             </div>
           )}
         </div>
@@ -419,7 +422,7 @@ export default function Import() {
           {!mapping.valid && (
             <div className="mb-4 p-3 rounded-xl text-sm"
               style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
-              <p className="font-semibold mb-1">⚠️ We can't confidently parse this file:</p>
+              <p className="font-semibold mb-1 flex items-center gap-1.5"><AlertTriangle size={14} /> We can't confidently parse this file:</p>
               <ul className="list-disc list-inside space-y-0.5">
                 {mapping.errors.map((e, i) => <li key={i}>{e}</li>)}
               </ul>
@@ -429,7 +432,7 @@ export default function Import() {
           {previewError && (
             <div className="mb-4 p-3 rounded-xl text-sm"
               style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
-              ⚠️ {previewError}
+              <AlertTriangle size={14} className="inline mr-1" /> {previewError}
             </div>
           )}
 
@@ -488,13 +491,13 @@ export default function Import() {
           {importError && (
             <div className="mb-4 p-3 rounded-xl text-sm"
               style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
-              ⚠️ Import failed: {importError}
+              <AlertTriangle size={14} className="inline mr-1" /> Import failed: {importError}
             </div>
           )}
 
           <div className="flex gap-3">
             <button onClick={handleImport} disabled={importing || importableCount === 0} className="btn-primary disabled:opacity-50">
-              {importing ? 'Importing...' : `✅ Import ${importableCount} Transaction${importableCount === 1 ? '' : 's'}`}
+              {importing ? 'Importing...' : <><Check size={16} /> Import {importableCount} Transaction{importableCount === 1 ? '' : 's'}</>}
             </button>
             <button onClick={() => setStep(1)} className="btn-secondary">Back</button>
             <button onClick={reset} className="btn-secondary">Cancel</button>
@@ -504,7 +507,7 @@ export default function Import() {
 
       {step === 3 && (
         <div className="card p-12 text-center">
-          <div className="text-5xl mb-4">🎉</div>
+          <div className="flex justify-center mb-4 text-primary"><PartyPopper size={44} /></div>
           <p className="text-2xl font-bold text-primary mb-2">{doneCount} transactions imported!</p>
           <p className="text-muted text-sm mb-6">
             They've been added to your account transactions.
@@ -522,7 +525,7 @@ function ColumnSelect({ label, value, onChange, headers, badge }) {
     <div>
       <div className="flex items-center gap-2 mb-1">
         <label className="label mb-0">{label}</label>
-        {badge && <span className="text-xs font-semibold" style={{ color: badge.color }}>{badge.label}</span>}
+        {badge && <span className="text-xs font-semibold inline-flex items-center gap-0.5" style={{ color: badge.color }}>{badge.Icon && <badge.Icon size={11} />} {badge.label}</span>}
       </div>
       <select className="input-field" value={value ?? ''} onChange={e => onChange(e.target.value === '' ? null : +e.target.value)}>
         <option value="">— Select column —</option>

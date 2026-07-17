@@ -6,6 +6,10 @@
 //  All charts auto-reflect the merged data.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useMemo } from 'react'
+import {
+  Download, CreditCard, CheckCircle2, AlertTriangle, ArrowUpRight, ArrowDownRight,
+  Banknote, TrendingUp, Home, Handshake,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
@@ -177,14 +181,14 @@ export default function Analytics() {
           <h1 className="text-2xl font-black text-primary tracking-tight">Analytics</h1>
           <p className="text-muted text-sm mt-1">Full picture — manual entries + account transactions</p>
         </div>
-        <button onClick={exportCSV} className="btn-secondary text-sm flex-shrink-0">⬇ CSV</button>
+        <button onClick={exportCSV} className="btn-secondary text-sm flex-shrink-0"><Download size={15} /> CSV</button>
       </div>
 
       {/* Account txn inclusion notice */}
       {(expenseTxns.length > 0 || incomeTxns.length > 0) && (
         <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-2 text-xs font-medium"
           style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', color: '#3b82f6' }}>
-          <span>💳</span>
+          <CreditCard size={14} />
           <span>Includes {expenseTxns.length} account expense{expenseTxns.length !== 1 ? 's' : ''} and {incomeTxns.length} account income transaction{incomeTxns.length !== 1 ? 's' : ''}</span>
         </div>
       )}
@@ -232,7 +236,9 @@ export default function Analytics() {
             <div className="card p-4">
               <p className="text-muted text-xs mb-1">Savings Rate</p>
               <p className="text-2xl font-black text-primary">{savingsRate}%</p>
-              <p className="text-xs text-muted mt-0.5">{parseFloat(savingsRate) >= 20 ? '✅ Healthy' : '⚠ Below 20%'}</p>
+              <p className="text-xs text-muted mt-0.5 flex items-center gap-1">
+                {parseFloat(savingsRate) >= 20 ? <><CheckCircle2 size={12} /> Healthy</> : <><AlertTriangle size={12} /> Below 20%</>}
+              </p>
             </div>
             <div className="card p-4">
               <p className="text-muted text-xs mb-1">Avg Monthly Saved</p>
@@ -388,19 +394,19 @@ export default function Analytics() {
               <p className="text-4xl font-black" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : '#ef4444' }}>{fmt(Math.abs(netWorth))}</p>
               <p className="text-xs text-muted mt-1">{netWorth >= 0 ? 'Positive position' : 'Deficit'}</p>
             </div>
-            <span className="text-5xl opacity-30">{netWorth >= 0 ? '↗' : '↘'}</span>
+            <span className="opacity-30">{netWorth >= 0 ? <ArrowUpRight size={48} /> : <ArrowDownRight size={48} />}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
             {[
-              { label: 'Cash / Balance',   value: cashBase,              color: '#10b981', icon: '💵' },
-              { label: 'Portfolio',         value: portValue,             color: '#3b82f6', icon: '📈' },
-              { label: 'Physical Assets',   value: physicalAssets,        color: '#8b5cf6', icon: '🏠' },
-              { label: 'Net Loan Position', value: moneyLent - moneyOwed, color: moneyLent - moneyOwed >= 0 ? '#f59e0b' : '#ef4444', icon: '🤝' },
+              { label: 'Cash / Balance',   value: cashBase,              color: '#10b981', Icon: Banknote },
+              { label: 'Portfolio',         value: portValue,             color: '#3b82f6', Icon: TrendingUp },
+              { label: 'Physical Assets',   value: physicalAssets,        color: '#8b5cf6', Icon: Home },
+              { label: 'Net Loan Position', value: moneyLent - moneyOwed, color: moneyLent - moneyOwed >= 0 ? '#f59e0b' : '#ef4444', Icon: Handshake },
             ].map(item => (
               <div key={item.label} className="card p-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <span>{item.icon}</span>
+                  <item.Icon size={14} className="text-muted" />
                   <p className="text-muted text-xs">{item.label}</p>
                 </div>
                 <p className="text-lg font-black" style={{ color: item.value >= 0 ? 'var(--text-primary)' : '#ef4444' }}>
@@ -484,8 +490,8 @@ export default function Analytics() {
                   return (
                     <div key={loan.id} className="flex items-center justify-between p-3 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm" style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }}>
-                          {isLent ? '↗' : '↘'}
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isLent ? '#10b981' : '#ef4444' }}>
+                          {isLent ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
                         </div>
                         <div>
                           <p className="font-semibold text-primary text-sm">{loan.person_name}</p>

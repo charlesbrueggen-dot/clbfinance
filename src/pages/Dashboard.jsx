@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  BarChart3, RefreshCw, Plus, Sparkle, Repeat, PiggyBank, ArrowRight,
+  ArrowUpRight, ArrowDownRight, Sparkles, PieChart as PieChartIcon,
+} from 'lucide-react'
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const PIE_COLORS_LIGHT = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#2563eb','#1d4ed8','#1e40af','#dbeafe','#93c5fd','#60a5fa']
@@ -85,9 +89,9 @@ export default function Dashboard() {
 
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <Link to="/analytics" className="btn-secondary justify-center text-sm no-underline">◑ Analytics</Link>
-        <button className="btn-secondary justify-center text-sm" onClick={() => window.location.reload()}>↻ Refresh</button>
-        <Link to="/income" className="btn-primary justify-center text-sm no-underline">⊕ Add</Link>
+        <Link to="/analytics" className="btn-secondary justify-center text-sm no-underline"><BarChart3 size={16} /> Analytics</Link>
+        <button className="btn-secondary justify-center text-sm" onClick={() => window.location.reload()}><RefreshCw size={16} /> Refresh</button>
+        <Link to="/income" className="btn-primary justify-center text-sm no-underline"><Plus size={16} /> Add</Link>
       </div>
 
       {/* ── AI COACH BANNER ── */}
@@ -104,7 +108,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0"
               style={{ background: dark ? '#10b981' : 'rgba(255,255,255,0.9)', color: dark ? '#000' : '#1a5a94' }}>
-              ✦
+              <Sparkle size={18} />
             </div>
             <div>
               <p className="font-black text-sm" style={{ color: dark ? '#10b981' : '#fff' }}>Stride Coach</p>
@@ -113,7 +117,7 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <span className="text-lg" style={{ color: dark ? '#10b981' : 'rgba(255,255,255,0.8)' }}>→</span>
+          <ArrowRight size={18} style={{ color: dark ? '#10b981' : 'rgba(255,255,255,0.8)' }} />
         </div>
       </Link>
 
@@ -124,8 +128,8 @@ export default function Dashboard() {
           <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
           <p className="text-muted text-xs mt-1">{income.length} source{income.length !== 1 ? 's' : ''}</p>
           {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
-            <p className="text-xs mt-1" style={{ color: '#10b981' }}>
-              🔁 {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
+            <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
+              <Repeat size={12} /> {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
             </p>
           )}
         </div>
@@ -134,8 +138,8 @@ export default function Dashboard() {
           <p className="text-2xl font-black text-primary">{fmt(totalBalance)}</p>
           <p className="text-muted text-xs mt-1">On hand</p>
           {balance.filter(b => b.type === 'small-gain').length > 0 && (
-            <p className="text-xs mt-1" style={{ color: '#10b981' }}>
-              💰 {balance.filter(b => b.type === 'small-gain').length} small gains
+            <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
+              <PiggyBank size={12} /> {balance.filter(b => b.type === 'small-gain').length} small gains
             </p>
           )}
         </div>
@@ -144,7 +148,7 @@ export default function Dashboard() {
       {/* Income Pie */}
       <div className="card p-5 mb-4">
         <div className="flex items-center gap-2 mb-1 font-bold" style={{ color: 'var(--text-primary)' }}>
-          <span>◔</span><span>Income: {fmt(totalIncome)}</span>
+          <PieChartIcon size={16} /><span>Income: {fmt(totalIncome)}</span>
         </div>
         <p className="text-muted text-xs mb-3">{income.length} income source{income.length !== 1 ? 's' : ''}</p>
         {pieData.length > 0 ? (
@@ -204,9 +208,9 @@ export default function Dashboard() {
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-black text-primary">Budget Overview</h2>
-          <span className="text-xs font-bold px-3 py-1.5 rounded-full"
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1"
             style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: surplusColor }}>
-            {surplus >= 0 ? '↗' : '↘'} {fmt(Math.abs(surplus))} {surplus >= 0 ? 'surplus' : 'deficit'}
+            {surplus >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {fmt(Math.abs(surplus))} {surplus >= 0 ? 'surplus' : 'deficit'}
           </span>
         </div>
         {expenses.length === 0 ? (
@@ -241,7 +245,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
                     style={{ background: item.kind === 'income' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: item.kind === 'income' ? '#10b981' : '#ef4444' }}>
-                    {item.kind === 'income' ? '↗' : '↘'}
+                    {item.kind === 'income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-primary">{item.source || item.description}</p>
@@ -262,15 +266,15 @@ export default function Dashboard() {
         <h2 className="font-black text-primary mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Add Income',   icon: '↗', path: '/income' },
-            { label: 'Add Expense',  icon: '↘', path: '/expenses' },
-            { label: 'Update Balance', icon: '◎', path: '/balance' },
-            { label: 'View Reports', icon: '◑', path: '/analytics' },
+            { label: 'Add Income',   Icon: ArrowUpRight, path: '/income' },
+            { label: 'Add Expense',  Icon: ArrowDownRight, path: '/expenses' },
+            { label: 'Update Balance', Icon: Sparkles, path: '/balance' },
+            { label: 'View Reports', Icon: BarChart3, path: '/analytics' },
           ].map(a => (
             <Link key={a.path} to={a.path} className="no-underline">
               <button className="w-full py-4 rounded-xl font-bold text-sm text-primary flex flex-col items-center gap-2 transition-opacity hover:opacity-75"
                 style={{ border: '1px solid var(--card-border)', background: 'var(--input-bg)' }}>
-                <span className="text-lg">{a.icon}</span>
+                <a.Icon size={20} />
                 {a.label}
               </button>
             </Link>

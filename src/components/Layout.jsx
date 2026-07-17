@@ -1,22 +1,26 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
+import {
+  LayoutDashboard, Sparkle, ArrowUpRight, ArrowDownRight, Sparkles, DollarSign,
+  Landmark, PieChart, Download, BarChart3, Target, HandCoins, Repeat, Moon, Sun, X,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Dashboard', icon: '⊞' },
-  { path: '/coach', label: 'AI Coach', icon: '✦' },
-  { path: '/income', label: 'Income', icon: '↗' },
-  { path: '/expenses', label: 'Expenses', icon: '↘' },
-  { path: '/balance', label: 'Balance', icon: '✨' },
-  { path: '/networth', label: 'Net Worth', icon: '$' },
-  { path: '/accounts', label: 'Accounts', icon: '🏛' },
-  { path: '/investments', label: 'Investments', icon: '◔' },
-  { path: '/import', label: 'Import', icon: '↓' },
-  { path: '/analytics', label: 'Analytics', icon: '◑' },
-  { path: '/goals', label: 'Goals', icon: '◎' },
-  { path: '/loans', label: 'Loans & Debts', icon: '⊕' },
-  { path: '/subscriptions', label: 'Subscriptions', icon: '🔁' },
+  { path: '/', label: 'Dashboard', Icon: LayoutDashboard },
+  { path: '/coach', label: 'AI Coach', Icon: Sparkle },
+  { path: '/income', label: 'Income', Icon: ArrowUpRight },
+  { path: '/expenses', label: 'Expenses', Icon: ArrowDownRight },
+  { path: '/balance', label: 'Balance', Icon: Sparkles },
+  { path: '/networth', label: 'Net Worth', Icon: DollarSign },
+  { path: '/accounts', label: 'Accounts', Icon: Landmark },
+  { path: '/investments', label: 'Investments', Icon: PieChart },
+  { path: '/import', label: 'Import', Icon: Download },
+  { path: '/analytics', label: 'Analytics', Icon: BarChart3 },
+  { path: '/goals', label: 'Goals', Icon: Target },
+  { path: '/loans', label: 'Loans & Debts', Icon: HandCoins },
+  { path: '/subscriptions', label: 'Subscriptions', Icon: Repeat },
 ]
 
 export default function Layout({ dark, setDark }) {
@@ -46,7 +50,7 @@ export default function Layout({ dark, setDark }) {
                 className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-opacity hover:opacity-80"
                 style={{ background: dark ? '#10b981' : 'rgba(255,255,255,0.18)', color: dark ? '#000' : '#fff', border: '1px solid rgba(255,255,255,0.3)' }}
               >
-                ✦ Coach
+                <Sparkle size={14} /> Coach
               </button>
             </Link>
             <div className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
@@ -57,7 +61,7 @@ export default function Layout({ dark, setDark }) {
             <button onClick={() => setDark(!dark)}
               className="w-9 h-9 rounded-full flex items-center justify-center transition-colors text-primary"
               style={{ background: 'rgba(255,255,255,0.1)' }}>
-              {dark ? '☀' : '☾'}
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <button onClick={() => setMenuOpen(true)}
               className="w-9 h-9 rounded-full flex items-center justify-center transition-colors text-primary"
@@ -84,7 +88,7 @@ export default function Layout({ dark, setDark }) {
                 <img src="/logo.png" alt="Stride" className="w-10 h-10 object-contain" />
                 <span className="font-black text-white text-xl tracking-tight">Stride</span>
               </div>
-              <button onClick={() => setMenuOpen(false)} className="text-white/50 hover:text-white text-xl">✕</button>
+              <button onClick={() => setMenuOpen(false)} className="text-white/50 hover:text-white"><X size={22} /></button>
             </div>
             <nav className="flex-1 overflow-y-auto py-4 px-3">
               {NAV_ITEMS.map(item => {
@@ -103,7 +107,7 @@ export default function Layout({ dark, setDark }) {
                       fontWeight: active || isCoach ? 700 : 500,
                       border: isCoach && !active ? '1px solid rgba(255,255,255,0.15)' : '1px solid transparent',
                     }}>
-                    <span className="text-lg w-6 text-center">{item.icon}</span>
+                    <span className="w-6 flex items-center justify-center flex-shrink-0"><item.Icon size={18} /></span>
                     <span className="text-sm">{item.label}</span>
                     {isCoach && !active && (
                       <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-bold"

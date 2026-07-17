@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  PieChart as PieChartIcon, BarChart3, TrendingUp, Sparkle, Zap, RefreshCw, Check,
+  AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
+} from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
@@ -16,7 +20,7 @@ const TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'Mutual Fund']
 const SECTORS = ['Technology','Healthcare','Finance','Energy','Consumer','Real Estate','Utilities','Materials','Communication','Industrials','Other']
 
 
-function ProGate({ feature, icon, description, userId }) {
+function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
@@ -32,15 +36,15 @@ function ProGate({ feature, icon, description, userId }) {
   }
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
         style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-        ✦ Pro Feature
+        <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
       <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
       <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
       </button>
     </div>
   )
@@ -437,8 +441,8 @@ export default function Investments() {
 
   // ─── Lookup badge ─────────────────────────────────────────────────────────
   const lookupBadge = {
-    loading:   <span className="text-xs font-medium" style={{ color: '#f0a500' }}>⟳ looking…</span>,
-    found:     <span className="text-xs font-medium" style={{ color: '#10b981' }}>✓ found</span>,
+    loading:   <span className="text-xs font-medium inline-flex items-center gap-1" style={{ color: '#f0a500' }}><RefreshCw size={11} className="animate-spin" /> looking…</span>,
+    found:     <span className="text-xs font-medium inline-flex items-center gap-1" style={{ color: '#10b981' }}><Check size={11} /> found</span>,
     not_found: <span className="text-xs font-medium" style={{ color: '#ef4444' }}>? not found — enter manually</span>,
   }[lookupStatus] || null
 
@@ -520,8 +524,8 @@ export default function Investments() {
           </div>
         </div>
 
-        <div className="p-3 rounded-xl text-xs" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
-          🔄 {activeType} prices auto-refresh when you click "Refresh Prices".
+        <div className="p-3 rounded-xl text-xs flex items-center gap-1.5" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+          <RefreshCw size={13} className="flex-shrink-0" /> {activeType} prices auto-refresh when you click "Refresh Prices".
         </div>
       </>
     )
@@ -529,8 +533,8 @@ export default function Investments() {
     /* ── CRYPTO ──────────────────────────────────────────────── */
     if (activeType === 'Crypto') return (
       <>
-        <div className="p-3 rounded-xl text-xs mb-4" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>
-          ⚠ Crypto prices are <strong>not auto-refreshed</strong>. Update the current price manually.
+        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>
+          <AlertTriangle size={13} className="flex-shrink-0" /> Crypto prices are <strong>not auto-refreshed</strong>. Update the current price manually.
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -578,8 +582,8 @@ export default function Investments() {
     /* ── BOND ────────────────────────────────────────────────── */
     if (activeType === 'Bond') return (
       <>
-        <div className="p-3 rounded-xl text-xs mb-4" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa' }}>
-          🏦 Bonds are tracked at purchase price. Annual income = coupon rate × face value.
+        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa' }}>
+          <Landmark size={13} className="flex-shrink-0" /> Bonds are tracked at purchase price. Annual income = coupon rate × face value.
         </div>
 
         <div className="mb-4">
@@ -633,8 +637,8 @@ export default function Investments() {
     /* ── MUTUAL FUND ─────────────────────────────────────────── */
     if (activeType === 'Mutual Fund') return (
       <>
-        <div className="p-3 rounded-xl text-xs mb-4" style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', color: '#a78bfa' }}>
-          🏛 Mutual fund NAVs update once daily at market close. Update the NAV manually to keep values current.
+        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', color: '#a78bfa' }}>
+          <Landmark size={13} className="flex-shrink-0" /> Mutual fund NAVs update once daily at market close. Update the NAV manually to keep values current.
         </div>
 
         <div className="mb-4">
@@ -753,8 +757,8 @@ export default function Investments() {
         </td>
         <td className="py-3 px-2">
           <div className="flex gap-2">
-            <button onClick={() => openEdit(item)} className="text-muted hover:text-primary text-sm">✎</button>
-            <button onClick={() => handleDeleteConsolidated(item)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+            <button onClick={() => openEdit(item)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
+            <button onClick={() => handleDeleteConsolidated(item)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
           </div>
         </td>
       </tr>
@@ -772,7 +776,7 @@ export default function Investments() {
   if (!isPro) return (
     <ProGate
       feature="Investments"
-      icon="📈"
+      Icon={TrendingUp}
       description="Track your full portfolio — stocks, ETFs, crypto, bonds, and mutual funds — with live price refresh and performance charts."
       userId={user.id}
     />
@@ -789,13 +793,13 @@ export default function Investments() {
       {/* Actions */}
       <div className="flex gap-3 mb-1 flex-wrap items-center">
         <button onClick={refreshPrices} disabled={refreshing} className="btn-secondary">
-          ↻ {refreshing ? 'Refreshing…' : `Refresh Prices (${refreshableCount} stocks & ETFs)`}
+          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Refreshing…' : `Refresh Prices (${refreshableCount} stocks & ETFs)`}
         </button>
         <button onClick={openAdd} className="btn-primary">+ Add Investment</button>
       </div>
       {manualCount > 0 && (
-        <p className="text-xs text-muted mb-2 mt-1">
-          ℹ {manualCount} holding{manualCount !== 1 ? 's' : ''} (crypto / bonds / mutual funds) require manual price updates.
+        <p className="text-xs text-muted mb-2 mt-1 flex items-center gap-1">
+          <Info size={12} /> {manualCount} holding{manualCount !== 1 ? 's' : ''} (crypto / bonds / mutual funds) require manual price updates.
         </p>
       )}
       {refreshError && <p className="text-red-500 text-xs mb-3">{refreshError}</p>}
@@ -832,11 +836,11 @@ export default function Investments() {
       {/* Holdings table */}
       <div className="card p-5 mb-6">
         <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm">
-          <span>◔</span><span>Portfolio Holdings</span>
+          <PieChartIcon size={16} /><span>Portfolio Holdings</span>
         </div>
         {investments.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-4xl mb-3">📊</div>
+            <div className="flex justify-center mb-3 text-muted"><BarChart3 size={36} /></div>
             <p className="font-semibold text-primary">No Investments Yet</p>
             <p className="text-muted text-sm mt-1">Add your first investment to start tracking performance.</p>
             <button onClick={openAdd} className="btn-primary mt-4">+ Add Your First Investment</button>
@@ -863,7 +867,7 @@ export default function Investments() {
 
         {sectorData.length > 0 && (
           <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><span>◑</span><span>Sector Allocation</span></div>
+            <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><BarChart3 size={16} /><span>Sector Allocation</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={75}
@@ -889,7 +893,7 @@ export default function Investments() {
 
         {typeData.length > 0 && (
           <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><span>◔</span><span>By Type</span></div>
+            <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><PieChartIcon size={16} /><span>By Type</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={75}
@@ -921,9 +925,9 @@ export default function Investments() {
 
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2 font-semibold text-primary">
-                <span>↗</span><span>{editItem ? 'Edit Investment' : 'Add Investment'}</span>
+                <ArrowUpRight size={16} /><span>{editItem ? 'Edit Investment' : 'Add Investment'}</span>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
 
             {/* Type tabs */}
@@ -949,8 +953,8 @@ export default function Investments() {
 
             {/* Save error */}
             {saveError && (
-              <div className="mt-4 p-3 rounded-xl text-xs font-medium" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
-                ⚠ {saveError}
+              <div className="mt-4 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                <AlertTriangle size={13} className="flex-shrink-0" /> {saveError}
               </div>
             )}
 

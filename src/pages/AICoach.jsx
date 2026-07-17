@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Sparkle, Zap, Bot, ArrowUp } from 'lucide-react'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabase'
 
@@ -36,7 +37,7 @@ Guidelines:
 - Never make up financial data — only use what's provided above
 - Format numbers in USD when referencing amounts`
 
-function ProGate({ feature, icon, description, userId }) {
+function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
 
   const handleUpgrade = async () => {
@@ -56,15 +57,15 @@ function ProGate({ feature, icon, description, userId }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
         style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-        ✦ Pro Feature
+        <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
       <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
       <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
       </button>
     </div>
   )
@@ -211,7 +212,7 @@ export default function AICoach() {
   if (!isPro) return (
     <ProGate
       feature="Stride AI Coach"
-      icon="🤖"
+      Icon={Bot}
       description="Get personalized financial advice powered by AI — analyzing your real spending, income, and goals to give you specific, actionable guidance."
       userId={user.id}
     />
@@ -307,7 +308,7 @@ export default function AICoach() {
           style={{ minHeight: '44px', maxHeight: '120px', lineHeight: '1.5', paddingTop: '10px' }}
         />
         <button onClick={sendMessage} disabled={loading || !input.trim()} className="btn-primary px-4 flex-shrink-0" style={{ alignSelf: 'flex-end', height: '44px' }}>
-          ↑
+          <ArrowUp size={18} />
         </button>
       </div>
     </div>

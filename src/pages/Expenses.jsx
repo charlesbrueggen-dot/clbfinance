@@ -4,9 +4,13 @@
 //   1. Legacy manual expenses (expenses table — unchanged)
 //   2. Account transactions tagged kind='expense' (account_transactions table)
 //  Both sources rendered together, sorted by date.
-//  Account transactions show a 💳 badge and link to the account.
+//  Account transactions show a credit-card badge and link to the account.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useMemo } from 'react'
+import {
+  CreditCard, Home, ShoppingCart, Zap, Car, Stethoscope, Clock,
+  Receipt, Repeat, Pencil, Trash2, X,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
@@ -16,11 +20,11 @@ const today = () => new Date().toISOString().split('T')[0]
 const QUICK_AMOUNTS = [1, 5, 10, 50, 100, 500]
 
 const QUICK_CATS = [
-  { label: 'Rent/Mortgage',   icon: '🏠', category: 'Needs', sub: 'Rent' },
-  { label: 'Groceries',       icon: '🛒', category: 'Needs', sub: 'Groceries' },
-  { label: 'Utilities',       icon: '⚡', category: 'Needs', sub: 'Utilities' },
-  { label: 'Transportation',  icon: '🚗', category: 'Needs', sub: 'Transportation' },
-  { label: 'Healthcare',      icon: '🏥', category: 'Needs', sub: 'Healthcare' },
+  { label: 'Rent/Mortgage',   Icon: Home, category: 'Needs', sub: 'Rent' },
+  { label: 'Groceries',       Icon: ShoppingCart, category: 'Needs', sub: 'Groceries' },
+  { label: 'Utilities',       Icon: Zap, category: 'Needs', sub: 'Utilities' },
+  { label: 'Transportation',  Icon: Car, category: 'Needs', sub: 'Transportation' },
+  { label: 'Healthcare',      Icon: Stethoscope, category: 'Needs', sub: 'Healthcare' },
 ]
 
 const CATEGORIES    = ['Needs', 'Wants', 'Savings']
@@ -236,7 +240,7 @@ export default function Expenses() {
       {/* Upcoming recurring */}
       {upcoming.length > 0 && (
         <div className="card p-4 mb-6">
-          <p className="font-bold text-primary text-sm mb-3">⏰ Upcoming Recurring</p>
+          <p className="font-bold text-primary text-sm mb-3 flex items-center gap-1.5"><Clock size={14} /> Upcoming Recurring</p>
           <div className="space-y-2">
             {upcoming.map(e => (
               <div key={e.id} className="flex justify-between text-sm">
@@ -258,7 +262,7 @@ export default function Expenses() {
             <span className="w-2 h-2 rounded-full inline-block" style={{ background: '#ef4444' }} /> Manual entry
           </span>
           <span className="flex items-center gap-1.5 text-muted">
-            <span className="text-blue-500">💳</span> From account
+            <span className="text-blue-500 inline-flex"><CreditCard size={13} /></span> From account
           </span>
         </div>
       )}
@@ -284,7 +288,7 @@ export default function Expenses() {
       <div className="card p-4">
         {filtered.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-4xl mb-3">🧾</div>
+            <div className="flex justify-center mb-3 text-muted"><Receipt size={36} /></div>
             <p className="font-semibold text-primary">No expenses yet</p>
             <p className="text-muted text-sm mt-1">Start tracking your spending</p>
             <button onClick={openAdd} className="btn-primary mt-4">+ Add Expense</button>
@@ -304,7 +308,7 @@ export default function Expenses() {
                       {isAccTxn && (
                         <span className="text-xs px-1.5 py-0.5 rounded font-medium"
                           style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
-                          💳 {item._account?.name || 'Account'}
+                          <CreditCard size={11} className="inline mr-0.5" /> {item._account?.name || 'Account'}
                           {item.card_last4 ? ` ··${item.card_last4}` : ''}
                         </span>
                       )}
@@ -317,7 +321,7 @@ export default function Expenses() {
                       {isRecurring && (
                         <span className="text-xs px-1.5 py-0.5 rounded font-semibold"
                           style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
-                          🔁 {frequencyLabel(item.frequency)}
+                          <Repeat size={11} className="inline mr-0.5" /> {frequencyLabel(item.frequency)}
                         </span>
                       )}
                     </div>
@@ -329,8 +333,8 @@ export default function Expenses() {
                   </div>
                   <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                     <span className="font-bold text-red-500">-{fmt(item.amount)}</span>
-                    <button onClick={() => openEdit(item)} className="text-muted hover:text-primary text-sm">✎</button>
-                    <button onClick={() => handleDelete(item)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                    <button onClick={() => openEdit(item)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
+                    <button onClick={() => handleDelete(item)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
                   </div>
                 </div>
               )
@@ -345,7 +349,7 @@ export default function Expenses() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2 accent-text font-semibold"><span>$</span><span>Add Expense</span></div>
-              <button onClick={() => setStep(null)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setStep(null)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <p className="font-bold text-primary text-lg mb-4">Quick Select Category</p>
             <div className="grid grid-cols-3 gap-3 mb-4">
@@ -353,7 +357,7 @@ export default function Expenses() {
                 <button key={qc.label} onClick={() => selectQuickCat(qc)}
                   className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   style={{ borderColor: 'var(--card-border)' }}>
-                  <span className="text-2xl">{qc.icon}</span>
+                  <qc.Icon size={26} />
                   <span className="text-xs font-medium text-primary text-center">{qc.label}</span>
                 </button>
               ))}
@@ -370,9 +374,9 @@ export default function Expenses() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2 accent-text font-semibold">
                 <span>$</span><span>{editItem ? 'Edit Expense' : 'Add Expense'}</span>
-                {editSource === 'account_txn' && <span className="text-xs text-blue-500 ml-1">💳 Account Txn</span>}
+                {editSource === 'account_txn' && <span className="text-xs text-blue-500 ml-1 inline-flex items-center gap-1"><CreditCard size={12} /> Account Txn</span>}
               </div>
-              <button onClick={() => setStep(null)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setStep(null)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSave}>
               <div className="mb-4">

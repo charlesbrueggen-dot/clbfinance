@@ -5,6 +5,7 @@
 // provider — so we deep-link to their account page and let the user
 // confirm once they've finished it there.
 import { useState, useEffect, useMemo } from 'react'
+import { Sparkle, Zap, Repeat, AlertTriangle, ArrowUp, ArrowUpRight, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
@@ -15,7 +16,7 @@ import {
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 
-function ProGate({ feature, icon, description, userId }) {
+function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
@@ -31,15 +32,15 @@ function ProGate({ feature, icon, description, userId }) {
   }
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
         style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-        ✦ Pro Feature
+        <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
       <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
       <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
       </button>
     </div>
   )
@@ -145,7 +146,7 @@ export default function Subscriptions() {
   if (!isPro) return (
     <ProGate
       feature="Subscriptions"
-      icon="🔁"
+      Icon={Repeat}
       description="Automatically detect recurring charges like Netflix or Spotify, see what's renewing soon, and get a shortcut to cancel them."
       userId={user.id}
     />
@@ -161,10 +162,11 @@ export default function Subscriptions() {
         <button onClick={openAdd} className="btn-primary text-sm px-4">+ Add</button>
       </div>
 
-      <div className="mb-4 p-3 rounded-xl text-xs"
+      <div className="mb-4 p-3 rounded-xl text-xs flex items-start gap-1.5"
         style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b' }}>
-        ⚠ We can't cancel subscriptions for you — no provider offers that. Cancelling here just stops
-        counting it as active spend and points you to where to finish the job yourself.
+        <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+        <span>We can't cancel subscriptions for you — no provider offers that. Cancelling here just stops
+        counting it as active spend and points you to where to finish the job yourself.</span>
       </div>
 
       {activeSubs.length > 0 && (
@@ -184,7 +186,7 @@ export default function Subscriptions() {
             {renewingSoon.map(sub => (
               <div key={sub.id} className="card p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span>{CATEGORY_ICON[sub.category] || '🔁'}</span>
+                  {(() => { const CIcon = CATEGORY_ICON[sub.category] || Repeat; return <CIcon size={16} className="text-primary" /> })()}
                   <p className="text-sm font-semibold text-primary">{sub.name}</p>
                   <span className="text-xs text-muted">{fmt(sub.amount)}</span>
                 </div>
@@ -202,7 +204,7 @@ export default function Subscriptions() {
             {untrackedDetected.map(d => (
               <div key={d.merchantKey} className="card p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{CATEGORY_ICON[d.category] || '🔁'}</span>
+                  {(() => { const CIcon = CATEGORY_ICON[d.category] || Repeat; return <CIcon size={18} className="text-primary" /> })()}
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-semibold text-primary text-sm">{d.name}</p>
@@ -234,7 +236,7 @@ export default function Subscriptions() {
             {possibleWatching.map(d => (
               <div key={d.merchantKey} className="card p-3 flex items-center justify-between opacity-70">
                 <div className="flex items-center gap-2">
-                  <span>{CATEGORY_ICON[d.category] || '🔁'}</span>
+                  {(() => { const CIcon = CATEGORY_ICON[d.category] || Repeat; return <CIcon size={16} className="text-primary" /> })()}
                   <p className="text-sm text-primary">{d.name}</p>
                 </div>
                 <p className="text-xs text-muted">{fmt(d.amount)} · seen {d.lastDate}</p>
@@ -251,14 +253,14 @@ export default function Subscriptions() {
             {activeSubs.map(sub => (
               <div key={sub.id} className="card p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-lg flex-shrink-0">{CATEGORY_ICON[sub.category] || '🔁'}</span>
+                  {(() => { const CIcon = CATEGORY_ICON[sub.category] || Repeat; return <CIcon size={18} className="flex-shrink-0 text-primary" /> })()}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-primary text-sm truncate">{sub.name}</p>
                       {sub.previous_amount != null && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-0.5"
                           style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
-                          ↑ was {fmt(sub.previous_amount)}
+                          <ArrowUp size={11} /> was {fmt(sub.previous_amount)}
                         </span>
                       )}
                     </div>
@@ -298,7 +300,7 @@ export default function Subscriptions() {
 
       {untrackedDetected.length === 0 && possibleWatching.length === 0 && trackedSubs.length === 0 && (
         <div className="card p-12 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-          <p className="text-4xl mb-3">🔁</p>
+          <div className="flex justify-center mb-3 text-muted"><Repeat size={36} /></div>
           <p className="font-black text-primary text-lg mb-2">No recurring charges detected yet</p>
           <p className="text-muted text-sm mb-4">Once you log or sync a few months of transactions, repeating charges show up here automatically.</p>
           <button onClick={openAdd} className="btn-secondary">+ Add one manually</button>
@@ -311,7 +313,7 @@ export default function Subscriptions() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <p className="accent-text font-black text-lg">{editingSub ? 'Edit Subscription' : 'Add Subscription'}</p>
-              <button onClick={() => setShowForm(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowForm(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmitForm}>
               <div className="mb-4">
@@ -339,7 +341,7 @@ export default function Subscriptions() {
                 <label className="label">Category</label>
                 <select className="input-field" value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_ICON[c]} {c}</option>)}
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="mb-4">
@@ -374,7 +376,7 @@ export default function Subscriptions() {
                 <>
                   <div className="flex items-center justify-between mb-4">
                     <p className="accent-text font-black text-lg">Cancel {name}</p>
-                    <button onClick={() => setCancelTarget(null)} className="text-muted hover:text-primary text-xl">✕</button>
+                    <button onClick={() => setCancelTarget(null)} className="text-muted hover:text-primary"><X size={20} /></button>
                   </div>
                   <p className="text-muted text-sm mb-5">
                     We can't cancel this with the provider for you. Finish it on their site, then confirm here so we stop counting it as active spend.
@@ -384,7 +386,7 @@ export default function Subscriptions() {
                     target="_blank" rel="noreferrer"
                     className="btn-secondary w-full justify-center mb-3"
                   >
-                    ↗ Open {name}'s account page
+                    <ArrowUpRight size={15} /> Open {name}'s account page
                   </a>
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setCancelTarget(null)} className="btn-secondary justify-center">Never mind</button>

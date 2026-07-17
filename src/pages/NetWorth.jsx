@@ -5,6 +5,11 @@
 //   • account_transactions income/expense impact on cash position
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useMemo } from 'react'
+import {
+  Home, Car, Laptop, Gem, Landmark, Banknote, Package,
+  CreditCard, TrendingUp, HandCoins, ArrowUpRight, ArrowDownRight,
+  DollarSign, Pencil, Trash2, X,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
@@ -12,7 +17,7 @@ import { useTransactions } from '../hooks/useTransactions'
 const fmt   = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 const CATEGORIES = ['Real Estate', 'Vehicle', 'Electronics', 'Jewelry', 'Savings', 'Cash', 'Other']
-const CAT_ICONS  = { 'Real Estate': '🏠', Vehicle: '🚗', Electronics: '💻', Jewelry: '💎', Savings: '🏦', Cash: '💵', Other: '📦' }
+const CAT_ICONS  = { 'Real Estate': Home, Vehicle: Car, Electronics: Laptop, Jewelry: Gem, Savings: Landmark, Cash: Banknote, Other: Package }
 
 export default function NetWorth() {
   const { user }                             = useAuth()
@@ -84,13 +89,13 @@ export default function NetWorth() {
   const netWorth     = cashPosition + physicalAssets + portValue + moneyLent - moneyOwed - acctDebt
 
   const breakdown = [
-    { label: 'Bank Accounts',     value: acctAssets,     icon: '🏦', show: acctAssets > 0 },
-    { label: 'Cash & Income Net', value: legacyCash,     icon: '$',  show: acctAssets === 0 },
-    { label: 'Credit Card Debt',  value: -acctDebt,      icon: '💳', show: acctDebt > 0, negative: true },
-    { label: 'Investments',       value: portValue,      icon: '◔',  show: true },
-    { label: 'Physical Assets',   value: physicalAssets, icon: '◔',  show: true },
-    { label: 'Money Lent Out',    value: moneyLent,      icon: '👐', show: true },
-    { label: 'Money You Owe',     value: -moneyOwed,     icon: '👐', show: true, negative: true },
+    { label: 'Bank Accounts',     value: acctAssets,     Icon: Landmark,   show: acctAssets > 0 },
+    { label: 'Cash & Income Net', value: legacyCash,     Icon: DollarSign, show: acctAssets === 0 },
+    { label: 'Credit Card Debt',  value: -acctDebt,      Icon: CreditCard, show: acctDebt > 0, negative: true },
+    { label: 'Investments',       value: portValue,      Icon: TrendingUp, show: true },
+    { label: 'Physical Assets',   value: physicalAssets, Icon: Package,    show: true },
+    { label: 'Money Lent Out',    value: moneyLent,      Icon: HandCoins,  show: true },
+    { label: 'Money You Owe',     value: -moneyOwed,     Icon: HandCoins,  show: true, negative: true },
   ].filter(b => b.show)
 
   if (loading) return (
@@ -117,7 +122,7 @@ export default function NetWorth() {
             <p className="text-xs text-muted mt-1">Includes {accounts.length} connected account{accounts.length !== 1 ? 's' : ''}</p>
           )}
         </div>
-        <span className="text-4xl text-muted opacity-50">{netWorth >= 0 ? '↗' : '↘'}</span>
+        <span className="text-muted opacity-50">{netWorth >= 0 ? <ArrowUpRight size={40} /> : <ArrowDownRight size={40} />}</span>
       </div>
 
       {/* Breakdown Cards */}
@@ -131,7 +136,7 @@ export default function NetWorth() {
                   {item.negative ? '-' : ''}{fmt(Math.abs(item.value))}
                 </p>
               </div>
-              <span className="text-2xl opacity-30">{item.icon}</span>
+              <span className="opacity-30"><item.Icon size={26} /></span>
             </div>
           </div>
         ))}
@@ -145,7 +150,7 @@ export default function NetWorth() {
             {accounts.map(acc => (
               <div key={acc.id} className="flex justify-between items-center py-2 border-b last:border-b-0" style={{ borderColor: 'var(--card-border)' }}>
                 <div className="flex items-center gap-2">
-                  <span>{acc.type === 'Credit Card' ? '💳' : '🏦'}</span>
+                  <span className="text-primary">{acc.type === 'Credit Card' ? <CreditCard size={16} /> : <Landmark size={16} />}</span>
                   <div>
                     <p className="text-sm font-medium text-primary">{acc.name}</p>
                     <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}</p>
@@ -167,8 +172,8 @@ export default function NetWorth() {
           <div key={item.id} className="card p-4">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                  <span>{CAT_ICONS[item.category] || '📦'}</span>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+                  {(() => { const CatIcon = CAT_ICONS[item.category] || Package; return <CatIcon size={18} /> })()}
                 </div>
                 <div>
                   <p className="font-semibold text-primary">{item.name}</p>
@@ -176,8 +181,8 @@ export default function NetWorth() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => openEdit(item)} className="text-muted hover:text-primary text-sm">✎</button>
-                <button onClick={() => handleDelete(item.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                <button onClick={() => openEdit(item)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
+                <button onClick={() => handleDelete(item.id)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
               </div>
             </div>
             <p className="text-2xl font-bold text-primary">{fmt(item.value)}</p>
@@ -192,7 +197,7 @@ export default function NetWorth() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <p className="accent-text font-semibold text-lg">{editItem ? 'Edit Asset' : 'Add Asset'}</p>
-              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSave}>
               <div className="mb-4"><label className="label">Asset Name</label><input className="input-field" placeholder="e.g., House, Car, Jewelry" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required /></div>

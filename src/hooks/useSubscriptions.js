@@ -6,6 +6,9 @@
 // recognize the merchant, the way Rocket Money's cancel flow works.
 
 import { useState, useEffect, useCallback } from 'react'
+import {
+  Clapperboard, Music, Cloud, Gamepad2, Leaf, Newspaper, ShoppingBag, Lock, Repeat,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
@@ -17,15 +20,15 @@ export const CATEGORIES = [
 ]
 
 export const CATEGORY_ICON = {
-  'Streaming & Media':   '🎬',
-  'Music':               '🎵',
-  'Software & Cloud':    '☁️',
-  'Gaming':              '🎮',
-  'Wellness & Education':'🌱',
-  'Reading & News':      '📰',
-  'Shopping & Delivery':'🛍️',
-  'Security & VPN':      '🔒',
-  'Other':               '🔁',
+  'Streaming & Media':    Clapperboard,
+  'Music':                Music,
+  'Software & Cloud':     Cloud,
+  'Gaming':               Gamepad2,
+  'Wellness & Education': Leaf,
+  'Reading & News':       Newspaper,
+  'Shopping & Delivery':  ShoppingBag,
+  'Security & VPN':       Lock,
+  'Other':                Repeat,
 }
 
 // Curated list of common subscription billers. `aliases` are lowercase

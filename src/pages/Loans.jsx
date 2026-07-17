@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react'
+import {
+  Sparkle, Zap, Handshake, ArrowUpRight, ArrowDownRight, Check, Trash2,
+  Users, HandCoins, Wallet, X,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
@@ -12,7 +16,7 @@ const calcWithInterest = (principal, rate, startDate) => {
   return principal * Math.pow(1 + rate / 100, years)
 }
 
-function ProGate({ feature, icon, description, userId }) {
+function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
   const handleUpgrade = async () => {
     setUpgrading(true)
@@ -28,15 +32,15 @@ function ProGate({ feature, icon, description, userId }) {
   }
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="text-5xl mb-4">{icon}</div>
+      <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
         style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-        ✦ Pro Feature
+        <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
       <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
       <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : '⚡ Upgrade to Pro — $4.99/mo'}
+        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
       </button>
     </div>
   )
@@ -104,7 +108,7 @@ export default function Loans() {
   if (!isPro) return (
     <ProGate
       feature="Loans & Debts"
-      icon="🤝"
+      Icon={Handshake}
       description="Track money you've lent or borrowed with automatic interest calculations and settlement tracking."
       userId={user.id}
     />
@@ -149,7 +153,7 @@ export default function Loans() {
       <div className="card p-5">
         {displayed.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-4xl mb-3">👥</div>
+            <div className="flex justify-center mb-3 text-muted"><Users size={36} /></div>
             <p className="font-semibold text-primary">No {tab === 'active' ? 'Active' : 'Settled'} Loans</p>
             {tab === 'active' && <button onClick={openAdd} className="btn-primary mt-4">+ Add a Loan</button>}
           </div>
@@ -162,9 +166,9 @@ export default function Loans() {
               return (
                 <div key={loan.id} className="flex items-center justify-between p-4 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-                      style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }}>
-                      {isLent ? '↗' : '↘'}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isLent ? '#10b981' : '#ef4444' }}>
+                      {isLent ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
                     </div>
                     <div>
                       <p className="font-semibold text-primary">{loan.person_name}</p>
@@ -183,10 +187,10 @@ export default function Loans() {
                         <button onClick={() => handleSettle(loan.id)}
                           className="text-xs px-2 py-1 rounded-lg font-medium hover:opacity-80"
                           style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--text-primary)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                          ✓ Settle
+                          <Check size={12} className="inline" /> Settle
                         </button>
                       )}
-                      <button onClick={() => handleDelete(loan.id)} className="text-sm px-1 hover:opacity-60" style={{ color: '#ef4444' }}>🗑</button>
+                      <button onClick={() => handleDelete(loan.id)} className="px-1 hover:opacity-60" style={{ color: '#ef4444' }}><Trash2 size={15} /></button>
                     </div>
                   </div>
                 </div>
@@ -201,7 +205,7 @@ export default function Loans() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <p className="font-semibold text-lg text-primary">Add Loan / Debt</p>
-              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSave}>
               <div className="mb-4"><label className="label">Person's Name</label><input className="input-field" placeholder="e.g., John Smith" value={form.person_name} onChange={e => setForm(f => ({ ...f, person_name: e.target.value }))} required /></div>
@@ -211,12 +215,12 @@ export default function Loans() {
                   <button type="button" onClick={() => setForm(f => ({ ...f, type: 'lent' }))}
                     className="py-3 rounded-xl text-sm font-semibold transition-colors"
                     style={{ border: form.type === 'lent' ? '1px solid rgba(16,185,129,0.6)' : '1px solid var(--card-border)', background: form.type === 'lent' ? 'rgba(16,185,129,0.15)' : 'transparent', color: 'var(--text-primary)' }}>
-                    💸 I Lent Money
+                    <HandCoins size={15} className="inline mr-1" /> I Lent Money
                   </button>
                   <button type="button" onClick={() => setForm(f => ({ ...f, type: 'borrowed' }))}
                     className="py-3 rounded-xl text-sm font-semibold transition-colors"
                     style={{ border: form.type === 'borrowed' ? '1px solid rgba(239,68,68,0.6)' : '1px solid var(--card-border)', background: form.type === 'borrowed' ? 'rgba(239,68,68,0.15)' : 'transparent', color: form.type === 'borrowed' ? '#ef4444' : 'var(--text-primary)' }}>
-                    🤲 I Borrowed
+                    <Wallet size={15} className="inline mr-1" /> I Borrowed
                   </button>
                 </div>
               </div>

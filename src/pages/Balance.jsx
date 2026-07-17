@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Tag, Gift, Clover, Cake, Undo2, Sparkles, Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
@@ -6,12 +7,12 @@ const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: '
 const today = () => new Date().toISOString().split('T')[0]
 
 const GAIN_TYPES = [
-  { value: 'sold_item', label: 'Sold Something', icon: '🏷' },
-  { value: 'cashback', label: 'Cashback / Reward', icon: '🎁' },
-  { value: 'found', label: 'Found Money', icon: '🍀' },
-  { value: 'gift', label: 'Gift / Birthday', icon: '🎂' },
-  { value: 'refund', label: 'Refund', icon: '↩️' },
-  { value: 'other', label: 'Other', icon: '✨' },
+  { value: 'sold_item', label: 'Sold Something', Icon: Tag },
+  { value: 'cashback', label: 'Cashback / Reward', Icon: Gift },
+  { value: 'found', label: 'Found Money', Icon: Clover },
+  { value: 'gift', label: 'Gift / Birthday', Icon: Cake },
+  { value: 'refund', label: 'Refund', Icon: Undo2 },
+  { value: 'other', label: 'Other', Icon: Sparkles },
 ]
 
 const gainObj = v => GAIN_TYPES.find(t => t.value === v) || GAIN_TYPES[GAIN_TYPES.length - 1]
@@ -63,7 +64,7 @@ export default function Balance() {
       <div className="card p-6 mb-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full flex items-center justify-center font-black text-lg"
-            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>✨</div>
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}><Sparkles size={20} /></div>
           <div>
             <p className="text-muted text-xs">Total Gains</p>
             <p className="text-3xl font-black text-primary">{fmt(totalGains)}</p>
@@ -78,7 +79,7 @@ export default function Balance() {
 
       {gains.length === 0 ? (
         <div className="card p-10 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-          <div className="text-4xl mb-3">🍀</div>
+          <div className="flex justify-center mb-3 text-muted"><Clover size={36} /></div>
           <p className="font-bold text-primary mb-1">No gains logged yet</p>
           <p className="text-muted text-sm mb-4">Log small wins — sold items, rewards, refunds, or anything unexpected.</p>
           <button onClick={openAddGain} className="btn-primary">+ Log a Gain</button>
@@ -90,8 +91,8 @@ export default function Balance() {
             return (
               <div key={g.id} className="card p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                    style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>{gt.icon}</div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-primary"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}><gt.Icon size={17} /></div>
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-primary truncate">{g.description}</p>
                     <p className="text-xs text-muted">{gt.label} · {g.date}</p>
@@ -100,8 +101,8 @@ export default function Balance() {
                 </div>
                 <div className="flex items-center gap-3 ml-2 flex-shrink-0">
                   <span className="font-black text-sm text-emerald-500">+{fmt(g.amount)}</span>
-                  <button onClick={() => openEditGain(g)} className="text-muted hover:text-primary text-sm">✎</button>
-                  <button onClick={() => handleDeleteGain(g.id)} className="text-muted hover:text-red-500 text-sm">🗑</button>
+                  <button onClick={() => openEditGain(g)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
+                  <button onClick={() => handleDeleteGain(g.id)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
                 </div>
               </div>
             )
@@ -115,7 +116,7 @@ export default function Balance() {
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <p className="font-black text-primary text-lg">{editGain ? 'Edit Gain' : 'Log a Gain'}</p>
-              <button onClick={() => setShowGainModal(false)} className="text-muted hover:text-primary text-xl">✕</button>
+              <button onClick={() => setShowGainModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveGain}>
               <div className="mb-5">
@@ -125,7 +126,7 @@ export default function Balance() {
                     <button key={opt.value} type="button" onClick={() => setGainForm(f => ({ ...f, type: opt.value }))}
                       className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-xs font-semibold transition-all ${gainForm.type === opt.value ? 'text-primary' : 'text-muted hover:text-primary'}`}
                       style={{ borderColor: gainForm.type === opt.value ? '#10b981' : 'var(--card-border)', background: gainForm.type === opt.value ? 'rgba(16,185,129,0.08)' : 'var(--input-bg)' }}>
-                      <span className="text-xl">{opt.icon}</span>{opt.label}
+                      <opt.Icon size={20} />{opt.label}
                     </button>
                   ))}
                 </div>

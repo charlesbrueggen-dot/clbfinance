@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PartyPopper, AlertTriangle, ArrowRight } from 'lucide-react'
 import { useAuth } from '../App'
 
 export default function Success() {
@@ -43,17 +44,17 @@ export default function Success() {
       )}
       {status === 'success' && (
         <>
-          <div className="text-6xl mb-4">🎉</div>
+          <div className="flex justify-center mb-4 text-primary"><PartyPopper size={52} /></div>
           <h2 className="text-2xl font-black text-primary mb-2">You're Pro!</h2>
           <p className="text-muted text-sm mb-8">Your Stride AI Coach is now unlocked.</p>
           <button onClick={() => navigate('/coach')} className="btn-primary px-8">
-            Open AI Coach →
+            Open AI Coach <ArrowRight size={16} />
           </button>
         </>
       )}
       {status === 'error' && (
         <>
-          <div className="text-6xl mb-4">⚠️</div>
+          <div className="flex justify-center mb-4" style={{ color: '#ef4444' }}><AlertTriangle size={52} /></div>
           <h2 className="text-xl font-black text-primary mb-2">Something went wrong</h2>
           <p className="text-muted text-sm mb-2">Your payment went through — contact support and we'll activate you manually.</p>
           {errorDetail && (
