@@ -1,8 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
+import { useTransactions, autoCategorize } from '../hooks/useTransactions'
+import {
+  parseSpreadsheetFile, detectColumns, detectDateFormat, normalizeRow,
+  validateMapping, buildDedupeKey,
+} from '../lib/importParsing'
 
-const today = () => new Date().toISOString().split('T')[0]
+const DATE_FORMAT_OPTIONS = [
+  { value: 'auto', label: 'Auto-detect' },
+  { value: 'MDY', label: 'MM/DD/YYYY (US)' },
+  { value: 'DMY', label: 'DD/MM/YYYY (UK/EU)' },
+  { value: 'YMD', label: 'YYYY-MM-DD (ISO)' },
+  { value: 'MONTH_NAME', label: 'Month name (e.g. Jan 5, 2024)' },
+]
 
 function ProGate({ feature, icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)
@@ -38,20 +49,36 @@ function ProGate({ feature, icon, description, userId }) {
   )
 }
 
+// category/subcategory/source for a CSV row: reuse the same keyword
+// classifier used elsewhere in the app, but the row's `kind` comes from the
+// bank data's actual sign — not from the keyword guess — so only accept the
+// guess's category/source when it agrees with that kind.
+function classifyForImport(description, kind) {
+  const guess = autoCategorize(description)
+  const agrees = guess.kind === kind
+  if (kind === 'expense') {
+    return {
+      category: agrees ? guess.category : 'Wants',
+      subcategory: agrees ? guess.subcategory : 'Other',
+      source: null,
+      autoCategorized: agrees && guess.auto,
+    }
+  }
+  return {
+    category: null,
+    subcategory: null,
+    source: agrees ? guess.source : 'Other',
+    autoCategorized: agrees && guess.auto,
+  }
+}
+
 export default function Import() {
   const { user } = useAuth()
+  const { accounts, reload: reloadTxns } = useTransactions()
   const [isPro, setIsPro] = useState(false)
   const [proLoading, setProLoading] = useState(true)
   const [step, setStep] = useState(0)
-  const [rows, setRows] = useState([])
-  const [headers, setHeaders] = useState([])
-  const [dateCol, setDateCol] = useState(0)
-  const [descCol, setDescCol] = useState(1)
-  const [amtCol, setAmtCol] = useState(2)
-  const [preview, setPreview] = useState([])
-  const [importing, setImporting] = useState(false)
-  const [doneCount, setDoneCount] = useState(0)
-  const [dragging, setDragging] = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     const checkPro = async () => {
@@ -67,69 +94,209 @@ export default function Import() {
     checkPro()
   }, [user.id])
 
-  const parseCSV = text => {
-    const lines = text.split('\n').filter(l => l.trim())
-    return lines.map(line => {
-      const cols = []; let cur = '', inQ = false
-      for (const c of line) {
-        if (c === '"') { inQ = !inQ }
-        else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = '' }
-        else { cur += c }
-      }
-      cols.push(cur.trim())
-      return cols
-    })
+  // ── File + raw grid ────────────────────────────────────────────────────────
+  const [headers, setHeaders] = useState([])
+  const [rows, setRows] = useState([])
+  const [fileError, setFileError] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const [loadingFile, setLoadingFile] = useState(false)
+
+  // ── Column mapping ─────────────────────────────────────────────────────────
+  const [detected, setDetected] = useState({ columns: {}, confidence: {} })
+  const [mode, setMode] = useState('amount') // 'amount' | 'debitCredit'
+  const [dateCol, setDateCol] = useState(0)
+  const [descCol, setDescCol] = useState(1)
+  const [amtCol, setAmtCol] = useState(2)
+  const [debitCol, setDebitCol] = useState(null)
+  const [creditCol, setCreditCol] = useState(null)
+  const [dateFormatChoice, setDateFormatChoice] = useState('auto')
+  const [invertSign, setInvertSign] = useState(false)
+  const [accountId, setAccountId] = useState('')
+
+  // ── Preview / import ───────────────────────────────────────────────────────
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
+  const [parsedRows, setParsedRows] = useState([])
+  const [skippedCount, setSkippedCount] = useState(0)
+  const [includeDuplicates, setIncludeDuplicates] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [doneCount, setDoneCount] = useState(0)
+
+  const columns = useMemo(() => {
+    const c = { date: dateCol, description: descCol }
+    if (mode === 'debitCredit') { c.debit = debitCol; c.credit = creditCol }
+    else { c.amount = amtCol }
+    return c
+  }, [dateCol, descCol, mode, amtCol, debitCol, creditCol])
+
+  const dateFormatResult = useMemo(() => {
+    if (dateFormatChoice !== 'auto') return { format: dateFormatChoice, confidence: 1 }
+    if (dateCol == null || !rows.length) return { format: null, confidence: 0 }
+    return detectDateFormat(rows.map(r => r[dateCol]))
+  }, [rows, dateCol, dateFormatChoice])
+
+  const mapping = useMemo(() => validateMapping({ columns, dateFormatResult }), [columns, dateFormatResult])
+
+  const duplicateCount = parsedRows.filter(r => r.isDuplicate).length
+  const importableCount = parsedRows.filter(r => includeDuplicates || !r.isDuplicate).length
+
+  const badgeFor = (field, currentValue) => {
+    if (detected.columns[field] !== currentValue) return null
+    const score = detected.confidence[field]
+    if (score >= 100) return { label: '✓ detected', color: '#10b981' }
+    if (score >= 60) return { label: '~ guessed', color: '#f59e0b' }
+    return null
   }
 
-  const handleFile = file => {
+  // ── Step 0: upload ─────────────────────────────────────────────────────────
+  const handleFile = async file => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const parsed = parseCSV(ev.target.result)
-      if (!parsed.length) return
-      setHeaders(parsed[0].map((h, i) => ({ value: i, label: h || `Column ${i + 1}` })))
-      setRows(parsed)
-      setDateCol(0); setDescCol(Math.min(1, parsed[0].length - 1)); setAmtCol(Math.min(2, parsed[0].length - 1))
+    setFileError('')
+    setLoadingFile(true)
+    try {
+      const { headers: h, rows: r } = await parseSpreadsheetFile(file)
+      const det = detectColumns(h)
+      setHeaders(h)
+      setRows(r)
+      setDetected(det)
+
+      const useDebitCredit = det.columns.debit != null && det.columns.credit != null
+      setMode(useDebitCredit ? 'debitCredit' : 'amount')
+      // Only fields that were actually detected get pre-selected — an
+      // undetected field starts unselected so the "couldn't find a column"
+      // validation error can actually fire, instead of silently guessing a
+      // possibly-wrong column.
+      setDateCol(det.columns.date ?? null)
+      setDescCol(det.columns.description ?? null)
+      if (useDebitCredit) {
+        setDebitCol(det.columns.debit)
+        setCreditCol(det.columns.credit)
+      } else {
+        setAmtCol(det.columns.amount ?? null)
+        setDebitCol(det.columns.debit ?? Math.min(2, h.length - 1))
+        setCreditCol(det.columns.credit ?? Math.min(3, h.length - 1))
+      }
+      setDateFormatChoice('auto')
+      setInvertSign(false)
+      setAccountId(accounts.length ? accounts[0].id : '')
       setStep(1)
+    } catch (err) {
+      setFileError(err.message || 'Could not read this file.')
+    } finally {
+      setLoadingFile(false)
     }
-    reader.readAsText(file)
   }
 
   const handleDrop = e => {
     e.preventDefault(); setDragging(false)
     const file = e.dataTransfer.files[0]
-    if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) handleFile(file)
+    if (file) handleFile(file)
   }
 
-  const handlePreview = () => {
-    const prev = rows.slice(1, 6).map(r => ({
-      date: r[dateCol] || '',
-      desc: r[descCol] || '',
-      amount: Math.abs(parseFloat((r[amtCol] || '0').replace(/[^0-9.-]/g, ''))) || 0
-    }))
-    setPreview(prev); setStep(2)
+  // ── Step 1 → 2: preview ────────────────────────────────────────────────────
+  const handlePreview = async () => {
+    setPreviewError('')
+    setPreviewLoading(true)
+    try {
+      const normalized = rows.map(r => normalizeRow(r, columns, dateFormatResult.format, { invertSign }))
+      const parseable = normalized.filter(n => n.date && n.amount != null && n.kind)
+      const skipped = normalized.length - parseable.length
+
+      if (!parseable.length) {
+        setPreviewError('None of the rows could be parsed with this column mapping. Double-check the column and date format selections above.')
+        setPreviewLoading(false)
+        return
+      }
+
+      const dates = parseable.map(p => p.date).sort()
+      let existing = []
+      let q = supabase
+        .from('account_transactions')
+        .select('account_id,date,kind,amount,description')
+        .eq('user_id', user.id)
+        .gte('date', dates[0])
+        .lte('date', dates[dates.length - 1])
+      q = accountId ? q.eq('account_id', accountId) : q.is('account_id', null)
+      const { data, error } = await q
+      if (error) throw error
+      existing = data || []
+
+      const existingKeys = new Set(existing.map(e => buildDedupeKey({
+        accountId: accountId || null, date: e.date, kind: e.kind, amount: e.amount, description: e.description,
+      })))
+
+      const seenInFile = new Set()
+      const finalRows = parseable.map(p => {
+        const key = buildDedupeKey({ accountId: accountId || null, date: p.date, kind: p.kind, amount: p.amount, description: p.description })
+        const isDuplicate = existingKeys.has(key) || seenInFile.has(key)
+        seenInFile.add(key)
+        return { ...p, _dedupeKey: key, isDuplicate }
+      })
+
+      setParsedRows(finalRows)
+      setSkippedCount(skipped)
+      setIncludeDuplicates(false)
+      setStep(2)
+    } catch (err) {
+      setPreviewError(err.message || 'Something went wrong building the preview.')
+    } finally {
+      setPreviewLoading(false)
+    }
   }
 
+  // ── Step 2 → 3: import ─────────────────────────────────────────────────────
   const handleImport = async () => {
     setImporting(true)
-    const newExp = rows.slice(1).map(r => {
-      const amt = Math.abs(parseFloat((r[amtCol] || '0').replace(/[^0-9.-]/g, ''))) || 0
-      if (!amt) return null
-      let date = today()
-      try { const d = new Date(r[dateCol]); if (!isNaN(d)) date = d.toISOString().split('T')[0] } catch {}
-      return { description: r[descCol] || 'Imported', amount: amt, category: 'Needs', subcategory: 'Other', date, notes: 'Imported from CSV', recurring: false, user_id: user.id }
-    }).filter(Boolean)
+    setImportError('')
+    const rowsToInsert = parsedRows.filter(r => includeDuplicates || !r.isDuplicate)
+    const payload = rowsToInsert.map(r => {
+      const classified = classifyForImport(r.description, r.kind)
+      return {
+        user_id: user.id,
+        account_id: accountId || null,
+        description: r.description || 'Imported Transaction',
+        amount: r.amount,
+        kind: r.kind,
+        category: classified.category,
+        subcategory: classified.subcategory,
+        source: classified.source,
+        date: r.date,
+        merchant: r.description || null,
+        auto_categorized: classified.autoCategorized,
+        source_type: 'csv_import',
+        external_id: r._dedupeKey,
+        status: 'posted',
+      }
+    })
 
     const BATCH = 50
-    for (let i = 0; i < newExp.length; i += BATCH) {
-      await supabase.from('expenses').insert(newExp.slice(i, i + BATCH))
+    let inserted = 0
+    let failed = false
+    for (let i = 0; i < payload.length; i += BATCH) {
+      const { data, error } = await supabase
+        .from('account_transactions')
+        .upsert(payload.slice(i, i + BATCH), { onConflict: 'user_id,external_id', ignoreDuplicates: true })
+        .select('id')
+      if (error) {
+        setImportError(inserted > 0 ? `${inserted} transactions were imported before this error: ${error.message}` : error.message)
+        failed = true
+        break
+      }
+      inserted += data?.length || 0
     }
-    setDoneCount(newExp.length)
     setImporting(false)
+    if (failed) return
+    setDoneCount(inserted)
     setStep(3)
+    reloadTxns()
   }
 
-  const reset = () => { setStep(0); setRows([]); setHeaders([]); setPreview([]) }
+  const reset = () => {
+    setStep(0); setRows([]); setHeaders([]); setFileError('')
+    setParsedRows([]); setPreviewError(''); setImportError('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 
@@ -153,7 +320,7 @@ export default function Import() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-primary">Import Transactions</h1>
-        <p className="text-muted text-sm mt-1">Upload a CSV from your bank to quickly add expenses.</p>
+        <p className="text-muted text-sm mt-1">Upload a bank statement to import transactions — works with exports from most banks.</p>
       </div>
 
       {step === 0 && (
@@ -166,40 +333,110 @@ export default function Import() {
             className={`block mt-4 border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${dragging ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'}`}
           >
             <div className="text-4xl mb-3">☁️</div>
-            <p className="accent-text font-semibold">Upload a file</p>
+            <p className="accent-text font-semibold">{loadingFile ? 'Reading file…' : 'Upload a file'}</p>
             <p className="text-muted text-sm mt-1">CSV, XLS, XLSX up to 10MB</p>
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={e => handleFile(e.target.files[0])} className="hidden" />
+            <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={e => handleFile(e.target.files[0])} className="hidden" />
           </label>
-          <button className="btn-secondary mt-4 opacity-50 cursor-not-allowed" disabled>Upload and Extract</button>
+          {fileError && (
+            <div className="mt-4 p-3 rounded-xl text-sm"
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              ⚠️ {fileError}
+            </div>
+          )}
         </div>
       )}
 
       {step === 1 && (
         <div className="card p-6">
           <p className="font-bold text-primary mb-1">Step 2: Map Columns</p>
-          <p className="text-muted text-sm mb-4">{rows.length - 1} rows detected. Tell us which columns are which.</p>
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <p className="text-muted text-sm mb-4">{rows.length} rows detected. We've guessed the mapping below — check it before continuing.</p>
+
+          <div className="mb-4">
+            <label className="label">Amount format in this file</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button type="button" onClick={() => setMode('amount')}
+                className="p-3 rounded-xl border text-sm font-semibold text-left"
+                style={{ borderColor: mode === 'amount' ? '#10b981' : 'var(--card-border)', background: mode === 'amount' ? 'rgba(16,185,129,0.1)' : undefined }}>
+                Single Amount column
+                <span className="block text-xs font-normal text-muted mt-0.5">e.g. -12.34 for a purchase, 500.00 for a deposit</span>
+              </button>
+              <button type="button" onClick={() => setMode('debitCredit')}
+                className="p-3 rounded-xl border text-sm font-semibold text-left"
+                style={{ borderColor: mode === 'debitCredit' ? '#10b981' : 'var(--card-border)', background: mode === 'debitCredit' ? 'rgba(16,185,129,0.1)' : undefined }}>
+                Separate Debit / Credit columns
+                <span className="block text-xs font-normal text-muted mt-0.5">both columns are positive numbers</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <ColumnSelect label="Date Column" value={dateCol} onChange={setDateCol} headers={headers} badge={badgeFor('date', dateCol)} />
+            <ColumnSelect label="Description Column" value={descCol} onChange={setDescCol} headers={headers} badge={badgeFor('description', descCol)} />
+          </div>
+
+          {mode === 'amount' ? (
+            <div className="mb-3">
+              <ColumnSelect label="Amount Column" value={amtCol} onChange={setAmtCol} headers={headers} badge={badgeFor('amount', amtCol)} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <ColumnSelect label="Debit Column" value={debitCol} onChange={setDebitCol} headers={headers} badge={badgeFor('debit', debitCol)} />
+              <ColumnSelect label="Credit Column" value={creditCol} onChange={setCreditCol} headers={headers} badge={badgeFor('credit', creditCol)} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label className="label">Date Column</label>
-              <select className="input-field" value={dateCol} onChange={e => setDateCol(+e.target.value)}>
-                {headers.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
+              <label className="label">Date Format</label>
+              <select className="input-field" value={dateFormatChoice} onChange={e => setDateFormatChoice(e.target.value)}>
+                {DATE_FORMAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              {dateFormatChoice === 'auto' && (
+                <p className="text-xs text-muted mt-1">
+                  {dateFormatResult.format
+                    ? `Detected: ${DATE_FORMAT_OPTIONS.find(o => o.value === dateFormatResult.format)?.label}${dateFormatResult.confidence < 1 ? ' (low confidence — verify below)' : ''}`
+                    : 'Could not detect a date format from this column'}
+                </p>
+              )}
             </div>
             <div>
-              <label className="label">Description Column</label>
-              <select className="input-field" value={descCol} onChange={e => setDescCol(+e.target.value)}>
-                {headers.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label">Amount Column</label>
-              <select className="input-field" value={amtCol} onChange={e => setAmtCol(+e.target.value)}>
-                {headers.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
+              <label className="label">Import into Account</label>
+              <select className="input-field" value={accountId} onChange={e => setAccountId(e.target.value)}>
+                <option value="">No account (unassigned)</option>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
               </select>
             </div>
           </div>
+
+          <label className="flex items-start gap-2 mb-4 p-3 rounded-xl border cursor-pointer" style={{ borderColor: 'var(--card-border)' }}>
+            <input type="checkbox" checked={invertSign} onChange={e => setInvertSign(e.target.checked)} className="mt-1" />
+            <span className="text-sm text-primary">
+              Invert amounts (credit card statement)
+              <span className="block text-xs text-muted font-normal mt-0.5">Check this if purchases show as positive and payments show as negative in this file.</span>
+            </span>
+          </label>
+
+          {!mapping.valid && (
+            <div className="mb-4 p-3 rounded-xl text-sm"
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              <p className="font-semibold mb-1">⚠️ We can't confidently parse this file:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {mapping.errors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {previewError && (
+            <div className="mb-4 p-3 rounded-xl text-sm"
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              ⚠️ {previewError}
+            </div>
+          )}
+
           <div className="flex gap-3">
-            <button onClick={handlePreview} className="btn-primary">Preview Import</button>
+            <button onClick={handlePreview} disabled={!mapping.valid || previewLoading} className="btn-primary disabled:opacity-50">
+              {previewLoading ? 'Checking…' : 'Preview Import'}
+            </button>
             <button onClick={reset} className="btn-secondary">Cancel</button>
           </div>
         </div>
@@ -207,21 +444,59 @@ export default function Import() {
 
       {step === 2 && (
         <div className="card p-6">
-          <p className="font-bold text-primary mb-1">Step 3: Preview (first 5 rows)</p>
-          <div className="mt-4 mb-4 space-y-2">
-            {preview.map((row, i) => (
+          <p className="font-bold text-primary mb-1">Step 3: Preview</p>
+          <p className="text-muted text-sm mb-4">
+            Mapped: Date ← <b>{headers[dateCol]}</b> · Description ← <b>{headers[descCol]}</b> · Amount ←{' '}
+            {mode === 'amount' ? <b>{headers[amtCol]}</b> : <b>{headers[debitCol]} / {headers[creditCol]}</b>}
+            {' '}· Format: <b>{DATE_FORMAT_OPTIONS.find(o => o.value === dateFormatResult.format)?.label || '—'}</b>
+          </p>
+
+          <div className="mt-2 mb-4 space-y-2">
+            {parsedRows.slice(0, 8).map((row, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--card-border)' }}>
-                <div>
-                  <p className="font-medium text-sm text-primary">{row.desc || '—'}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium text-sm text-primary truncate">{row.description || '—'}</p>
+                    {row.isDuplicate && (
+                      <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                        Possible duplicate
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted">{row.date}</p>
                 </div>
-                <span className="font-bold text-red-500">-{fmt(row.amount)}</span>
+                <span className="font-bold flex-shrink-0 ml-3" style={{ color: row.kind === 'income' ? '#10b981' : '#ef4444' }}>
+                  {row.kind === 'income' ? '+' : '-'}{fmt(row.amount)}
+                </span>
               </div>
             ))}
           </div>
-          <p className="text-muted text-sm mb-4">{rows.length - 1} total transactions will be imported as expenses.</p>
+
+          <div className="text-sm text-muted mb-4 space-y-1">
+            <p>{parsedRows.length} transactions parsed{skippedCount > 0 ? ` · ${skippedCount} rows skipped (couldn't be parsed)` : ''}</p>
+            {duplicateCount > 0 && <p>{duplicateCount} look like duplicates of transactions you've already imported — these are skipped by default.</p>}
+            <p className="font-semibold text-primary">{importableCount} will be imported.</p>
+          </div>
+
+          {duplicateCount > 0 && (
+            <label className="flex items-center gap-2 mb-4 text-sm text-primary cursor-pointer">
+              <input type="checkbox" checked={includeDuplicates} onChange={e => setIncludeDuplicates(e.target.checked)} />
+              Import the {duplicateCount} possible duplicates anyway
+            </label>
+          )}
+
+          {importError && (
+            <div className="mb-4 p-3 rounded-xl text-sm"
+              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              ⚠️ Import failed: {importError}
+            </div>
+          )}
+
           <div className="flex gap-3">
-            <button onClick={handleImport} disabled={importing} className="btn-primary">{importing ? 'Importing...' : '✅ Import All'}</button>
+            <button onClick={handleImport} disabled={importing || importableCount === 0} className="btn-primary disabled:opacity-50">
+              {importing ? 'Importing...' : `✅ Import ${importableCount} Transaction${importableCount === 1 ? '' : 's'}`}
+            </button>
+            <button onClick={() => setStep(1)} className="btn-secondary">Back</button>
             <button onClick={reset} className="btn-secondary">Cancel</button>
           </div>
         </div>
@@ -231,10 +506,28 @@ export default function Import() {
         <div className="card p-12 text-center">
           <div className="text-5xl mb-4">🎉</div>
           <p className="text-2xl font-bold text-primary mb-2">{doneCount} transactions imported!</p>
-          <p className="text-muted text-sm mb-6">They've been added to your Expenses page.</p>
+          <p className="text-muted text-sm mb-6">
+            They've been added to your account transactions.
+            {skippedCount > 0 && ` ${skippedCount} rows couldn't be parsed and were skipped.`}
+          </p>
           <button onClick={reset} className="btn-primary">Import Another File</button>
         </div>
       )}
+    </div>
+  )
+}
+
+function ColumnSelect({ label, value, onChange, headers, badge }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <label className="label mb-0">{label}</label>
+        {badge && <span className="text-xs font-semibold" style={{ color: badge.color }}>{badge.label}</span>}
+      </div>
+      <select className="input-field" value={value ?? ''} onChange={e => onChange(e.target.value === '' ? null : +e.target.value)}>
+        <option value="">— Select column —</option>
+        {headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+      </select>
     </div>
   )
 }

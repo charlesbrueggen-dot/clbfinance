@@ -146,3 +146,19 @@ alter table account_transactions add column if not exists running_balance numeri
 alter table account_transactions drop constraint if exists account_transactions_source_type_check;
 alter table account_transactions add constraint account_transactions_source_type_check
   check (source_type = any (array['manual'::text, 'csv_import'::text, 'teller'::text]));
+
+-- =============================================
+-- CSV IMPORT DEDUPE (migrations: account_transactions_csv_import_dedupe_index,
+-- account_transactions_csv_import_dedupe_constraint_fix; applied 2026-07-16).
+-- Already applied to the live database; kept here so the schema file stays a
+-- complete reference.
+-- =============================================
+
+-- external_id is set by the CSV importer (account + date + kind + amount +
+-- normalized description). This unique constraint makes re-uploading the same
+-- statement idempotent via upsert(..., { onConflict: 'user_id,external_id' }).
+-- Must be a full (non-partial) constraint — PostgREST's upsert ON CONFLICT
+-- inference can't target a partial index. Postgres already treats NULLs as
+-- distinct in unique constraints, so rows from teller/manual sources (which
+-- never set external_id) can still repeat freely without a partial predicate.
+alter table account_transactions add constraint account_transactions_user_external_id_key unique (user_id, external_id);

@@ -4,6 +4,7 @@
 // accounts + transactions for one enrollment through _teller-client.js and
 // mirrors them into Supabase.
 import { listAccounts, listTransactions } from './_teller-client.js'
+import { normalizeSignedAmount } from '../../src/lib/txSign.js'
 
 // Minimum time between real Teller calls for the SAME enrollment, enforced
 // here so it applies uniformly no matter which of the three callers above
@@ -124,16 +125,15 @@ export async function syncEnrollment(supabase, enrollment) {
     const txns = await listTransactions(enrollment.access_token, ta.id)
 
     const toUpsert = txns.map(t => {
-      const amount = Number(t.amount)
       // Teller convention: negative amount = money out, positive = money in
-      const kind = amount > 0 ? 'income' : 'expense'
+      const { amount, kind } = normalizeSignedAmount(t.amount)
       const classified = classifyTransaction(t, kind)
       return {
         user_id:          enrollment.user_id,
         account_id:       account.id,
         teller_txn_id:    t.id,
         description:      t.details?.counterparty?.name || t.description,
-        amount:           Math.abs(amount),
+        amount,
         kind,
         category:         kind === 'expense' ? classified.category    : null,
         subcategory:      kind === 'expense' ? classified.subcategory : null,
