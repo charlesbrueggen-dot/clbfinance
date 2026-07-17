@@ -88,7 +88,11 @@ export default function Subscriptions() {
 
   const allDetected      = useMemo(() => detectRecurring(transactions), [transactions])
   const trackedKeys      = useMemo(() => new Set(trackedSubs.map(s => s.merchant_key)), [trackedSubs])
-  const untrackedDetected = useMemo(() => allDetected.filter(d => !trackedKeys.has(d.merchantKey)), [allDetected, trackedKeys])
+  const untrackedAll      = useMemo(() => allDetected.filter(d => !trackedKeys.has(d.merchantKey)), [allDetected, trackedKeys])
+  // "possible" = seen once so far, not enough data to confirm a repeat yet —
+  // surfaced separately (read-only) instead of silently dropped or acted on.
+  const untrackedDetected = useMemo(() => untrackedAll.filter(d => d.confidence !== 'possible'), [untrackedAll])
+  const possibleWatching  = useMemo(() => untrackedAll.filter(d => d.confidence === 'possible'), [untrackedAll])
 
   // Silently keep already-tracked subscriptions in sync with new transactions
   // (updates amount/last-charge/next-billing-date, flags price changes) —
@@ -200,7 +204,14 @@ export default function Subscriptions() {
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{CATEGORY_ICON[d.category] || '🔁'}</span>
                   <div>
-                    <p className="font-semibold text-primary text-sm">{d.name}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-primary text-sm">{d.name}</p>
+                      {d.confidence === 'likely' && (
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                          1 repeat so far
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted">{fmt(d.amount)} · {d.frequency} · est. next {d.nextDate}</p>
                   </div>
                 </div>
@@ -209,6 +220,24 @@ export default function Subscriptions() {
                   <button onClick={() => setCancelTarget({ detected: d })} className="text-xs text-muted hover:text-red-500 px-3 py-1.5 rounded border"
                     style={{ borderColor: 'var(--card-border)' }}>Cancel</button>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {possibleWatching.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Possible Subscriptions — Monitoring</p>
+          <p className="text-xs text-muted mb-2">Seen once so far — we'll confirm these once a second charge shows up.</p>
+          <div className="space-y-2">
+            {possibleWatching.map(d => (
+              <div key={d.merchantKey} className="card p-3 flex items-center justify-between opacity-70">
+                <div className="flex items-center gap-2">
+                  <span>{CATEGORY_ICON[d.category] || '🔁'}</span>
+                  <p className="text-sm text-primary">{d.name}</p>
+                </div>
+                <p className="text-xs text-muted">{fmt(d.amount)} · seen {d.lastDate}</p>
               </div>
             ))}
           </div>
@@ -267,7 +296,7 @@ export default function Subscriptions() {
         </div>
       )}
 
-      {untrackedDetected.length === 0 && trackedSubs.length === 0 && (
+      {untrackedDetected.length === 0 && possibleWatching.length === 0 && trackedSubs.length === 0 && (
         <div className="card p-12 text-center" style={{ border: '2px dashed var(--card-border)' }}>
           <p className="text-4xl mb-3">🔁</p>
           <p className="font-black text-primary text-lg mb-2">No recurring charges detected yet</p>

@@ -138,10 +138,53 @@ export function daysUntil(dateStr) {
   return Math.round((target - today) / MS_PER_DAY)
 }
 
-// Only flags charges at merchants we recognize as subscription billers (or
-// transactions already tagged Wants > Subscriptions) — a plain recurring
-// charge at, say, Uber or a gas station is NOT a subscription and never
-// shows up here, however often it repeats.
+// ── Pattern-based recurrence rules ──────────────────────────────────────────
+// A repeat is only "near" a billing cycle if its average gap lands inside one
+// of these windows, and every individual gap stays within `tolerance` days of
+// that average — that's what "roughly consistent, near a common cycle" means
+// operationally. Deliberately provider-agnostic: nothing here references a
+// merchant name.
+const CADENCES = [
+  { frequency: 'weekly',  target: 7,   tolerance: 3  },
+  { frequency: 'monthly', target: 30,  tolerance: 6  },
+  { frequency: 'yearly',  target: 365, tolerance: 20 },
+]
+
+function classifyCadence(avgGapDays) {
+  let best = null
+  for (const c of CADENCES) {
+    if (Math.abs(avgGapDays - c.target) <= c.tolerance) {
+      if (!best || Math.abs(avgGapDays - c.target) < Math.abs(avgGapDays - best.target)) best = c
+    }
+  }
+  return best
+}
+
+// Amounts count as "the same charge" within $0.50 or 3% of the average,
+// whichever is larger — the flat $0.50 covers typical monthly noise (sales
+// tax rounding), the 3% keeps bigger annual-plan tax deltas from breaking
+// the match without also matching two unrelated similar-priced charges.
+function amountsConsistent(amounts) {
+  const avg = amounts.reduce((s, a) => s + a, 0) / amounts.length
+  const tolerance = Math.max(0.5, avg * 0.03)
+  return amounts.every(a => Math.abs(a - avg) <= tolerance)
+}
+
+function avgGapDays(sorted) {
+  const gaps = []
+  for (let i = 1; i < sorted.length; i++) {
+    gaps.push((new Date(sorted[i].date) - new Date(sorted[i - 1].date)) / MS_PER_DAY)
+  }
+  return gaps
+}
+
+// Provider-agnostic: every expense is grouped by its normalized description
+// and flagged as recurring purely from amount + interval regularity — no
+// merchant name has to appear on any predefined list. The known-merchant list
+// (and a prior "Wants > Subscriptions" tag) are used only as a fast path that
+// skips the wait for a confirming repeat; they never gate detection for
+// anything else, so a niche or brand-new service is caught the same way a
+// well-known one is, the moment its pattern is confirmed.
 export function detectRecurring(transactions) {
   const groups = {}
   for (const t of transactions) {
@@ -150,50 +193,72 @@ export function detectRecurring(transactions) {
     if (!text) continue
 
     const known = matchKnownMerchant(text)
-    const taggedSubscription = !known && t.category === 'Wants' && t.subcategory === 'Subscriptions'
-    if (!known && !taggedSubscription) continue
+    const normalized = normalizeMerchant(t)
+    if (!normalized && !known) continue
 
-    const name     = known ? known.name : (t.merchant || t.description).trim()
-    const category = known ? known.category : 'Other'
-    const key = (known ? `known-${known.name}` : `tagged-${normalizeMerchant(t)}`).toLowerCase().replace(/[^a-z0-9]+/g, '-')
-    ;(groups[key] ||= { name, category, url: known?.url || null, txns: [] }).txns.push(t)
+    const name = known ? known.name : (t.merchant || t.description).trim()
+    // "tagged-" prefix kept for backward compatibility with merchant_key
+    // values already saved in tracked_subscriptions — it no longer implies
+    // anything was tagged, it's just "not a known-list match".
+    const key = (known ? `known-${known.name}` : `tagged-${normalized}`).toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    ;(groups[key] ||= { known, name, txns: [] }).txns.push(t)
   }
 
   const results = []
   for (const [key, group] of Object.entries(groups)) {
     const sorted = [...group.txns].sort((a, b) => new Date(a.date) - new Date(b.date))
     const last = sorted[sorted.length - 1]
-
-    // Known subscription billers are flagged from the very first charge;
-    // multiple charges let us refine the cadence instead of assuming monthly.
-    let frequency = 'monthly'
-    if (sorted.length >= 2) {
-      const gaps = []
-      for (let i = 1; i < sorted.length; i++) {
-        gaps.push((new Date(sorted[i].date) - new Date(sorted[i - 1].date)) / MS_PER_DAY)
-      }
-      const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length
-      if (avgGap <= 10) frequency = 'weekly'
-      else if (avgGap >= 300) frequency = 'yearly'
-      else frequency = 'monthly'
-    }
-
-    const amounts   = sorted.map(t => t.amount)
+    const amounts = sorted.map(t => t.amount)
     const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length
+
+    // A prior manual/auto category tag is treated the same as a known-list
+    // match — it's user/app-provided signal, not a brand-name whitelist — so
+    // it also gets the instant fast path instead of waiting for a repeat.
+    const isFastPath = !!group.known || group.txns.some(t => t.category === 'Wants' && t.subcategory === 'Subscriptions')
+
+    let frequency, confidence
+    if (isFastPath) {
+      confidence = 'confirmed'
+      frequency = 'monthly'
+      if (sorted.length >= 2) {
+        const gaps = avgGapDays(sorted)
+        const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length
+        frequency = classifyCadence(avgGap)?.frequency || (avgGap <= 10 ? 'weekly' : avgGap >= 300 ? 'yearly' : 'monthly')
+      }
+    } else if (sorted.length === 1) {
+      // Not enough data yet — surface it as "monitoring", don't flag it as
+      // a real subscription and don't silently drop it either.
+      confidence = 'possible'
+      frequency = null
+    } else {
+      const gaps = avgGapDays(sorted)
+      const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length
+      const cadence = classifyCadence(avgGap)
+      const regular = cadence && gaps.every(g => Math.abs(g - avgGap) <= cadence.tolerance)
+      if (!cadence || !regular || !amountsConsistent(amounts)) continue // doesn't look periodic — not a subscription
+
+      frequency = cadence.frequency
+      // 1 confirmed interval (2 occurrences) could still be a coincidental
+      // repeat, so it's "likely" rather than "confirmed"; 2+ confirmed
+      // intervals (3+ occurrences) is enough to call it confirmed.
+      confidence = gaps.length >= 2 ? 'confirmed' : 'likely'
+    }
 
     results.push({
       merchantKey: key,
       name:        group.name,
-      category:    group.category,
+      category:    group.known?.category || 'Other',
       amount:      avgAmount,
-      frequency,
+      frequency:   frequency || 'monthly',
+      confidence,
       lastDate:    last.date,
-      nextDate:    rollForward(computeNextBillingDate(last.date, frequency), frequency),
+      nextDate:    confidence === 'possible' ? null : rollForward(computeNextBillingDate(last.date, frequency || 'monthly'), frequency || 'monthly'),
       occurrences: sorted.length,
-      cancelUrl:   group.url || fallbackSearchUrl(group.name),
+      cancelUrl:   group.known?.url || fallbackSearchUrl(group.name),
     })
   }
-  return results.sort((a, b) => monthlyEquivalent(b) - monthlyEquivalent(a))
+  const rank = { confirmed: 2, likely: 1, possible: 0 }
+  return results.sort((a, b) => rank[b.confidence] - rank[a.confidence] || monthlyEquivalent(b) - monthlyEquivalent(a))
 }
 
 export function monthlyEquivalent({ amount, frequency }) {
