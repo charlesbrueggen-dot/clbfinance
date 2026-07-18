@@ -875,7 +875,7 @@ export default function Investments() {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
-                  activeIndex={sectorActiveIndex} activeShape={renderActivePieSector}
+                  activeIndex={sectorActiveIndex} activeShape={renderActivePieSector(dark)}
                   onMouseEnter={(_, i) => setSectorActiveIndex(i)}
                   onMouseLeave={() => setSectorActiveIndex(null)}
                   onClick={(_, i) => setSectorActiveIndex(prev => (prev === i ? null : i))}
@@ -911,7 +911,7 @@ export default function Investments() {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
-                  activeIndex={typeActiveIndex} activeShape={renderActivePieSector}
+                  activeIndex={typeActiveIndex} activeShape={renderActivePieSector(dark)}
                   onMouseEnter={(_, i) => setTypeActiveIndex(i)}
                   onMouseLeave={() => setTypeActiveIndex(null)}
                   onClick={(_, i) => setTypeActiveIndex(prev => (prev === i ? null : i))}

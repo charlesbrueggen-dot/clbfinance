@@ -158,7 +158,7 @@ export default function Income() {
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
-                activeIndex={pieActiveIndex} activeShape={renderActivePieSector}
+                activeIndex={pieActiveIndex} activeShape={renderActivePieSector(dark)}
                 onMouseEnter={(_, i) => setPieActiveIndex(i)}
                 onMouseLeave={() => setPieActiveIndex(null)}
                 onClick={(_, i) => setPieActiveIndex(prev => (prev === i ? null : i))}

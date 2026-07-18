@@ -26,7 +26,13 @@ export const pieTooltipLabelStyle = { color: '#10b981' }
 // every pie chart in the app. Pair with a Cell fillOpacity of pieCellOpacity(activeIndex, i) so
 // the other slices dim while one is active, and with onMouseEnter/onMouseLeave/onClick handlers
 // that track an `activeIndex` state (hover on desktop, tap-to-toggle on touch devices).
-export const renderActivePieSector = (props) => {
+//
+// In light mode the palette leans on pale blues, which can visually blend into the card
+// background right at the slice's own outer edge — a solid black outline keeps the active
+// slice readable there. Dark mode's fills already read clearly against the near-black card,
+// so it keeps the same subtle card-matching border the inactive slices use.
+// Usage: activeShape={renderActivePieSector(dark)}
+export const renderActivePieSector = (dark) => (props) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props
   return (
     <Sector
@@ -36,6 +42,8 @@ export const renderActivePieSector = (props) => {
       startAngle={startAngle}
       endAngle={endAngle}
       fill={fill}
+      stroke={dark ? 'var(--card-bg-solid)' : '#000'}
+      strokeWidth={dark ? 1.5 : 2}
     />
   )
 }

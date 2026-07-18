@@ -333,7 +333,7 @@ export default function Analytics() {
                 <PieChart>
                   <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
-                    activeIndex={catActiveIndex} activeShape={renderActivePieSector}
+                    activeIndex={catActiveIndex} activeShape={renderActivePieSector(dark)}
                     onMouseEnter={(_, i) => setCatActiveIndex(i)}
                     onMouseLeave={() => setCatActiveIndex(null)}
                     onClick={(_, i) => setCatActiveIndex(prev => (prev === i ? null : i))}
@@ -422,7 +422,7 @@ export default function Analytics() {
                 <PieChart>
                   <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
-                    activeIndex={nwActiveIndex} activeShape={renderActivePieSector}
+                    activeIndex={nwActiveIndex} activeShape={renderActivePieSector(dark)}
                     onMouseEnter={(_, i) => setNwActiveIndex(i)}
                     onMouseLeave={() => setNwActiveIndex(null)}
                     onClick={(_, i) => setNwActiveIndex(prev => (prev === i ? null : i))}

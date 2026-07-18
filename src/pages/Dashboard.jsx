@@ -149,7 +149,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75} {...PIE_STROKE_PROPS}
-                activeIndex={pieActiveIndex} activeShape={renderActivePieSector}
+                activeIndex={pieActiveIndex} activeShape={renderActivePieSector(dark)}
                 onMouseEnter={(_, i) => setPieActiveIndex(i)}
                 onMouseLeave={() => setPieActiveIndex(null)}
                 onClick={(_, i) => setPieActiveIndex(prev => (prev === i ? null : i))}
