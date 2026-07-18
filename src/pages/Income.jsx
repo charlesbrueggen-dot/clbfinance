@@ -167,7 +167,7 @@ export default function Income() {
                   <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(pieActiveIndex, i)} />
                 ))}
               </Pie>
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} itemStyle={{ color: '#10b981' }} labelStyle={{ color: '#10b981' }} />
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--positive)', fontSize: 13 }} itemStyle={{ color: 'var(--positive)' }} labelStyle={{ color: 'var(--positive)' }} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
@@ -185,13 +185,13 @@ export default function Income() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold"
-                      style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981' }}>
+                      style={{ background: 'var(--positive-bg)', border: '1px solid var(--positive)', color: 'var(--positive)' }}>
                       <Landmark size={18} />
                     </div>
                     <div>
                       <p className="font-bold text-primary">{item.source || item.description}</p>
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                        style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                         Auto-synced
                       </span>
                     </div>
@@ -248,13 +248,14 @@ export default function Income() {
                     <button key={opt.value} type="button"
                       onClick={() => setForm(f => ({ ...f, frequency: opt.value, next_date: '' }))}
                       className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-sm font-semibold transition-all ${
-                        form.frequency === opt.value ? 'text-primary' : 'text-muted'
+                        form.frequency === opt.value ? '' : 'text-muted'
                       }`}
                       style={{
-                        borderColor: form.frequency === opt.value ? '#10b981' : 'var(--card-border)',
-                        background:  form.frequency === opt.value ? 'rgba(16,185,129,0.1)' : undefined,
+                        borderColor: form.frequency === opt.value ? 'var(--positive)' : 'var(--card-border)',
+                        background:  form.frequency === opt.value ? 'var(--positive-bg)' : undefined,
+                        color:       form.frequency === opt.value ? 'var(--positive)' : undefined,
                       }}>
-                      <span className="text-xs font-bold" style={{ color: form.frequency === opt.value ? '#10b981' : 'inherit' }}>{opt.icon}</span>
+                      <span className="text-xs font-bold" style={{ color: form.frequency === opt.value ? 'var(--positive)' : 'inherit' }}>{opt.icon}</span>
                       <span className="text-xs">{opt.label}</span>
                     </button>
                   ))}
@@ -336,7 +337,7 @@ function IncomeCard({ item, onEdit, onDelete }) {
             <p className="font-bold text-primary">{item.source}</p>
             {isRecurring && (
               <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                 {frequencyLabel(item.frequency)}
               </span>
             )}
@@ -344,7 +345,7 @@ function IncomeCard({ item, onEdit, onDelete }) {
         </div>
         <div className="flex gap-2">
           <button onClick={() => onEdit(item)} className="text-muted hover:text-primary transition-colors"><Pencil size={14} /></button>
-          <button onClick={() => onDelete(item.id)} className="transition-colors" style={{ color: '#ef4444' }}><Trash2 size={14} /></button>
+          <button onClick={() => onDelete(item.id)} className="transition-colors" style={{ color: 'var(--negative-strong)' }}><Trash2 size={14} /></button>
         </div>
       </div>
       <p className="text-2xl font-black text-primary">{fmt(item.amount)}</p>

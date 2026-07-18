@@ -104,8 +104,7 @@ export default function Dashboard() {
     ...allExpenses.map(e => ({ ...e, kind: 'expense' })),
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
 
-  const surplus      = totalIncome - totalExpenses
-  const surplusColor = surplus >= 0 ? (dark ? '#10b981' : '#059669') : '#ef4444'
+  const surplus = totalIncome - totalExpenses
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -161,7 +160,7 @@ export default function Dashboard() {
         <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
         <p className="text-muted text-xs mt-1">{allIncome.length} source{allIncome.length !== 1 ? 's' : ''}</p>
         {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
-          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
+          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--positive-strong)' }}>
             <Repeat size={12} /> {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
           </p>
         )}
@@ -186,7 +185,7 @@ export default function Dashboard() {
                   <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(pieActiveIndex, i)} />
                 ))}
               </Pie>
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} itemStyle={{ color: '#10b981' }} labelStyle={{ color: '#10b981' }} />
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--positive)', fontSize: 13 }} itemStyle={{ color: 'var(--positive)' }} labelStyle={{ color: 'var(--positive)' }} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
@@ -237,7 +236,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-black text-primary">Budget Overview</h2>
           <span className="text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1"
-            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: surplusColor }}>
+            style={{ background: surplus >= 0 ? 'var(--positive-bg)' : 'var(--negative-bg)', color: surplus >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
             {surplus >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {fmt(Math.abs(surplus))} {surplus >= 0 ? 'surplus' : 'deficit'}
           </span>
         </div>
@@ -272,7 +271,7 @@ export default function Dashboard() {
                 style={{ borderBottom: '1px solid var(--card-border)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                    style={{ background: item.kind === 'income' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: item.kind === 'income' ? '#10b981' : '#ef4444' }}>
+                    style={{ background: item.kind === 'income' ? 'var(--positive-bg)' : 'var(--negative-bg)', color: item.kind === 'income' ? 'var(--positive)' : 'var(--negative)' }}>
                     {item.kind === 'income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                   </div>
                   <div>
@@ -280,7 +279,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted">{item.date}</p>
                   </div>
                 </div>
-                <span className="font-black text-sm" style={{ color: item.kind === 'income' ? 'var(--text-primary)' : '#ef4444' }}>
+                <span className="font-black text-sm" style={{ color: item.kind === 'income' ? 'var(--text-primary)' : 'var(--negative-strong)' }}>
                   {item.kind === 'income' ? '+' : '-'}{fmt(item.amount)}
                 </span>
               </div>
@@ -313,7 +312,7 @@ export default function Dashboard() {
       <div className="mt-6 flex justify-center">
         <button onClick={() => setShowClearModal(true)}
           className="text-xs font-semibold flex items-center gap-1.5 px-3 py-2 rounded-lg transition-opacity hover:opacity-75"
-          style={{ color: '#ef4444' }}>
+          style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>
           <Trash2 size={13} /> Clear All Data
         </button>
       </div>
@@ -323,7 +322,7 @@ export default function Dashboard() {
         <div className="modal-overlay" onClick={() => !clearing && setShowClearModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
-              <p className="font-black text-lg flex items-center gap-2" style={{ color: '#ef4444' }}>
+              <p className="font-black text-lg flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>
                 <AlertTriangle size={20} /> Clear All Data
               </p>
               {!clearing && (

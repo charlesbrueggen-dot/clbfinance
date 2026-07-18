@@ -134,7 +134,7 @@ export default function UnderConstruction({ children }) {
             Enter
           </button>
         </div>
-        {error && <p className="text-xs" style={{ color: '#ef4444' }}>{error}</p>}
+        {error && <p className="text-xs" style={{ color: 'var(--negative-strong)' }}>{error}</p>}
       </form>
     </div>
   )

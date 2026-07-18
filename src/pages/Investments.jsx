@@ -40,7 +40,7 @@ function ProGate({ feature, Icon, description, userId }) {
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
         <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
@@ -446,9 +446,9 @@ export default function Investments() {
 
   // ─── Lookup badge ─────────────────────────────────────────────────────────
   const lookupBadge = {
-    loading:   <span className="text-xs font-medium inline-flex items-center gap-1" style={{ color: '#f0a500' }}><RefreshCw size={11} className="animate-spin" /> looking…</span>,
-    found:     <span className="text-xs font-medium inline-flex items-center gap-1" style={{ color: '#10b981' }}><Check size={11} /> found</span>,
-    not_found: <span className="text-xs font-medium" style={{ color: '#ef4444' }}>? not found — enter manually</span>,
+    loading:   <span className="text-xs font-medium inline-flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}><RefreshCw size={11} className="animate-spin" /> looking…</span>,
+    found:     <span className="text-xs font-medium inline-flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}><Check size={11} /> found</span>,
+    not_found: <span className="text-xs font-medium px-1.5 py-0.5 rounded" style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>? not found — enter manually</span>,
   }[lookupStatus] || null
 
   // ─── Form fields by type ──────────────────────────────────────────────────
@@ -460,7 +460,7 @@ export default function Investments() {
         <div className="mb-4">
           <label className="label">
             Ticker Symbol *
-            <span className="ml-2 text-xs font-normal" style={{ color: '#10b981' }}>
+            <span className="ml-2 text-xs font-normal px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
               · auto-detect {activeType === 'ETF' ? '(SPY, QQQ, VOO…)' : '(AAPL, TSLA, NVDA…)'}
             </span>
           </label>
@@ -481,7 +481,7 @@ export default function Investments() {
         <div className="mb-4">
           <label className="label">
             {activeType === 'ETF' ? 'Fund Name' : 'Company Name'} *
-            {lookupStatus === 'found' && <span className="ml-2 text-xs font-normal" style={{ color: '#10b981' }}>· auto-filled</span>}
+            {lookupStatus === 'found' && <span className="ml-2 text-xs font-normal px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>· auto-filled</span>}
           </label>
           <input className="input-field"
             placeholder="Auto-filled from ticker, or enter manually"
@@ -492,7 +492,7 @@ export default function Investments() {
         <div className="mb-4">
           <label className="label">
             Sector
-            {lookupStatus === 'found' && <span className="ml-2 text-xs font-normal" style={{ color: '#10b981' }}>· auto-filled</span>}
+            {lookupStatus === 'found' && <span className="ml-2 text-xs font-normal px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>· auto-filled</span>}
           </label>
           <select className="input-field" value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>
             {SECTORS.map(s => <option key={s}>{s}</option>)}
@@ -516,7 +516,7 @@ export default function Investments() {
           <div>
             <label className="label">
               Current Price
-              <span className="ml-1 text-xs font-normal" style={{ color: '#10b981' }}>(auto-refreshed)</span>
+              <span className="ml-1 text-xs font-normal px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>(auto-refreshed)</span>
             </label>
             <input className="input-field" type="number" step="0.01" min="0"
               placeholder="Fetched on refresh"
@@ -529,7 +529,7 @@ export default function Investments() {
           </div>
         </div>
 
-        <div className="p-3 rounded-xl text-xs flex items-center gap-1.5" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+        <div className="p-3 rounded-xl text-xs flex items-center gap-1.5" style={{ background: 'var(--positive-bg)', border: '1px solid var(--positive)', color: 'var(--positive)' }}>
           <RefreshCw size={13} className="flex-shrink-0" /> {activeType} prices auto-refresh when you click "Refresh Prices".
         </div>
       </>
@@ -538,7 +538,7 @@ export default function Investments() {
     /* ── CRYPTO ──────────────────────────────────────────────── */
     if (activeType === 'Crypto') return (
       <>
-        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b' }}>
+        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning)', color: 'var(--warning)' }}>
           <AlertTriangle size={13} className="flex-shrink-0" /> Crypto prices are <strong>not auto-refreshed</strong>. Update the current price manually.
         </div>
 
@@ -610,7 +610,7 @@ export default function Investments() {
             <input className="input-field" type="number" step="0.01" min="0" placeholder="4.50"
               value={form.coupon_rate} onChange={e => setForm(f => ({ ...f, coupon_rate: e.target.value }))} />
             {form.coupon_rate && form.face_value && (
-              <p className="text-xs mt-1" style={{ color: '#10b981' }}>
+              <p className="text-xs mt-1 inline-block px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                 Annual income: {fmt((parseFloat(form.coupon_rate) / 100) * parseFloat(form.face_value))}
               </p>
             )}
@@ -642,7 +642,7 @@ export default function Investments() {
     /* ── MUTUAL FUND ─────────────────────────────────────────── */
     if (activeType === 'Mutual Fund') return (
       <>
-        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', color: '#a78bfa' }}>
+        <div className="p-3 rounded-xl text-xs mb-4 flex items-center gap-1.5" style={{ background: dark ? 'rgba(139,92,246,0.08)' : '#ede9fe', border: dark ? '1px solid rgba(139,92,246,0.25)' : '1px solid #6d28d9', color: dark ? '#a78bfa' : '#6d28d9' }}>
           <Landmark size={13} className="flex-shrink-0" /> Mutual fund NAVs update once daily at market close. Update the NAV manually to keep values current.
         </div>
 
@@ -671,7 +671,7 @@ export default function Investments() {
             <input className="input-field" type="number" step="0.01" min="0" placeholder="120.00"
               value={form.nav} onChange={e => setForm(f => ({ ...f, nav: e.target.value }))} />
             {form.shares && form.nav && (
-              <p className="text-xs mt-1" style={{ color: '#10b981' }}>
+              <p className="text-xs mt-1 inline-block px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                 Total value: {fmt(parseFloat(form.shares) * parseFloat(form.nav))}
               </p>
             )}
@@ -736,10 +736,10 @@ export default function Investments() {
           <div className="flex items-center gap-1">
             {item.symbol && <span className="font-bold text-primary text-sm">{item.symbol}</span>}
             {isAutoRefresh(item.type) && (
-              <span className="text-xs px-1 rounded" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>auto</span>
+              <span className="text-xs px-1 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>auto</span>
             )}
             {item._ids && item._ids.length > 1 && (
-              <span className="text-xs px-1 rounded" style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa' }}>{item._ids.length} lots</span>
+              <span className="text-xs px-1 rounded" style={{ background: dark ? 'rgba(139,92,246,0.15)' : '#ede9fe', color: dark ? '#a78bfa' : '#6d28d9' }}>{item._ids.length} lots</span>
             )}
           </div>
           <span className="text-xs text-muted block">{item.name}</span>
@@ -753,10 +753,10 @@ export default function Investments() {
         <td className="py-3 px-2 text-muted text-xs">{item.sector || '—'}</td>
         <td className="py-3 px-2 font-medium text-primary">{fmt(val)}</td>
         <td className="py-3 px-2">
-          <span className="font-medium text-sm" style={{ color: gl >= 0 ? '#10b981' : '#ef4444' }}>
+          <span className="font-medium text-sm" style={{ color: gl >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
             {gl >= 0 ? '+' : ''}{fmt(gl)}
           </span>
-          <span className="block text-xs" style={{ color: gl >= 0 ? '#10b981' : '#ef4444' }}>
+          <span className="block text-xs" style={{ color: gl >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
             {glPct}%
           </span>
         </td>
@@ -807,7 +807,7 @@ export default function Investments() {
           <Info size={12} /> {manualCount} holding{manualCount !== 1 ? 's' : ''} (crypto / bonds / mutual funds) require manual price updates.
         </p>
       )}
-      {refreshError && <p className="text-red-500 text-xs mb-3">{refreshError}</p>}
+      {refreshError && <p className="text-xs mb-3" style={{ color: 'var(--negative-strong)' }}>{refreshError}</p>}
       {!refreshError && <div className="mb-4" />}
 
       {/* Stat cards */}
@@ -824,14 +824,14 @@ export default function Investments() {
         </div>
         <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Total Gain / Loss</p>
-          <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }} title={fmt(totalGL)}>
+          <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }} title={fmt(totalGL)}>
             {totalGL >= 0 ? '+' : ''}{fmtCompact(totalGL)}
           </p>
           <p className="text-muted text-xs mt-0.5">vs cost basis</p>
         </div>
         <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Total Return</p>
-          <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }}>
+          <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
             {totalRet}%
           </p>
           <p className="text-muted text-xs mt-0.5">all time</p>
@@ -962,9 +962,9 @@ export default function Investments() {
                   <button key={t} type="button" onClick={() => switchType(t)}
                     className="py-2 rounded-xl text-xs font-semibold transition-colors"
                     style={{
-                      border:     activeType === t ? '1px solid rgba(16,185,129,0.6)' : '1px solid var(--card-border)',
-                      background: activeType === t ? 'rgba(16,185,129,0.15)'          : 'transparent',
-                      color:      activeType === t ? '#10b981'                         : 'var(--text-muted)',
+                      border:     activeType === t ? '1px solid var(--positive)' : '1px solid var(--card-border)',
+                      background: activeType === t ? 'var(--positive-bg)'        : 'transparent',
+                      color:      activeType === t ? 'var(--positive)'           : 'var(--text-muted)',
                     }}>
                     {t}
                   </button>
@@ -977,7 +977,7 @@ export default function Investments() {
 
             {/* Save error */}
             {saveError && (
-              <div className="mt-4 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+              <div className="mt-4 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5" style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
                 <AlertTriangle size={13} className="flex-shrink-0" /> {saveError}
               </div>
             )}

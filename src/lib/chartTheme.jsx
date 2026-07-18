@@ -28,11 +28,11 @@ export const pieTooltipStyle = dark => ({
   background: dark ? '#111' : '#fff',
   border: '1px solid var(--card-border)',
   borderRadius: 10,
-  color: '#10b981',
+  color: 'var(--positive)',
   fontSize: 13,
 })
-export const pieTooltipItemStyle  = { color: '#10b981' }
-export const pieTooltipLabelStyle = { color: '#10b981' }
+export const pieTooltipItemStyle  = { color: 'var(--positive)' }
+export const pieTooltipLabelStyle = { color: 'var(--positive)' }
 
 // Renders the hovered/tapped slice slightly larger — the visual "this one" indicator used by
 // every pie chart in the app. Pair with a Cell fillOpacity of pieCellOpacity(activeIndex, i) so

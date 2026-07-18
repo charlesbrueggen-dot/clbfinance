@@ -41,7 +41,7 @@ function ProGate({ feature, Icon, description, userId }) {
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
         <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
@@ -148,8 +148,8 @@ export default function Import() {
   const badgeFor = (field, currentValue) => {
     if (detected.columns[field] !== currentValue) return null
     const score = detected.confidence[field]
-    if (score >= 100) return { label: 'detected', color: '#10b981', Icon: Check }
-    if (score >= 60) return { label: '~ guessed', color: '#f59e0b', Icon: null }
+    if (score >= 100) return { label: 'detected', color: 'var(--positive)', bg: 'var(--positive-bg)', Icon: Check }
+    if (score >= 60) return { label: '~ guessed', color: 'var(--warning)', bg: 'var(--warning-bg)', Icon: null }
     return null
   }
 
@@ -341,7 +341,7 @@ export default function Import() {
           </label>
           {fileError && (
             <div className="mt-4 p-3 rounded-xl text-sm"
-              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
               <AlertTriangle size={14} className="inline mr-1" /> {fileError}
             </div>
           )}
@@ -358,13 +358,13 @@ export default function Import() {
             <div className="grid grid-cols-2 gap-2 mt-1">
               <button type="button" onClick={() => setMode('amount')}
                 className="p-3 rounded-xl border text-sm font-semibold text-left"
-                style={{ borderColor: mode === 'amount' ? '#10b981' : 'var(--card-border)', background: mode === 'amount' ? 'rgba(16,185,129,0.1)' : undefined }}>
+                style={{ borderColor: mode === 'amount' ? 'var(--positive)' : 'var(--card-border)', background: mode === 'amount' ? 'var(--positive-bg)' : undefined, color: mode === 'amount' ? 'var(--positive)' : undefined }}>
                 Single Amount column
                 <span className="block text-xs font-normal text-muted mt-0.5">e.g. -12.34 for a purchase, 500.00 for a deposit</span>
               </button>
               <button type="button" onClick={() => setMode('debitCredit')}
                 className="p-3 rounded-xl border text-sm font-semibold text-left"
-                style={{ borderColor: mode === 'debitCredit' ? '#10b981' : 'var(--card-border)', background: mode === 'debitCredit' ? 'rgba(16,185,129,0.1)' : undefined }}>
+                style={{ borderColor: mode === 'debitCredit' ? 'var(--positive)' : 'var(--card-border)', background: mode === 'debitCredit' ? 'var(--positive-bg)' : undefined, color: mode === 'debitCredit' ? 'var(--positive)' : undefined }}>
                 Separate Debit / Credit columns
                 <span className="block text-xs font-normal text-muted mt-0.5">both columns are positive numbers</span>
               </button>
@@ -420,7 +420,7 @@ export default function Import() {
 
           {!mapping.valid && (
             <div className="mb-4 p-3 rounded-xl text-sm"
-              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
               <p className="font-semibold mb-1 flex items-center gap-1.5"><AlertTriangle size={14} /> We can't confidently parse this file:</p>
               <ul className="list-disc list-inside space-y-0.5">
                 {mapping.errors.map((e, i) => <li key={i}>{e}</li>)}
@@ -430,7 +430,7 @@ export default function Import() {
 
           {previewError && (
             <div className="mb-4 p-3 rounded-xl text-sm"
-              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
               <AlertTriangle size={14} className="inline mr-1" /> {previewError}
             </div>
           )}
@@ -460,14 +460,14 @@ export default function Import() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-sm text-primary truncate">{row.description || '—'}</p>
                     {row.isDuplicate && (
-                      <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
                         Possible duplicate
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-muted">{row.date}</p>
                 </div>
-                <span className="font-bold flex-shrink-0 ml-3" style={{ color: row.kind === 'income' ? '#10b981' : '#ef4444' }}>
+                <span className="font-bold flex-shrink-0 ml-3" style={{ color: row.kind === 'income' ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
                   {row.kind === 'income' ? '+' : '-'}{fmt(row.amount)}
                 </span>
               </div>
@@ -489,7 +489,7 @@ export default function Import() {
 
           {importError && (
             <div className="mb-4 p-3 rounded-xl text-sm"
-              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+              style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
               <AlertTriangle size={14} className="inline mr-1" /> Import failed: {importError}
             </div>
           )}
@@ -524,7 +524,7 @@ function ColumnSelect({ label, value, onChange, headers, badge }) {
     <div>
       <div className="flex items-center gap-2 mb-1">
         <label className="label mb-0">{label}</label>
-        {badge && <span className="text-xs font-semibold inline-flex items-center gap-0.5" style={{ color: badge.color }}>{badge.Icon && <badge.Icon size={11} />} {badge.label}</span>}
+        {badge && <span className="text-xs font-semibold inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded" style={{ background: badge.bg, color: badge.color }}>{badge.Icon && <badge.Icon size={11} />} {badge.label}</span>}
       </div>
       <select className="input-field" value={value ?? ''} onChange={e => onChange(e.target.value === '' ? null : +e.target.value)}>
         <option value="">— Select column —</option>

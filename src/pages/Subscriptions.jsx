@@ -33,7 +33,7 @@ function ProGate({ feature, Icon, description, userId }) {
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
         <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
@@ -48,9 +48,9 @@ function ProGate({ feature, Icon, description, userId }) {
 function RenewalBadge({ date }) {
   const d = daysUntil(date)
   if (d === null) return null
-  if (d < 0)  return <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>Overdue {Math.abs(d)}d</span>
-  if (d === 0) return <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>Renews today</span>
-  if (d <= 7)  return <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>Renews in {d}d</span>
+  if (d < 0)  return <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>Overdue {Math.abs(d)}d</span>
+  if (d === 0) return <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>Renews today</span>
+  if (d <= 7)  return <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>Renews in {d}d</span>
   return <span className="text-xs text-muted">Renews {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
 }
 
@@ -163,7 +163,7 @@ export default function Subscriptions() {
       </div>
 
       <div className="mb-4 p-3 rounded-xl text-xs flex items-start gap-1.5"
-        style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b' }}>
+        style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning)', color: 'var(--warning)' }}>
         <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
         <span>We can't cancel subscriptions for you — no provider offers that. Cancelling here just stops
         counting it as active spend and points you to where to finish the job yourself.</span>
@@ -209,7 +209,7 @@ export default function Subscriptions() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-semibold text-primary text-sm">{d.name}</p>
                       {d.confidence === 'likely' && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
                           1 repeat so far
                         </span>
                       )}
@@ -241,7 +241,7 @@ export default function Subscriptions() {
                       <p className="font-semibold text-primary text-sm truncate">{sub.name}</p>
                       {sub.previous_amount != null && (
                         <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-0.5"
-                          style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                          style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>
                           <ArrowUp size={11} /> was {fmt(sub.previous_amount)}
                         </span>
                       )}

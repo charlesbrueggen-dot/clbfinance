@@ -54,12 +54,12 @@ export default function Success() {
       )}
       {status === 'error' && (
         <>
-          <div className="flex justify-center mb-4" style={{ color: '#ef4444' }}><AlertTriangle size={52} /></div>
+          <div className="flex justify-center mb-4" style={{ color: 'var(--negative-strong)' }}><AlertTriangle size={52} /></div>
           <h2 className="text-xl font-black text-primary mb-2">Something went wrong</h2>
           <p className="text-muted text-sm mb-2">Your payment went through — contact support and we'll activate you manually.</p>
           {errorDetail && (
             <p className="text-xs font-mono mb-6 px-4 py-2 rounded-lg"
-              style={{ background: 'var(--card-bg)', color: '#ef4444', border: '1px solid var(--card-border)' }}>
+              style={{ background: 'var(--negative-bg)', color: 'var(--negative)', border: '1px solid var(--negative)' }}>
               {errorDetail}
             </p>
           )}

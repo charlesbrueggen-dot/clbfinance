@@ -220,7 +220,7 @@ export default function Analytics() {
             </div>
             <div className="card p-4">
               <p className="text-muted text-xs mb-1">Avg Monthly Saved</p>
-              <p className="text-2xl font-black" style={{ color: avgMonthlySavings >= 0 ? 'var(--text-primary)' : '#ef4444' }}>{fmt(avgMonthlySavings)}</p>
+              <p className="text-2xl font-black" style={{ color: avgMonthlySavings >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(avgMonthlySavings)}</p>
               <p className="text-xs text-muted mt-0.5">per month</p>
             </div>
           </div>
@@ -376,7 +376,7 @@ export default function Analytics() {
           <div className="card p-6 mb-4 flex items-center justify-between">
             <div>
               <p className="text-muted text-xs mb-1">Total Net Worth</p>
-              <p className="text-4xl font-black" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : '#ef4444' }}>{fmt(Math.abs(netWorth))}</p>
+              <p className="text-4xl font-black" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(Math.abs(netWorth))}</p>
               <p className="text-xs text-muted mt-1">{netWorth >= 0 ? 'Positive position' : 'Deficit'}</p>
             </div>
             <span className="opacity-30">{netWorth >= 0 ? <ArrowUpRight size={48} /> : <ArrowDownRight size={48} />}</span>
@@ -394,7 +394,7 @@ export default function Analytics() {
                   <item.Icon size={14} className="text-muted" />
                   <p className="text-muted text-xs">{item.label}</p>
                 </div>
-                <p className="text-lg font-black" style={{ color: item.value >= 0 ? 'var(--text-primary)' : '#ef4444' }}>
+                <p className="text-lg font-black" style={{ color: item.value >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>
                   {fmt(Math.abs(item.value))}
                 </p>
               </div>
@@ -463,8 +463,8 @@ export default function Analytics() {
                 </BarChart>
               </ResponsiveContainer>
               <div className="flex gap-4 mt-2 text-xs font-bold">
-                <span style={{ color: '#10b981' }}>● Lent Out</span>
-                <span style={{ color: '#ef4444' }}>● Borrowed</span>
+                <span style={{ color: 'var(--positive-strong)' }}>● Lent Out</span>
+                <span style={{ color: 'var(--negative-strong)' }}>● Borrowed</span>
               </div>
             </div>
           )}
@@ -482,17 +482,17 @@ export default function Analytics() {
                   return (
                     <div key={loan.id} className="flex items-center justify-between p-3 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isLent ? '#10b981' : '#ef4444' }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: isLent ? 'var(--positive-bg)' : 'var(--negative-bg)', color: isLent ? 'var(--positive)' : 'var(--negative)' }}>
                           {isLent ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
                         </div>
                         <div>
                           <p className="font-semibold text-primary text-sm">{loan.person_name}</p>
                           <p className="text-xs text-muted">{isLent ? 'You lent' : 'You borrowed'} · {loan.loan_date}</p>
-                          {loan.interest_rate > 0 && <p className="text-xs" style={{ color: '#f59e0b' }}>+{fmt(interest)} interest accrued</p>}
+                          {loan.interest_rate > 0 && <p className="text-xs" style={{ color: 'var(--warning-strong)' }}>+{fmt(interest)} interest accrued</p>}
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-black text-sm" style={{ color: isLent ? '#10b981' : '#ef4444' }}>{fmt(current)}</p>
+                        <p className="font-black text-sm" style={{ color: isLent ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>{fmt(current)}</p>
                         {loan.interest_rate > 0 && <p className="text-xs text-muted">orig: {fmt(loan.amount)}</p>}
                       </div>
                     </div>
@@ -507,15 +507,15 @@ export default function Analytics() {
             <p className="text-xs text-muted mb-3">Loans affect your total financial position</p>
             <div className="flex justify-between text-sm">
               <span className="text-muted">Loans add to net worth</span>
-              <span className="font-bold" style={{ color: '#10b981' }}>+{fmt(totalLent)}</span>
+              <span className="font-bold" style={{ color: 'var(--positive-strong)' }}>+{fmt(totalLent)}</span>
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className="text-muted">Debts reduce net worth</span>
-              <span className="font-bold" style={{ color: '#ef4444' }}>-{fmt(totalOwed)}</span>
+              <span className="font-bold" style={{ color: 'var(--negative-strong)' }}>-{fmt(totalOwed)}</span>
             </div>
             <div className="border-t mt-2 pt-2 flex justify-between text-sm font-black" style={{ borderColor: 'var(--card-border)' }}>
               <span className="text-primary">Net contribution</span>
-              <span style={{ color: totalLent - totalOwed >= 0 ? '#10b981' : '#ef4444' }}>{fmt(totalLent - totalOwed)}</span>
+              <span style={{ color: totalLent - totalOwed >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>{fmt(totalLent - totalOwed)}</span>
             </div>
           </div>
         </>

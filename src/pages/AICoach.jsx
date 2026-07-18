@@ -60,7 +60,7 @@ function ProGate({ feature, Icon, description, userId }) {
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
         <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>

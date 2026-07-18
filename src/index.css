@@ -23,6 +23,24 @@
   --progress-track: rgba(255,255,255,0.18);
   --modal-bg: #1a5a94;
   --shadow-color: rgba(0,0,0,0.2);
+
+  /* Status/badge colors, tuned for contrast against the blue card/page — NOT the
+     plain Tailwind 500-shades (those are designed for white backgrounds and read
+     almost invisibly here). --positive/--negative/--warning pair with the matching
+     -bg for pill-style badges (solid pastel chip + dark saturated text). The
+     -strong variants are for bare status text with no chip behind it. */
+  --positive: #047857;
+  --positive-strong: #022c22;
+  --positive-bg: #d1fae5;
+  --negative: #b91c1c;
+  --negative-strong: #450a0a;
+  --negative-bg: #fee2e2;
+  --warning: #b45309;
+  --warning-strong: #451a03;
+  --warning-bg: #fef3c7;
+  --info: #1d4ed8;
+  --info-strong: #172554;
+  --info-bg: #dbeafe;
 }
 
 /* ── STRIDE DARK MODE ── Black bg, emerald green text */
@@ -46,6 +64,19 @@
   --progress-track: #1a2e1a;
   --modal-bg: #080808;
   --shadow-color: rgba(16,185,129,0.06);
+
+  --positive: #10b981;
+  --positive-strong: #10b981;
+  --positive-bg: rgba(16,185,129,0.15);
+  --negative: #ef4444;
+  --negative-strong: #ef4444;
+  --negative-bg: rgba(239,68,68,0.15);
+  --warning: #f59e0b;
+  --warning-strong: #f59e0b;
+  --warning-bg: rgba(245,158,11,0.12);
+  --info: #3b82f6;
+  --info-strong: #3b82f6;
+  --info-bg: rgba(59,130,246,0.12);
 }
 
 body {
@@ -65,41 +96,9 @@ body {
   box-shadow: 0 4px 24px var(--shadow-color);
 }
 
-/* Light mode: cards get a near-opaque light background instead of a translucent blue tint.
-   The old tint blended into a medium-blue that many accent colors (status badges, chart
-   legends — mostly standard "designed for a white background" shades) read poorly against,
-   in some cases almost invisibly. Re-pointing these variables inside .card means every
-   existing component that already reads them (rather than a hardcoded color) adapts
-   automatically. Text/border/chip colors flip to dark-on-light to match; page-level text
-   (headings sitting directly on --page-bg, outside any .card) is untouched and stays white. */
-.card {
-  --card-bg: rgba(255,255,255,0.94);
-  --text-primary: #0f2942;
-  --text-muted: #4b6478;
-  --card-border: rgba(15,41,66,0.12);
-  --input-bg: rgba(15,41,66,0.05);
-  --input-border: rgba(15,41,66,0.15);
-  --progress-track: rgba(15,41,66,0.1);
-  --accent: #2a7ab8;
-  --btn-primary-bg: #2a7ab8;
-  --btn-primary-hover: #1e6aa8;
-  --btn-primary-border: #2a7ab8;
-}
 .dark .card {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  /* Undo the light-mode-only overrides above — dark mode's cards are unchanged. */
-  --card-bg: #0d0d0d;
-  --text-primary: #10b981;
-  --text-muted: #34d399;
-  --card-border: #1c2e1c;
-  --input-bg: #0a160a;
-  --input-border: #1a3020;
-  --progress-track: #1a2e1a;
-  --accent: #10b981;
-  --btn-primary-bg: #10b981;
-  --btn-primary-hover: #059669;
-  --btn-primary-border: #10b981;
 }
 
 .page-bg { background-color: var(--page-bg); }

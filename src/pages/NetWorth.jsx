@@ -117,7 +117,7 @@ export default function NetWorth() {
       <div className="rounded-2xl p-6 mb-6 flex items-center justify-between" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
         <div>
           <p className="text-muted text-sm mb-1">Total Net Worth</p>
-          <p className="text-4xl font-bold" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : '#ef4444' }}>{fmt(netWorth)}</p>
+          <p className="text-4xl font-bold" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(netWorth)}</p>
           {accounts.length > 0 && (
             <p className="text-xs text-muted mt-1">Includes {accounts.length} connected account{accounts.length !== 1 ? 's' : ''}</p>
           )}
@@ -132,7 +132,8 @@ export default function NetWorth() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted text-xs mb-1">{item.label}</p>
-                <p className={`text-xl font-bold ${item.negative ? 'text-red-500' : 'text-primary'}`}>
+                <p className={`text-xl font-bold ${item.negative ? '' : 'text-primary'}`}
+                  style={item.negative ? { color: 'var(--negative-strong)' } : undefined}>
                   {item.negative ? '-' : ''}{fmt(Math.abs(item.value))}
                 </p>
               </div>
@@ -156,7 +157,8 @@ export default function NetWorth() {
                     <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}</p>
                   </div>
                 </div>
-                <p className={`font-bold text-sm ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                <p className={`font-bold text-sm ${acc.type === 'Credit Card' ? '' : 'text-primary'}`}
+                  style={acc.type === 'Credit Card' ? { color: 'var(--negative-strong)' } : undefined}>
                   {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
                 </p>
               </div>

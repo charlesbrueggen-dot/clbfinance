@@ -28,7 +28,7 @@ function ProGate({ feature, Icon, description, userId }) {
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
         <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
@@ -130,7 +130,9 @@ export default function Loans() {
         </div>
         <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Net Position</p>
-          <p className={`text-2xl font-bold break-words ${netPosition >= 0 ? 'text-primary' : 'text-red-400'}`} title={fmt(netPosition)}>{fmtCompact(netPosition)}</p>
+          <p className={`text-2xl font-bold break-words ${netPosition >= 0 ? 'text-primary' : ''}`}
+            style={netPosition < 0 ? { color: 'var(--negative-strong)' } : undefined}
+            title={fmt(netPosition)}>{fmtCompact(netPosition)}</p>
           <p className="text-muted text-xs">{settled.length} settled</p>
         </div>
       </div>
@@ -161,7 +163,7 @@ export default function Loans() {
                 <div key={loan.id} className="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isLent ? '#10b981' : '#ef4444' }}>
+                      style={{ background: isLent ? 'var(--positive-bg)' : 'var(--negative-bg)', color: isLent ? 'var(--positive)' : 'var(--negative)' }}>
                       {isLent ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
                     </div>
                     <div className="min-w-0">
@@ -173,7 +175,7 @@ export default function Loans() {
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="text-right">
-                      <p className="font-bold" style={{ color: isLent ? 'var(--text-primary)' : '#ef4444' }} title={fmt(currentAmt)}>{fmtCompact(currentAmt)}</p>
+                      <p className="font-bold" style={{ color: isLent ? 'var(--text-primary)' : 'var(--negative-strong)' }} title={fmt(currentAmt)}>{fmtCompact(currentAmt)}</p>
                       {loan.interest_rate > 0 && <p className="text-xs text-muted">Original: {fmtCompact(loan.amount)}</p>}
                     </div>
                     <div className="flex gap-1">
@@ -184,7 +186,7 @@ export default function Loans() {
                           <Check size={12} className="inline" /> Settle
                         </button>
                       )}
-                      <button onClick={() => handleDelete(loan.id)} className="px-1 hover:opacity-60" style={{ color: '#ef4444' }}><Trash2 size={15} /></button>
+                      <button onClick={() => handleDelete(loan.id)} className="px-1 hover:opacity-60" style={{ color: 'var(--negative-strong)' }}><Trash2 size={15} /></button>
                     </div>
                   </div>
                 </div>
@@ -213,7 +215,7 @@ export default function Loans() {
                   </button>
                   <button type="button" onClick={() => setForm(f => ({ ...f, type: 'borrowed' }))}
                     className="py-3 rounded-xl text-sm font-semibold transition-colors"
-                    style={{ border: form.type === 'borrowed' ? '1px solid rgba(239,68,68,0.6)' : '1px solid var(--card-border)', background: form.type === 'borrowed' ? 'rgba(239,68,68,0.15)' : 'transparent', color: form.type === 'borrowed' ? '#ef4444' : 'var(--text-primary)' }}>
+                    style={{ border: form.type === 'borrowed' ? '1px solid var(--negative)' : '1px solid var(--card-border)', background: form.type === 'borrowed' ? 'var(--negative-bg)' : 'transparent', color: form.type === 'borrowed' ? 'var(--negative)' : 'var(--text-primary)' }}>
                     <Wallet size={15} className="inline mr-1" /> I Borrowed
                   </button>
                 </div>

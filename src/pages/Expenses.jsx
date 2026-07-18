@@ -312,13 +312,13 @@ export default function Expenses() {
                       <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                         {isRecurring && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                            style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                            style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                             <Repeat size={11} className="inline mr-0.5" /> {frequencyLabel(item.frequency)}
                           </span>
                         )}
                         {isAccTxn && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                            style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                            style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
                             <CreditCard size={11} className="inline mr-0.5" /> {item._account?.name || 'Account'}
                             {item.card_last4 ? ` ··${item.card_last4}` : ''}
                           </span>
@@ -334,10 +334,10 @@ export default function Expenses() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => openEdit(item)} className="text-muted hover:text-primary transition-colors"><Pencil size={14} /></button>
-                    <button onClick={() => handleDelete(item)} className="transition-colors" style={{ color: '#ef4444' }}><Trash2 size={14} /></button>
+                    <button onClick={() => handleDelete(item)} className="transition-colors" style={{ color: 'var(--negative-strong)' }}><Trash2 size={14} /></button>
                   </div>
                 </div>
-                <p className="text-2xl font-black" style={{ color: '#ef4444' }}>-{fmt(item.amount)}</p>
+                <p className="text-2xl font-black" style={{ color: 'var(--negative-strong)' }}>-{fmt(item.amount)}</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <p className="text-muted text-sm">{item.category} · {item.subcategory} · {item.date}</p>
                   {isRecurring && item.next_due && <p className="text-xs text-muted">· Next: {item.next_due}</p>}
@@ -380,7 +380,7 @@ export default function Expenses() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2 accent-text font-semibold">
                 <span>$</span><span>{editItem ? 'Edit Expense' : 'Add Expense'}</span>
-                {editSource === 'account_txn' && <span className="text-xs text-blue-500 ml-1 inline-flex items-center gap-1"><CreditCard size={12} /> Account Txn</span>}
+                {editSource === 'account_txn' && <span className="text-xs ml-1 inline-flex items-center gap-1" style={{ color: '#93c5fd' }}><CreditCard size={12} /> Account Txn</span>}
               </div>
               <button onClick={() => setStep(null)} className="text-muted hover:text-primary"><X size={20} /></button>
             </div>
@@ -430,9 +430,9 @@ export default function Expenses() {
                         onClick={() => { const next = opt.value !== 'none' ? calcNextDue(form.date, opt.value) : ''; setForm(f => ({ ...f, frequency: opt.value, next_due: next })) }}
                         className="flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-semibold transition-all"
                         style={{
-                          borderColor: form.frequency === opt.value ? '#10b981' : 'var(--card-border)',
-                          background:  form.frequency === opt.value ? 'rgba(16,185,129,0.1)' : undefined,
-                          color:       form.frequency === opt.value ? '#10b981' : 'var(--text-muted)',
+                          borderColor: form.frequency === opt.value ? 'var(--positive)' : 'var(--card-border)',
+                          background:  form.frequency === opt.value ? 'var(--positive-bg)' : undefined,
+                          color:       form.frequency === opt.value ? 'var(--positive)' : 'var(--text-muted)',
                         }}>
                         <span className="font-bold">{opt.icon}</span>
                         <span>{opt.label}</span>

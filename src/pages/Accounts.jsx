@@ -35,8 +35,10 @@ const TYPE_ICONS = {
   Investment: TrendingUp, Cash: Banknote, Other: Landmark,
 }
 
-const KIND_COLOR = { expense: '#ef4444', income: '#10b981', transfer: '#f59e0b' }
-const KIND_ICON  = { expense: ArrowDownRight, income: ArrowUpRight, transfer: ArrowLeftRight }
+const KIND_COLOR  = { expense: 'var(--negative)', income: 'var(--positive)', transfer: 'var(--warning)' }
+const KIND_STRONG = { expense: 'var(--negative-strong)', income: 'var(--positive-strong)', transfer: 'var(--warning-strong)' }
+const KIND_BG     = { expense: 'var(--negative-bg)', income: 'var(--positive-bg)', transfer: 'var(--warning-bg)' }
+const KIND_ICON   = { expense: ArrowDownRight, income: ArrowUpRight, transfer: ArrowLeftRight }
 
 // Renders the icon for an account type (falls back to Landmark for unknown types)
 function TypeIcon({ type, size = 20 }) {
@@ -76,7 +78,7 @@ function ProGate({ feature, Icon, description, userId }) {
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div className="mb-4 text-primary"><Icon size={48} /></div>
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
+        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
         <Sparkle size={12} /> Pro Feature
       </div>
       <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
@@ -333,7 +335,7 @@ export default function Accounts() {
           </div>
           <div className="card p-4">
             <p className="text-muted text-xs mb-1">Total Debt</p>
-            <p className="text-2xl font-black text-red-500">{fmt(totalDebt)}</p>
+            <p className="text-2xl font-black" style={{ color: 'var(--negative-strong)' }}>{fmt(totalDebt)}</p>
             <p className="text-xs text-muted mt-1">{accounts.filter(a => a.type === 'Credit Card').length} cards</p>
           </div>
         </div>
@@ -358,7 +360,7 @@ export default function Accounts() {
             )}
             {t === 'connect' && connectedItems.length === 0 && !isPro && (
               <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-bold"
-                style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                 PRO
               </span>
             )}
@@ -382,7 +384,7 @@ export default function Accounts() {
           <div className="card p-6 mb-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+                style={{ background: 'var(--positive-bg)', border: '1px solid var(--positive)', color: 'var(--positive)' }}>
                 <Landmark size={24} />
               </div>
               <div>
@@ -397,7 +399,7 @@ export default function Accounts() {
 
             {mockMode && (
               <div className="mb-4 p-3 rounded-xl text-xs font-medium flex items-start gap-1.5"
-                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', color: '#3b82f6' }}>
+                style={{ background: 'var(--info-bg)', border: '1px solid var(--info)', color: 'var(--info)' }}>
                 <FlaskConical size={14} className="flex-shrink-0 mt-0.5" /> Demo mode — Teller credentials not configured yet, so connecting adds a sample bank with realistic test data.
               </div>
             )}
@@ -417,7 +419,7 @@ export default function Accounts() {
 
             {tellerError && (
               <div className="mb-4 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5"
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
+                style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
                 <AlertTriangle size={14} className="flex-shrink-0" /> {tellerError}
               </div>
             )}
@@ -448,7 +450,7 @@ export default function Accounts() {
 
               {syncResult && (
                 <div className="mb-3 p-3 rounded-xl text-xs font-medium flex items-center gap-1.5"
-                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
+                  style={{ background: 'var(--positive-bg)', border: '1px solid var(--positive)', color: 'var(--positive)' }}>
                   <Check size={14} /> Synced {syncResult.synced} transaction{syncResult.synced !== 1 ? 's' : ''}
                 </div>
               )}
@@ -459,7 +461,7 @@ export default function Accounts() {
                     style={{ border: '1px solid var(--card-border)' }}>
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                        style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                        style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                         <Landmark size={18} />
                       </div>
                       <div>
@@ -474,12 +476,12 @@ export default function Accounts() {
                     <div className="flex items-center gap-2">
                       {item.status === 'disconnected' ? (
                         <span className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1"
-                          style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                          style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
                           <AlertTriangle size={12} /> Reconnect needed
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1"
-                          style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                          style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                           <Check size={12} /> Connected
                         </span>
                       )}
@@ -511,7 +513,8 @@ export default function Accounts() {
                         <p className="text-xs text-muted">{acc.type}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
                       </div>
                     </div>
-                    <p className={`font-bold text-sm ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                    <p className={`font-bold text-sm ${acc.type === 'Credit Card' ? '' : 'text-primary'}`}
+                      style={acc.type === 'Credit Card' ? { color: 'var(--negative-strong)' } : undefined}>
                       {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
                     </p>
                   </div>
@@ -554,7 +557,7 @@ export default function Accounts() {
                   <div key={acc.id}
                     className="card p-4 flex items-center justify-between cursor-pointer"
                     onClick={() => setSelectedAcc(acc.id === selectedAcc ? null : acc.id)}
-                    style={{ borderColor: selectedAcc === acc.id ? '#10b981' : undefined }}>
+                    style={{ borderColor: selectedAcc === acc.id ? 'var(--positive)' : undefined }}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary"
                         style={{ background: acc.color || 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
@@ -564,14 +567,15 @@ export default function Accounts() {
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-primary text-sm">{acc.name}</p>
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                            style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                            style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                             auto
                           </span>
                         </div>
                         <p className="text-xs text-muted">{acc.type}{acc.institution ? ` · ${acc.institution}` : ''}{acc.card_last4 ? ` · ••${acc.card_last4}` : ''}</p>
                       </div>
                     </div>
-                    <p className={`font-black ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                    <p className={`font-black ${acc.type === 'Credit Card' ? '' : 'text-primary'}`}
+                      style={acc.type === 'Credit Card' ? { color: 'var(--negative-strong)' } : undefined}>
                       {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
                     </p>
                   </div>
@@ -603,7 +607,8 @@ export default function Accounts() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <p className={`font-black ${acc.type === 'Credit Card' ? 'text-red-500' : 'text-primary'}`}>
+                      <p className={`font-black ${acc.type === 'Credit Card' ? '' : 'text-primary'}`}
+                        style={acc.type === 'Credit Card' ? { color: 'var(--negative-strong)' } : undefined}>
                         {acc.type === 'Credit Card' ? '-' : ''}{fmt(acc.balance)}
                       </p>
                       {selectedAcc === acc.id && (
@@ -678,7 +683,7 @@ export default function Accounts() {
                     <div key={txn.id} className="card p-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: `${KIND_COLOR[txn.kind]}22`, color: KIND_COLOR[txn.kind] }}>
+                          style={{ background: KIND_BG[txn.kind], color: KIND_COLOR[txn.kind] }}>
                           {(() => { const KIcon = KIND_ICON[txn.kind]; return <KIcon size={16} /> })()}
                         </div>
                         <div className="min-w-0">
@@ -686,19 +691,19 @@ export default function Accounts() {
                             <p className="font-semibold text-sm text-primary truncate">{txn.description}</p>
                             {txn.source_type === 'teller' && (
                               <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-1"
-                                style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                                style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                                 <Link2 size={11} /> Synced
                               </span>
                             )}
                             {txn.status === 'pending' && (
                               <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0"
-                                style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                                style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
                                 pending
                               </span>
                             )}
                             {txn.auto_categorized && (
                               <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-1"
-                                style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
+                                style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
                                 <Sparkle size={11} /> auto
                               </span>
                             )}
@@ -714,7 +719,7 @@ export default function Accounts() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <p className="font-black text-sm" style={{ color: KIND_COLOR[txn.kind] }}>
+                        <p className="font-black text-sm" style={{ color: KIND_STRONG[txn.kind] }}>
                           {txn.kind === 'expense' ? '-' : txn.kind === 'income' ? '+' : ''}{fmt(txn.amount)}
                         </p>
                         <button onClick={() => openEditTxn(txn)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
@@ -825,14 +830,14 @@ export default function Accounts() {
                   value={txnForm.description} onChange={e => handleDescChange(e.target.value)} required />
                 {autoSuggest && (
                   <div className="mt-2 flex items-center justify-between rounded-xl px-3 py-2"
-                    style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <p className="text-xs flex items-center gap-1" style={{ color: '#3b82f6' }}>
+                    style={{ background: 'var(--info-bg)', border: '1px solid var(--info)' }}>
+                    <p className="text-xs flex items-center gap-1" style={{ color: 'var(--info)' }}>
                       <Sparkle size={12} /> Suggested: <strong>{autoSuggest.kind}</strong>
                       {autoSuggest.category ? ` · ${autoSuggest.category} › ${autoSuggest.subcategory}` : ''}
                     </p>
                     <button type="button" onClick={applyAutoSuggest}
                       className="text-xs font-bold ml-3 px-2 py-1 rounded"
-                      style={{ background: '#3b82f6', color: '#fff' }}>Apply</button>
+                      style={{ background: 'var(--info)', color: '#fff' }}>Apply</button>
                   </div>
                 )}
               </div>

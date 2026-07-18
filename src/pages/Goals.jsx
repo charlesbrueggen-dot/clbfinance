@@ -9,7 +9,8 @@ import { fmtCurrency as fmt } from '../lib/format'
 
 const CATEGORIES = ['Emergency Fund', 'Vacation', 'Car', 'Home', 'Education', 'Retirement', 'Investment', 'Other']
 const PRIORITIES = ['low', 'medium', 'high']
-const PRIO_COLORS = { low: '#10b981', medium: '#f59e0b', high: '#ef4444' }
+const PRIO_COLORS = { low: 'var(--positive)', medium: 'var(--warning)', high: 'var(--negative)' }
+const PRIO_BG     = { low: 'var(--positive-bg)', medium: 'var(--warning-bg)', high: 'var(--negative-bg)' }
 const CATEGORY_ICONS = {
   'Emergency Fund': Shield,
   'Vacation': Plane,
@@ -103,7 +104,7 @@ export default function Goals() {
                     </div>
                     <div>
                       <p className="font-bold text-primary">{goal.title}</p>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: PRIO_COLORS[goal.priority] + '22', color: PRIO_COLORS[goal.priority] }}>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: PRIO_BG[goal.priority], color: PRIO_COLORS[goal.priority] }}>
                         {goal.priority}
                       </span>
                     </div>

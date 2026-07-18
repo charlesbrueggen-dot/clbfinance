@@ -60,7 +60,7 @@ export default function Auth() {
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" required minLength={6} className="input-field" />
             </div>
 
-            {error && <div className="mb-4 p-3 rounded-xl text-sm font-medium" style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}>{error}</div>}
+            {error && <div className="mb-4 p-3 rounded-xl text-sm font-medium" style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>{error}</div>}
             {message && <div className="mb-4 p-3 rounded-xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white' }}>{message}</div>}
 
             <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 text-base">
