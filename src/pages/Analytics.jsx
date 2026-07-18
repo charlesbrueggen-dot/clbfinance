@@ -150,6 +150,12 @@ export default function Analytics() {
   const lineColorExp    = dark ? '#ef4444' : '#e05c2a'
   const lineColorNet    = dark ? '#34d399' : '#f0a500'
   const tooltipStyle    = { background: 'var(--modal-bg)', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--text-primary)', fontSize: 13 }
+  // Charts that color each item via <Cell> (pies, and bars colored per-bar) don't get that
+  // color picked up for the tooltip's item text the way a single <Line>/<Area>/<Bar> stroke or
+  // fill does — recharts falls back to a hardcoded black, unreadable on the dark-mode card.
+  // Setting these explicitly keeps it on the theme's own readable color instead.
+  const cellTooltipItemStyle  = { color: 'var(--text-primary)' }
+  const cellTooltipLabelStyle = { color: 'var(--text-primary)' }
 
   const exportCSV = () => {
     const rows = ['Date,Income,Expenses,Net,Savings Rate %']
@@ -271,7 +277,7 @@ export default function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
                 <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
-                <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
+                <Tooltip contentStyle={tooltipStyle} itemStyle={cellTooltipItemStyle} labelStyle={cellTooltipLabelStyle} formatter={v => fmt(v)} />
                 <Bar dataKey="net" name="Net" radius={[4,4,0,0]}>
                   {chartData.map((m, i) => <Cell key={i} fill={m.net >= 0 ? lineColorIncome : lineColorExp} />)}
                 </Bar>
@@ -341,7 +347,7 @@ export default function Analytics() {
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} fillOpacity={pieCellOpacity(catActiveIndex, i)} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} itemStyle={cellTooltipItemStyle} labelStyle={cellTooltipLabelStyle} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-2 space-y-1">
@@ -463,7 +469,7 @@ export default function Analytics() {
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} fillOpacity={pieCellOpacity(nwActiveIndex, i)} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} />
+                  <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} itemStyle={cellTooltipItemStyle} labelStyle={cellTooltipLabelStyle} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-2 space-y-1">
@@ -517,7 +523,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
                   <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={cellTooltipItemStyle} labelStyle={cellTooltipLabelStyle} formatter={v => fmt(v)} />
                   <Bar dataKey="amount" name="Amount" radius={[4,4,0,0]}>
                     {activeLoans.map((l, i) => <Cell key={i} fill={l.type === 'lent' ? '#10b981' : '#ef4444'} />)}
                   </Bar>
