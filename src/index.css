@@ -28,18 +28,20 @@
      plain Tailwind 500-shades (those are designed for white backgrounds and read
      almost invisibly here). --positive/--negative/--warning pair with the matching
      -bg for pill-style badges (solid pastel chip + dark saturated text). The
-     -strong variants are for bare status text with no chip behind it. */
+     -strong variants are for bare status text with no chip behind it — dark enough
+     to read on the blue card, but kept at a rich 800/900 shade rather than
+     near-black so they still look like a color instead of a smudge. */
   --positive: #047857;
-  --positive-strong: #022c22;
+  --positive-strong: #064e3b;
   --positive-bg: #d1fae5;
   --negative: #b91c1c;
-  --negative-strong: #450a0a;
+  --negative-strong: #7f1d1d;
   --negative-bg: #fee2e2;
   --warning: #b45309;
-  --warning-strong: #451a03;
+  --warning-strong: #78350f;
   --warning-bg: #fef3c7;
   --info: #1d4ed8;
-  --info-strong: #172554;
+  --info-strong: #1e3a8a;
   --info-bg: #dbeafe;
 }
 

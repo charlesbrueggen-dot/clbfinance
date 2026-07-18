@@ -332,11 +332,12 @@ export default function Import() {
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`block mt-4 border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${dragging ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10' : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'}`}
+            className={`block mt-4 border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${dragging ? '' : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'}`}
+            style={dragging ? { borderColor: 'var(--positive)', background: 'var(--positive-bg)' } : undefined}
           >
-            <div className="flex justify-center mb-3 text-muted"><Cloud size={36} /></div>
-            <p className="accent-text font-semibold">{loadingFile ? 'Reading file…' : 'Upload a file'}</p>
-            <p className="text-muted text-sm mt-1">CSV, XLS, XLSX up to 10MB</p>
+            <div className="flex justify-center mb-3" style={{ color: dragging ? 'var(--positive)' : 'var(--text-muted)' }}><Cloud size={36} /></div>
+            <p className="font-semibold" style={{ color: dragging ? 'var(--positive)' : 'var(--accent-text)' }}>{loadingFile ? 'Reading file…' : 'Upload a file'}</p>
+            <p className="text-sm mt-1" style={{ color: dragging ? 'var(--positive)' : 'var(--text-muted)' }}>CSV, XLS, XLSX up to 10MB</p>
             <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={e => handleFile(e.target.files[0])} className="hidden" />
           </label>
           {fileError && (
