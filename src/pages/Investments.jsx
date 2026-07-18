@@ -7,7 +7,7 @@ import {
   AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
 } from 'lucide-react'
 import { fmtCompact } from '../lib/format'
-import { pieColors, pieStrokeProps, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle } from '../lib/chartTheme'
+import { categoricalColor, groupSmallSlices, PIE_STROKE_PROPS, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle } from '../lib/chartTheme'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
@@ -415,8 +415,8 @@ export default function Investments() {
     sectorMap[i.sector || 'Other'] = (sectorMap[i.sector || 'Other'] || 0) + val
     typeMap[i.type]                 = (typeMap[i.type]                || 0) + val
   })
-  const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value }))
-  const typeData   = Object.entries(typeMap).map(([name, value]) => ({ name, value }))
+  const sectorData = groupSmallSlices(Object.entries(sectorMap).map(([name, value]) => ({ name, value })))
+  const typeData   = groupSmallSlices(Object.entries(typeMap).map(([name, value]) => ({ name, value })))
 
   // ─── Consolidate duplicate tickers into one holding ───────────────────────
   // Key: "<type>|<symbol|name>" so AAPL Stock + AAPL ETF stay separate,
@@ -814,10 +814,10 @@ export default function Investments() {
       {!refreshError && <div className="mb-4" />}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Portfolio Value</p>
-          <p className="text-xl font-bold text-primary truncate" title={fmt(totalValue)}>{fmtCompact(totalValue)}</p>
+          <p className="text-xl font-bold text-primary break-words" title={fmt(totalValue)}>{fmtCompact(totalValue)}</p>
           <p className="text-muted text-xs mt-0.5">
             {consolidatedInvestments.length} holding{consolidatedInvestments.length !== 1 ? 's' : ''}
             {investments.length > consolidatedInvestments.length && (
@@ -827,14 +827,14 @@ export default function Investments() {
         </div>
         <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Total Gain / Loss</p>
-          <p className="text-xl font-bold truncate" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }} title={fmt(totalGL)}>
+          <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }} title={fmt(totalGL)}>
             {totalGL >= 0 ? '+' : ''}{fmtCompact(totalGL)}
           </p>
           <p className="text-muted text-xs mt-0.5">vs cost basis</p>
         </div>
         <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Total Return</p>
-          <p className="text-xl font-bold truncate" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }}>
+          <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }}>
             {totalRet}%
           </p>
           <p className="text-muted text-xs mt-0.5">all time</p>
@@ -877,8 +877,8 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><BarChart3 size={16} /><span>Sector Allocation</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}>
-                  {sectorData.map((_, i) => <Cell key={i} fill={pieColors(dark)[i % pieColors(dark).length]} />)}
+                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}>
+                  {sectorData.map((s, i) => <Cell key={i} fill={categoricalColor(s.name, i)} />)}
                 </Pie>
                 <Tooltip formatter={v => fmt(v)} contentStyle={pieTooltipStyle(dark)} itemStyle={pieTooltipItemStyle} labelStyle={pieTooltipLabelStyle} />
               </PieChart>
@@ -887,7 +887,7 @@ export default function Investments() {
               {sectorData.map((s, i) => (
                 <div key={s.name} className="flex justify-between text-xs">
                   <span className="flex items-center gap-1 min-w-0">
-                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors(dark)[i % pieColors(dark).length] }} />
+                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: categoricalColor(s.name, i) }} />
                     <span className="text-muted truncate">{s.name}</span>
                   </span>
                   <span className="font-medium text-primary flex-shrink-0 ml-2">{fmtCompact(s.value)}</span>
@@ -902,8 +902,8 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><PieChartIcon size={16} /><span>By Type</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}>
-                  {typeData.map((_, i) => <Cell key={i} fill={pieColors(dark)[(i + 4) % pieColors(dark).length]} />)}
+                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}>
+                  {typeData.map((t, i) => <Cell key={i} fill={categoricalColor(t.name, i)} />)}
                 </Pie>
                 <Tooltip formatter={v => fmt(v)} contentStyle={pieTooltipStyle(dark)} itemStyle={pieTooltipItemStyle} labelStyle={pieTooltipLabelStyle} />
               </PieChart>
@@ -912,7 +912,7 @@ export default function Investments() {
               {typeData.map((t, i) => (
                 <div key={t.name} className="flex justify-between text-xs">
                   <span className="flex items-center gap-1 min-w-0">
-                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors(dark)[(i + 4) % pieColors(dark).length] }} />
+                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: categoricalColor(t.name, i) }} />
                     <span className="text-muted truncate">{t.name}</span>
                   </span>
                   <span className="font-medium text-primary flex-shrink-0 ml-2">{fmtCompact(t.value)}</span>

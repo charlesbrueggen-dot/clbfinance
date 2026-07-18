@@ -7,6 +7,7 @@ import {
   BarChart3, RefreshCw, Plus, Sparkle, Repeat, PiggyBank, ArrowRight,
   ArrowUpRight, ArrowDownRight, Sparkles, PieChart as PieChartIcon,
 } from 'lucide-react'
+import { PIE_STROKE_PROPS } from '../lib/chartTheme'
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const PIE_COLORS_LIGHT = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#2563eb','#1d4ed8','#1e40af','#dbeafe','#93c5fd','#60a5fa']
@@ -154,8 +155,7 @@ export default function Dashboard() {
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75}
-                stroke={dark ? 'transparent' : '#000'} strokeWidth={dark ? 0 : 1.5}>
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75} {...PIE_STROKE_PROPS}>
                 {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
               </Pie>
               <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} itemStyle={{ color: '#10b981' }} labelStyle={{ color: '#10b981' }} />

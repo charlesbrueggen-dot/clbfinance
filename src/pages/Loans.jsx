@@ -124,20 +124,20 @@ export default function Loans() {
 
       <button onClick={openAdd} className="btn-primary mb-6">+ Add Loan</button>
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money Lent Out</p>
-          <p className="text-2xl font-bold text-primary truncate" title={fmt(moneyLent)}>{fmtCompact(moneyLent)}</p>
+          <p className="text-2xl font-bold text-primary break-words" title={fmt(moneyLent)}>{fmtCompact(moneyLent)}</p>
           <p className="text-muted text-xs">{active.filter(l => l.type === 'lent').length} active</p>
         </div>
         <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money You Owe</p>
-          <p className="text-2xl font-bold text-primary truncate" title={fmt(moneyOwed)}>{fmtCompact(moneyOwed)}</p>
+          <p className="text-2xl font-bold text-primary break-words" title={fmt(moneyOwed)}>{fmtCompact(moneyOwed)}</p>
           <p className="text-muted text-xs">{active.filter(l => l.type === 'borrowed').length} active</p>
         </div>
         <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Net Position</p>
-          <p className={`text-2xl font-bold truncate ${netPosition >= 0 ? 'text-primary' : 'text-red-400'}`} title={fmt(netPosition)}>{fmtCompact(netPosition)}</p>
+          <p className={`text-2xl font-bold break-words ${netPosition >= 0 ? 'text-primary' : 'text-red-400'}`} title={fmt(netPosition)}>{fmtCompact(netPosition)}</p>
           <p className="text-muted text-xs">{settled.length} settled</p>
         </div>
       </div>

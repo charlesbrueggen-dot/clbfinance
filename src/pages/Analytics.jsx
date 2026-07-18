@@ -17,6 +17,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts'
+import { PIE_STROKE_PROPS } from '../lib/chartTheme'
 
 const fmt      = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const fmtShort = n => { if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}k`; return fmt(n) }
@@ -339,7 +340,7 @@ export default function Analytics() {
               <p className="font-bold text-primary text-sm mb-3">Spending by Category</p>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80}
+                  <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}>
                     {catData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
@@ -421,7 +422,7 @@ export default function Analytics() {
               <p className="font-bold text-primary mb-3 text-sm">Asset Allocation</p>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85}
+                  <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}>
                     {nwPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
