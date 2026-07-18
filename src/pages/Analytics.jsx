@@ -17,7 +17,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts'
-import { PIE_STROKE_PROPS, renderActivePieSector, pieCellOpacity, renderLegend } from '../lib/chartTheme'
+import { pieStrokeProps, renderActivePieSector, pieCellOpacity, renderLegend, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
 import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
@@ -105,12 +105,12 @@ export default function Analytics() {
   const cashBase       = totalBalance > 0 ? totalBalance : totalIncome - totalExpenses
   const netWorth       = cashBase + portValue + physicalAssets + moneyLent - moneyOwed
 
-  const nwPieData = [
+  const nwPieData = sortByValueDesc([
     cashBase > 0      && { name: 'Cash / Balance',   value: cashBase },
     portValue > 0     && { name: 'Investments',       value: portValue },
     physicalAssets > 0 && { name: 'Physical Assets', value: physicalAssets },
     moneyLent > 0     && { name: 'Money Lent',        value: moneyLent },
-  ].filter(Boolean)
+  ].filter(Boolean))
 
   // ── Spending by category (merged) ─────────────────────────────────────────
   const catMap = {}
@@ -320,7 +320,7 @@ export default function Analytics() {
               <p className="font-bold text-primary text-sm mb-3">Spending by Category</p>
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
-                  <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
+                  <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
                     activeIndex={catActiveIndex} activeShape={renderActivePieSector(dark)}
                     onMouseEnter={(_, i) => setCatActiveIndex(i)}
@@ -409,7 +409,7 @@ export default function Analytics() {
               <p className="font-bold text-primary mb-3 text-sm">Asset Allocation</p>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
+                  <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...pieStrokeProps(dark)}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
                     activeIndex={nwActiveIndex} activeShape={renderActivePieSector(dark)}
                     onMouseEnter={(_, i) => setNwActiveIndex(i)}

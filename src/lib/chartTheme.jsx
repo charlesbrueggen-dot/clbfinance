@@ -8,9 +8,21 @@ export const PIE_COLORS_DARK  = ['#10b981','#34d399','#6ee7b7','#a7f3d0','#05966
 
 export const pieColors = dark => (dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT)
 
-// Slice divider — matches the surrounding card surface so slices always get a clean, visible gap
-// between them, in both themes (fixes light mode having black dividers while dark mode had none).
-export const PIE_STROKE_PROPS = { stroke: 'var(--card-bg-solid)', strokeWidth: 1.5 }
+// Sorts { name, value } pie entries largest-first, so the biggest category is always at the
+// top of any legend/key built from the same data, and slices go largest-to-smallest starting
+// at 12 o'clock — the conventional, most readable pie ordering.
+export const sortByValueDesc = (data) => [...data].sort((a, b) => b.value - a.value)
+
+// Slice divider — theme-aware so slices always get a clean, visible gap between them, whether
+// or not one is being hovered. In light mode the palette is all blue shades, so a blue divider
+// (matching the card surface) blended into the slices themselves and only looked "present" on
+// the hovered/enlarged slice, which used a black outline instead — giving the illusion the
+// border only exists on hover. Black divides the blue slices clearly in every state; dark
+// mode's near-black card already contrasts fine against the green palette, so it's unchanged.
+export const pieStrokeProps = (dark) => ({
+  stroke: dark ? 'var(--card-bg-solid)' : '#000',
+  strokeWidth: 1.5,
+})
 
 export const pieTooltipStyle = dark => ({
   background: dark ? '#111' : '#fff',
@@ -42,7 +54,7 @@ export const renderActivePieSector = (dark) => (props) => {
       startAngle={startAngle}
       endAngle={endAngle}
       fill={fill}
-      stroke={dark ? 'var(--card-bg-solid)' : '#000'}
+      {...pieStrokeProps(dark)}
       strokeWidth={dark ? 1.5 : 2}
     />
   )

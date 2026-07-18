@@ -209,7 +209,7 @@ export default function Expenses() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="card p-4">
           <p className="text-muted text-xs mb-1">Total Expenses</p>
           <p className="text-2xl font-bold text-primary">{fmt(totalExpenses)}</p>
           <p className="text-xs text-muted mt-1">{allExpenses.length} entries</p>

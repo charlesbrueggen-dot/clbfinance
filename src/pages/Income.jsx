@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { PieChart as PieChartIcon, Landmark, Repeat, DollarSign, Banknote, X, Pencil, Trash2 } from 'lucide-react'
-import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity } from '../lib/chartTheme'
+import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { useDarkMode } from '../hooks/useDarkMode'
 
@@ -102,7 +102,7 @@ export default function Income() {
   const srcMap = {}
   income.forEach(i => { const key = normalizeSource(i.source); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
   bankIncome.forEach(i => { const key = normalizeSource(i.source || i.description || 'Bank Income'); srcMap[key] = (srcMap[key] || 0) + Number(i.amount) })
-  const pieData   = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
+  const pieData   = sortByValueDesc(Object.entries(srcMap).map(([name, value]) => ({ name, value })))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
   if (loading) return (
@@ -157,7 +157,7 @@ export default function Income() {
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...pieStrokeProps(dark)}
                 activeIndex={pieActiveIndex} activeShape={renderActivePieSector(dark)}
                 onMouseEnter={(_, i) => setPieActiveIndex(i)}
                 onMouseLeave={() => setPieActiveIndex(null)}

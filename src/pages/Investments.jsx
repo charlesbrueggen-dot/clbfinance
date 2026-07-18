@@ -8,8 +8,8 @@ import {
 } from 'lucide-react'
 import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
 import {
-  pieColors, PIE_STROKE_PROPS, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle,
-  renderActivePieSector, pieCellOpacity,
+  pieColors, pieStrokeProps, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle,
+  renderActivePieSector, pieCellOpacity, sortByValueDesc,
 } from '../lib/chartTheme'
 import { useDarkMode } from '../hooks/useDarkMode'
 
@@ -412,8 +412,8 @@ export default function Investments() {
     sectorMap[i.sector || 'Other'] = (sectorMap[i.sector || 'Other'] || 0) + val
     typeMap[i.type]                 = (typeMap[i.type]                || 0) + val
   })
-  const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value }))
-  const typeData   = Object.entries(typeMap).map(([name, value]) => ({ name, value }))
+  const sectorData = sortByValueDesc(Object.entries(sectorMap).map(([name, value]) => ({ name, value })))
+  const typeData   = sortByValueDesc(Object.entries(typeMap).map(([name, value]) => ({ name, value })))
 
   // ─── Consolidate duplicate tickers into one holding ───────────────────────
   // Key: "<type>|<symbol|name>" so AAPL Stock + AAPL ETF stay separate,
@@ -812,7 +812,7 @@ export default function Investments() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Portfolio Value</p>
           <p className="text-xl font-bold text-primary break-words" title={fmt(totalValue)}>{fmtCompact(totalValue)}</p>
           <p className="text-muted text-xs mt-0.5">
@@ -822,7 +822,7 @@ export default function Investments() {
             )}
           </p>
         </div>
-        <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Total Gain / Loss</p>
           <p className="text-xl font-bold break-words" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }} title={fmt(totalGL)}>
             {totalGL >= 0 ? '+' : ''}{fmtCompact(totalGL)}
@@ -874,7 +874,7 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><BarChart3 size={16} /><span>Sector Allocation</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
+                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}
                   activeIndex={sectorActiveIndex} activeShape={renderActivePieSector(dark)}
                   onMouseEnter={(_, i) => setSectorActiveIndex(i)}
                   onMouseLeave={() => setSectorActiveIndex(null)}
@@ -910,7 +910,7 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><PieChartIcon size={16} /><span>By Type</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
+                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}
                   activeIndex={typeActiveIndex} activeShape={renderActivePieSector(dark)}
                   onMouseEnter={(_, i) => setTypeActiveIndex(i)}
                   onMouseLeave={() => setTypeActiveIndex(null)}
