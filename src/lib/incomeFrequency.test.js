@@ -11,13 +11,13 @@ describe('detectBankIncomeFrequencies', () => {
     expect(detectBankIncomeFrequencies(income)).toEqual({ weekly: 0, biweekly: 0, monthly: 0 })
   })
 
-  it('classifies same-payer deposits ~7 days apart as weekly', () => {
+  it('reports the per-occurrence average, not the lifetime sum, for same-payer deposits ~7 days apart', () => {
     const income = [
       { description: 'Acme Corp Payroll', date: '2026-07-03', amount: 500 },
       { description: 'Acme Corp Payroll', date: '2026-07-10', amount: 500 },
-      { description: 'Acme Corp Payroll', date: '2026-07-17', amount: 500 },
+      { description: 'Acme Corp Payroll', date: '2026-07-17', amount: 600 },
     ]
-    expect(detectBankIncomeFrequencies(income).weekly).toBe(1500)
+    expect(detectBankIncomeFrequencies(income).weekly).toBeCloseTo((500 + 500 + 600) / 3)
   })
 
   it('classifies same-payer deposits ~14 days apart as biweekly', () => {
@@ -25,7 +25,7 @@ describe('detectBankIncomeFrequencies', () => {
       { description: 'Acme Corp Payroll', date: '2026-07-03', amount: 900 },
       { description: 'Acme Corp Payroll', date: '2026-07-17', amount: 900 },
     ]
-    expect(detectBankIncomeFrequencies(income).biweekly).toBe(1800)
+    expect(detectBankIncomeFrequencies(income).biweekly).toBe(900)
   })
 
   it('classifies same-payer deposits ~30 days apart as monthly', () => {
@@ -33,10 +33,22 @@ describe('detectBankIncomeFrequencies', () => {
       { description: 'Acme Corp Payroll', date: '2026-06-17', amount: 4000 },
       { description: 'Acme Corp Payroll', date: '2026-07-17', amount: 4000 },
     ]
-    expect(detectBankIncomeFrequencies(income).monthly).toBe(8000)
+    expect(detectBankIncomeFrequencies(income).monthly).toBe(4000)
   })
 
-  it('keeps different payers in separate groups even with matching trailing reference numbers', () => {
+  it('does not let years of synced history inflate the figure beyond a single period\'s worth', () => {
+    // 26 biweekly deposits of $2000 each (a year's worth of paychecks) should read as "$2000
+    // every 2 weeks", not "$52,000" — the lifetime total the old (buggy) implementation reported.
+    const income = []
+    for (let i = 0; i < 26; i++) {
+      const d = new Date('2026-01-01T00:00:00Z')
+      d.setUTCDate(d.getUTCDate() + i * 14)
+      income.push({ description: 'Acme Corp Payroll', date: d.toISOString().split('T')[0], amount: 2000 })
+    }
+    expect(detectBankIncomeFrequencies(income).biweekly).toBe(2000)
+  })
+
+  it('sums the per-occurrence averages of different payers sharing a cadence', () => {
     const income = [
       { description: 'Acme Corp Payroll 4471', date: '2026-07-03', amount: 500 },
       { description: 'Acme Corp Payroll 9902', date: '2026-07-10', amount: 500 },
@@ -44,8 +56,8 @@ describe('detectBankIncomeFrequencies', () => {
       { description: 'Freelance Client Payout 8834', date: '2026-07-17', amount: 2000 },
     ]
     const result = detectBankIncomeFrequencies(income)
-    expect(result.weekly).toBe(1000)
-    expect(result.monthly).toBe(4000)
+    expect(result.weekly).toBe(500)
+    expect(result.monthly).toBe(2000)
   })
 
   it('does not merge unrelated deposits just because they share the same classified source', () => {
@@ -76,7 +88,7 @@ describe('detectBankIncomeFrequencies', () => {
       { source: 'Salary', date: '2026-07-03', amount: 300 },
       { source: 'Salary', date: '2026-07-10', amount: 300 },
     ]
-    expect(detectBankIncomeFrequencies(income).weekly).toBe(600)
+    expect(detectBankIncomeFrequencies(income).weekly).toBe(300)
   })
 
   it('is case/whitespace-insensitive when grouping by description', () => {
@@ -84,6 +96,6 @@ describe('detectBankIncomeFrequencies', () => {
       { description: ' Acme Corp Payroll ', date: '2026-07-03', amount: 500 },
       { description: 'ACME CORP PAYROLL', date: '2026-07-10', amount: 500 },
     ]
-    expect(detectBankIncomeFrequencies(income).weekly).toBe(1000)
+    expect(detectBankIncomeFrequencies(income).weekly).toBe(500)
   })
 })

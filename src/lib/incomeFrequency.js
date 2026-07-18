@@ -36,6 +36,11 @@ function classifyCadence(avgGap) {
 // tell a recurring paycheck from a one-off deposit. A payer needs at least 2 occurrences to have
 // a gap to measure, and the gaps need to actually be regular; anything else (including a single
 // deposit) is left out of the totals rather than guessed at.
+//
+// The totals are a rate — "how much shows up every week/2 weeks/month" — not a lifetime sum of
+// every past deposit. A payer synced from years of statement history would otherwise dwarf the
+// figure with money already spent long ago, so each recurring payer contributes its *average
+// per-occurrence* amount, and those averages are what get summed across payers sharing a cadence.
 export function detectBankIncomeFrequencies(bankIncome) {
   const groups = {}
   bankIncome.forEach(item => {
@@ -56,7 +61,8 @@ export function detectBankIncomeFrequencies(bankIncome) {
     const regular = cadence && gaps.every(g => Math.abs(g - avgGap) <= cadence.tolerance)
     if (!regular) return
 
-    totals[cadence.frequency] += sorted.reduce((s, i) => s + Number(i.amount), 0)
+    const avgAmount = sorted.reduce((s, i) => s + Number(i.amount), 0) / sorted.length
+    totals[cadence.frequency] += avgAmount
   })
   return totals
 }

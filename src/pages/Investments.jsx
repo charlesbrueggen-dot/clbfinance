@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
+} from 'recharts'
 import {
   PieChart as PieChartIcon, BarChart3, TrendingUp, Sparkle, Zap, RefreshCw, Check,
   AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
@@ -9,7 +12,7 @@ import {
 import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
 import {
   pieColors, pieStrokeProps, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle,
-  renderActivePieSector, pieCellOpacity, sortByValueDesc,
+  renderActivePieSector, pieCellOpacity, sortByValueDesc, renderLegend,
 } from '../lib/chartTheme'
 import { useDarkMode } from '../hooks/useDarkMode'
 
@@ -415,6 +418,23 @@ export default function Investments() {
   const sectorData = sortByValueDesc(Object.entries(sectorMap).map(([name, value]) => ({ name, value })))
   const typeData   = sortByValueDesc(Object.entries(typeMap).map(([name, value]) => ({ name, value })))
 
+  // Portfolio growth over time. There's no stored daily price history, so this can't show
+  // day-to-day market movement — instead it tracks cumulative cost basis vs. cumulative current
+  // value as of each holding's purchase date, i.e. growth via contributions.
+  const growthData = investments
+    .filter(i => i.purchase_date)
+    .slice()
+    .sort((a, b) => new Date(a.purchase_date) - new Date(b.purchase_date))
+    .reduce((acc, i) => {
+      const prev = acc[acc.length - 1]
+      const cost  = (prev?.cost  || 0) + (i.type === 'Bond' ? (i.avg_cost || 0) : i.shares * i.avg_cost)
+      const value = (prev?.value || 0) + getValue(i)
+      acc.push({ date: i.purchase_date, cost, value })
+      return acc
+    }, [])
+  const lineColorCost  = dark ? '#60a5fa' : '#1a3a6b'
+  const lineColorValue = dark ? '#10b981' : '#047857'
+
   // ─── Consolidate duplicate tickers into one holding ───────────────────────
   // Key: "<type>|<symbol|name>" so AAPL Stock + AAPL ETF stay separate,
   // and name-only holdings (Bond, Mutual Fund, Crypto w/o symbol) merge by name.
@@ -515,8 +535,7 @@ export default function Investments() {
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label className="label">
-              Current Price
-              <span className="ml-1 text-xs font-normal px-1.5 py-0.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>(auto-refreshed)</span>
+              Current Price <span className="font-normal text-muted">(auto-refreshed)</span>
             </label>
             <input className="input-field" type="number" step="0.01" min="0"
               placeholder="Fetched on refresh"
@@ -865,6 +884,25 @@ export default function Investments() {
           </div>
         )}
       </div>
+
+      {/* Portfolio Growth */}
+      {growthData.length >= 2 && (
+        <div className="card p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><TrendingUp size={16} /><span>Portfolio Growth</span></div>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={growthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+              <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
+              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, fontSize: 13 }} />
+              <Legend content={renderLegend} />
+              <Line type="monotone" dataKey="cost"  name="Invested"       stroke={lineColorCost}  strokeWidth={2}   dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="value" name="Current Value" stroke={lineColorValue} strokeWidth={2.5} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+          <p className="text-muted text-xs mt-2">Cumulative cost basis vs. current value as holdings were added — not day-to-day market movement.</p>
+        </div>
+      )}
 
       {/* Charts */}
       <div className={`grid gap-6 mb-6 ${sectorData.length > 0 && typeData.length > 0 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
