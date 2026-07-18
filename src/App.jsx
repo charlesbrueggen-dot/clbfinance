@@ -12,12 +12,9 @@ const Income            = lazy(() => import('./pages/Income'))
 const Expenses           = lazy(() => import('./pages/Expenses'))
 const NetWorth           = lazy(() => import('./pages/NetWorth'))
 const Accounts           = lazy(() => import('./pages/Accounts'))
-const UnderConstruction  = lazy(() => import('./pages/UnderConstruction'))
 const Investments        = lazy(() => import('./pages/Investments'))
-const Import             = lazy(() => import('./pages/Import'))
 const Analytics          = lazy(() => import('./pages/Analytics'))
 const Goals              = lazy(() => import('./pages/Goals'))
-const Budgets            = lazy(() => import('./pages/Budgets'))
 const Loans              = lazy(() => import('./pages/Loans'))
 const Subscriptions      = lazy(() => import('./pages/Subscriptions'))
 const AICoach            = lazy(() => import('./pages/AICoach'))
@@ -89,14 +86,10 @@ export default function App() {
               <Route path="income" element={<Income />} />
               <Route path="expenses" element={<Expenses />} />
               <Route path="networth" element={<NetWorth />} />
-              {/* Gated behind UnderConstruction — see src/pages/UnderConstruction.jsx
-                  for how to remove this gate later. Accounts itself is untouched. */}
-              <Route path="accounts" element={<UnderConstruction><Accounts /></UnderConstruction>} />
+              <Route path="accounts" element={<Accounts />} />
               <Route path="investments" element={<Investments />} />
-              <Route path="import" element={<Import />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="goals" element={<Goals />} />
-              <Route path="budgets" element={<Budgets />} />
               <Route path="loans" element={<Loans />} />
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="coach" element={<AICoach />} />

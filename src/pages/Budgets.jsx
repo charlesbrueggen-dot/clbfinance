@@ -130,11 +130,6 @@ export default function Budgets() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-primary tracking-tight">Budgets</h1>
-        <p className="text-muted text-sm mt-1">Set a monthly limit per category and track spending against it</p>
-      </div>
-
       <button onClick={openAdd} className="btn-primary mb-6"><Plus size={16} /> Add Budget</button>
 
       {budgets.length > 0 && (

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import {
   Shield, Plane, Car, Home, GraduationCap, PiggyBank, TrendingUp, Target,
-  Trash2, Clock, DollarSign, X,
+  Trash2, Clock, DollarSign, X, Wallet,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { fmtCurrency as fmt } from '../lib/format'
+import Budgets from './Budgets'
 
 const CATEGORIES = ['Emergency Fund', 'Vacation', 'Car', 'Home', 'Education', 'Retirement', 'Investment', 'Other']
 const PRIORITIES = ['low', 'medium', 'high']
@@ -24,6 +25,7 @@ const CATEGORY_ICONS = {
 
 export default function Goals() {
   const { user } = useAuth()
+  const [tab, setTab] = useState('goals') // 'goals' | 'budgets'
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -74,10 +76,29 @@ export default function Goals() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Savings Goals</h1>
-        <p className="text-muted text-sm mt-1">Set and track your financial objectives</p>
+        <h1 className="text-2xl font-bold text-primary">Goals & Budgets</h1>
+        <p className="text-muted text-sm mt-1">Set savings targets and monthly spending limits</p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 mb-5">
+        {[['goals', Target, 'Goals'], ['budgets', Wallet, 'Budgets']].map(([t, Icon, label]) => (
+          <button key={t} onClick={() => setTab(t)}
+            className="px-4 py-2 rounded-full text-sm font-bold transition-all inline-flex items-center gap-1.5"
+            style={{
+              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
+              color:      tab === t ? 'var(--page-bg)'       : 'var(--text-muted)',
+              border:     '1px solid var(--card-border)',
+            }}>
+            <Icon size={15} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'budgets' && <Budgets />}
+
+      {tab === 'goals' && (
+      <>
       <button onClick={openAdd} className="btn-primary mb-6">+ New Goal</button>
 
       {goals.length === 0 ? (
@@ -154,6 +175,8 @@ export default function Goals() {
             )
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* Create Goal Modal */}

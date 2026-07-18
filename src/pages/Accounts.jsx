@@ -6,13 +6,14 @@ import {
   Landmark, PiggyBank, CreditCard, TrendingUp, Banknote,
   ArrowUpRight, ArrowDownRight, ArrowLeftRight, Sparkle, Zap, Link2,
   FlaskConical, AlertTriangle, RefreshCw, Check, Pencil, Trash2, X,
-  ClipboardList, Hourglass,
+  ClipboardList, Hourglass, Download,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
 import { useTeller } from '../hooks/useTeller'
 import { fmtCurrency as fmt } from '../lib/format'
+import Import from './Import'
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -147,7 +148,7 @@ export default function Accounts() {
   const [selectedAcc, setSelectedAcc] = useState(null)
   const [txnFilter,   setTxnFilter]   = useState('all')
   const [search,      setSearch]      = useState('')
-  const [tab,         setTab]         = useState('accounts') // 'accounts' | 'connect'
+  const [tab,         setTab]         = useState('accounts') // 'accounts' | 'connect' | 'import'
 
   const [isPro, setIsPro] = useState(false)
   const [proLoading, setProLoading] = useState(true)
@@ -343,7 +344,7 @@ export default function Accounts() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-5">
-        {[['accounts', Landmark, 'Accounts'], ['connect', Link2, 'Connect Bank']].map(([t, Icon, label]) => (
+        {[['accounts', Landmark, 'Accounts'], ['connect', Link2, 'Connect Bank'], ['import', Download, 'Import']].map(([t, Icon, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className="px-4 py-2 rounded-full text-sm font-bold transition-all inline-flex items-center gap-1.5"
             style={{
@@ -733,6 +734,9 @@ export default function Accounts() {
           </div>
         </>
       )}
+
+      {/* ══════════════════ IMPORT TAB ══════════════════ */}
+      {tab === 'import' && <Import />}
 
       {/* ══════════════════ ACCOUNT MODAL ══════════════════ */}
       {showAccModal && (

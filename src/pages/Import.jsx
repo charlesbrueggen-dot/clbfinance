@@ -320,11 +320,6 @@ export default function Import() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Import Transactions</h1>
-        <p className="text-muted text-sm mt-1">Upload a bank statement to import transactions — works with exports from most banks.</p>
-      </div>
-
       {step === 0 && (
         <div className="card p-6">
           <p className="font-bold text-primary mb-1">Step 1: Upload File</p>
