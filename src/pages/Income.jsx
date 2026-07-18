@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { PieChart as PieChartIcon, Landmark, Repeat, DollarSign, Banknote, X, Pencil, Trash2 } from 'lucide-react'
-import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK } from '../lib/chartTheme'
+import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { useDarkMode } from '../hooks/useDarkMode'
 
@@ -31,6 +31,7 @@ export default function Income() {
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const dark = useDarkMode()
+  const [pieActiveIndex, setPieActiveIndex] = useState(null)
 
   const load = async () => {
     const [{ data: manualData }, { data: bankData }] = await Promise.all([
@@ -156,8 +157,15 @@ export default function Income() {
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}>
-                {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
+                activeIndex={pieActiveIndex} activeShape={renderActivePieSector}
+                onMouseEnter={(_, i) => setPieActiveIndex(i)}
+                onMouseLeave={() => setPieActiveIndex(null)}
+                onClick={(_, i) => setPieActiveIndex(prev => (prev === i ? null : i))}
+                style={{ cursor: 'pointer' }}>
+                {pieData.map((_, i) => (
+                  <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(pieActiveIndex, i)} />
+                ))}
               </Pie>
               <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} itemStyle={{ color: '#10b981' }} labelStyle={{ color: '#10b981' }} />
             </PieChart>

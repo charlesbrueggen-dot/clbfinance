@@ -7,7 +7,7 @@ import {
   BarChart3, RefreshCw, Plus, Sparkle, Repeat, PiggyBank, ArrowRight,
   ArrowUpRight, ArrowDownRight, Sparkles, PieChart as PieChartIcon,
 } from 'lucide-react'
-import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK } from '../lib/chartTheme'
+import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { useDarkMode } from '../hooks/useDarkMode'
 
@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [balance,  setBalance]  = useState([])
   const [loading,  setLoading]  = useState(true)
   const dark = useDarkMode()
+  const [pieActiveIndex, setPieActiveIndex] = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -147,8 +148,15 @@ export default function Dashboard() {
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75} {...PIE_STROKE_PROPS}>
-                {pieData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75} {...PIE_STROKE_PROPS}
+                activeIndex={pieActiveIndex} activeShape={renderActivePieSector}
+                onMouseEnter={(_, i) => setPieActiveIndex(i)}
+                onMouseLeave={() => setPieActiveIndex(null)}
+                onClick={(_, i) => setPieActiveIndex(prev => (prev === i ? null : i))}
+                style={{ cursor: 'pointer' }}>
+                {pieData.map((_, i) => (
+                  <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(pieActiveIndex, i)} />
+                ))}
               </Pie>
               <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: '#10b981', fontSize: 13 }} itemStyle={{ color: '#10b981' }} labelStyle={{ color: '#10b981' }} />
             </PieChart>

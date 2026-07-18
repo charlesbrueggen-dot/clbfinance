@@ -17,7 +17,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts'
-import { PIE_STROKE_PROPS } from '../lib/chartTheme'
+import { PIE_STROKE_PROPS, renderActivePieSector, pieCellOpacity } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -52,6 +52,8 @@ export default function Analytics() {
   const [tab,   setTab]   = useState('Overview')
   const [range, setRange] = useState('6')
   const dark = useDarkMode()
+  const [catActiveIndex, setCatActiveIndex] = useState(null)
+  const [nwActiveIndex,  setNwActiveIndex]  = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -330,8 +332,15 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}>
-                    {catData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
+                    activeIndex={catActiveIndex} activeShape={renderActivePieSector}
+                    onMouseEnter={(_, i) => setCatActiveIndex(i)}
+                    onMouseLeave={() => setCatActiveIndex(null)}
+                    onClick={(_, i) => setCatActiveIndex(prev => (prev === i ? null : i))}
+                    style={{ cursor: 'pointer' }}>
+                    {catData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} fillOpacity={pieCellOpacity(catActiveIndex, i)} />
+                    ))}
                   </Pie>
                   <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} />
                 </PieChart>
@@ -412,8 +421,15 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...PIE_STROKE_PROPS}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}>
-                    {nwPieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
+                    activeIndex={nwActiveIndex} activeShape={renderActivePieSector}
+                    onMouseEnter={(_, i) => setNwActiveIndex(i)}
+                    onMouseLeave={() => setNwActiveIndex(null)}
+                    onClick={(_, i) => setNwActiveIndex(prev => (prev === i ? null : i))}
+                    style={{ cursor: 'pointer' }}>
+                    {nwPieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} fillOpacity={pieCellOpacity(nwActiveIndex, i)} />
+                    ))}
                   </Pie>
                   <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} />
                 </PieChart>

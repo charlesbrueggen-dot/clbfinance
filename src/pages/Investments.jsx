@@ -7,7 +7,10 @@ import {
   AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
 } from 'lucide-react'
 import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
-import { categoricalColor, groupSmallSlices, PIE_STROKE_PROPS, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle } from '../lib/chartTheme'
+import {
+  pieColors, PIE_STROKE_PROPS, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle,
+  renderActivePieSector, pieCellOpacity,
+} from '../lib/chartTheme'
 import { useDarkMode } from '../hooks/useDarkMode'
 
 // Stocks AND ETFs get auto-refresh (both trade on exchanges with real-time tickers)
@@ -132,6 +135,8 @@ export default function Investments() {
   const [isPro, setIsPro] = useState(false)
   const [proLoading, setProLoading] = useState(true)
   const dark = useDarkMode()
+  const [sectorActiveIndex, setSectorActiveIndex] = useState(null)
+  const [typeActiveIndex, setTypeActiveIndex] = useState(null)
 
   useEffect(() => {
     const checkPro = async () => {
@@ -407,8 +412,8 @@ export default function Investments() {
     sectorMap[i.sector || 'Other'] = (sectorMap[i.sector || 'Other'] || 0) + val
     typeMap[i.type]                 = (typeMap[i.type]                || 0) + val
   })
-  const sectorData = groupSmallSlices(Object.entries(sectorMap).map(([name, value]) => ({ name, value })))
-  const typeData   = groupSmallSlices(Object.entries(typeMap).map(([name, value]) => ({ name, value })))
+  const sectorData = Object.entries(sectorMap).map(([name, value]) => ({ name, value }))
+  const typeData   = Object.entries(typeMap).map(([name, value]) => ({ name, value }))
 
   // ─── Consolidate duplicate tickers into one holding ───────────────────────
   // Key: "<type>|<symbol|name>" so AAPL Stock + AAPL ETF stay separate,
@@ -869,17 +874,28 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><BarChart3 size={16} /><span>Sector Allocation</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}>
-                  {sectorData.map((s, i) => <Cell key={i} fill={categoricalColor(s.name, i)} />)}
+                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
+                  activeIndex={sectorActiveIndex} activeShape={renderActivePieSector}
+                  onMouseEnter={(_, i) => setSectorActiveIndex(i)}
+                  onMouseLeave={() => setSectorActiveIndex(null)}
+                  onClick={(_, i) => setSectorActiveIndex(prev => (prev === i ? null : i))}
+                  style={{ cursor: 'pointer' }}>
+                  {sectorData.map((s, i) => (
+                    <Cell key={i} fill={pieColors(dark)[i % pieColors(dark).length]} fillOpacity={pieCellOpacity(sectorActiveIndex, i)} />
+                  ))}
                 </Pie>
                 <Tooltip formatter={v => fmt(v)} contentStyle={pieTooltipStyle(dark)} itemStyle={pieTooltipItemStyle} labelStyle={pieTooltipLabelStyle} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-2 space-y-1">
               {sectorData.map((s, i) => (
-                <div key={s.name} className="flex justify-between text-xs">
+                <div key={s.name} className="flex justify-between text-xs cursor-pointer"
+                  style={{ opacity: pieCellOpacity(sectorActiveIndex, i) }}
+                  onMouseEnter={() => setSectorActiveIndex(i)}
+                  onMouseLeave={() => setSectorActiveIndex(null)}
+                  onClick={() => setSectorActiveIndex(prev => (prev === i ? null : i))}>
                   <span className="flex items-center gap-1 min-w-0">
-                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: categoricalColor(s.name, i) }} />
+                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors(dark)[i % pieColors(dark).length] }} />
                     <span className="text-muted truncate">{s.name}</span>
                   </span>
                   <span className="font-medium text-primary flex-shrink-0 ml-2">{fmtCompact(s.value)}</span>
@@ -894,17 +910,28 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><PieChartIcon size={16} /><span>By Type</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}>
-                  {typeData.map((t, i) => <Cell key={i} fill={categoricalColor(t.name, i)} />)}
+                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...PIE_STROKE_PROPS}
+                  activeIndex={typeActiveIndex} activeShape={renderActivePieSector}
+                  onMouseEnter={(_, i) => setTypeActiveIndex(i)}
+                  onMouseLeave={() => setTypeActiveIndex(null)}
+                  onClick={(_, i) => setTypeActiveIndex(prev => (prev === i ? null : i))}
+                  style={{ cursor: 'pointer' }}>
+                  {typeData.map((t, i) => (
+                    <Cell key={i} fill={pieColors(dark)[(i + 4) % pieColors(dark).length]} fillOpacity={pieCellOpacity(typeActiveIndex, i)} />
+                  ))}
                 </Pie>
                 <Tooltip formatter={v => fmt(v)} contentStyle={pieTooltipStyle(dark)} itemStyle={pieTooltipItemStyle} labelStyle={pieTooltipLabelStyle} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-2 space-y-1">
               {typeData.map((t, i) => (
-                <div key={t.name} className="flex justify-between text-xs">
+                <div key={t.name} className="flex justify-between text-xs cursor-pointer"
+                  style={{ opacity: pieCellOpacity(typeActiveIndex, i) }}
+                  onMouseEnter={() => setTypeActiveIndex(i)}
+                  onMouseLeave={() => setTypeActiveIndex(null)}
+                  onClick={() => setTypeActiveIndex(prev => (prev === i ? null : i))}>
                   <span className="flex items-center gap-1 min-w-0">
-                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: categoricalColor(t.name, i) }} />
+                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors(dark)[(i + 4) % pieColors(dark).length] }} />
                     <span className="text-muted truncate">{t.name}</span>
                   </span>
                   <span className="font-medium text-primary flex-shrink-0 ml-2">{fmtCompact(t.value)}</span>
