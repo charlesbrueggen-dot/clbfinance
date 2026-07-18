@@ -9,6 +9,7 @@ import {
   parseSpreadsheetFile, detectColumns, detectDateFormat, normalizeRow,
   validateMapping, buildDedupeKey,
 } from '../lib/importParsing'
+import { fmtCurrency as fmt } from '../lib/format'
 
 const DATE_FORMAT_OPTIONS = [
   { value: 'auto', label: 'Auto-detect' },
@@ -300,8 +301,6 @@ export default function Import() {
     setParsedRows([]); setPreviewError(''); setImportError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
-
-  const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 
   if (proLoading) return (
     <div className="flex items-center justify-center h-64">

@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Sparkle, Zap, Bot, ArrowUp } from 'lucide-react'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabase'
-
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
+import { fmtCurrency as fmt } from '../lib/format'
 
 const SYSTEM_PROMPT = (financialData) => `You are Stride Coach, a sharp and supportive personal finance coach built into the Stride Finance app. You have a warm but direct style — you don't sugarcoat, but you're always encouraging.
 

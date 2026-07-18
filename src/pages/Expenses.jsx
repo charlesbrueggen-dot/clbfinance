@@ -14,8 +14,8 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
+import { fmtCurrency as fmt } from '../lib/format'
 
-const fmt  = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 const QUICK_AMOUNTS = [1, 5, 10, 50, 100, 500]
 

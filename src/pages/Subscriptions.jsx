@@ -13,8 +13,7 @@ import {
   useSubscriptions, detectRecurring, monthlyEquivalent, daysUntil,
   CATEGORIES, CATEGORY_ICON,
 } from '../hooks/useSubscriptions'
-
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
+import { fmtCurrency as fmt } from '../lib/format'
 
 function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)

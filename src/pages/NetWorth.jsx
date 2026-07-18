@@ -13,8 +13,8 @@ import {
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
+import { fmtCurrency as fmt } from '../lib/format'
 
-const fmt   = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 const CATEGORIES = ['Real Estate', 'Vehicle', 'Electronics', 'Jewelry', 'Savings', 'Cash', 'Other']
 const CAT_ICONS  = { 'Real Estate': Home, Vehicle: Car, Electronics: Laptop, Jewelry: Gem, Savings: Landmark, Cash: Banknote, Other: Package }

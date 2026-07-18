@@ -5,8 +5,8 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
+import { fmtCurrency as fmt } from '../lib/format'
 
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const CATEGORIES = ['Emergency Fund', 'Vacation', 'Car', 'Home', 'Education', 'Retirement', 'Investment', 'Other']
 const PRIORITIES = ['low', 'medium', 'high']
 const PRIO_COLORS = { low: '#10b981', medium: '#f59e0b', high: '#ef4444' }

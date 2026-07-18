@@ -18,19 +18,14 @@ import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts'
 import { PIE_STROKE_PROPS } from '../lib/chartTheme'
+import { fmtCurrency as fmt } from '../lib/format'
+import { calcWithInterest } from '../lib/loanMath'
+import { useDarkMode } from '../hooks/useDarkMode'
 
-const fmt      = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const fmtShort = n => { if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}k`; return fmt(n) }
 const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const TABS     = ['Overview', 'Cash Flow', 'Spending', 'Net Worth', 'Loans']
 const PIE_COLORS = ['#3b82f6','#f97316','#8b5cf6','#ef4444','#06b6d4','#84cc16','#ec4899','#14b8a6','#f59e0b','#64748b']
-
-const calcWithInterest = (principal, rate, startDate) => {
-  if (!rate || !startDate) return principal
-  const years = (new Date() - new Date(startDate + 'T12:00:00')) / (365.25 * 24 * 60 * 60 * 1000)
-  if (years <= 0) return principal
-  return principal * Math.pow(1 + rate / 100, years)
-}
 
 const StatCard = ({ label, value, sub, color, onClick }) => (
   <div className="card p-4 cursor-pointer hover:opacity-90 transition-opacity" onClick={onClick}
@@ -56,13 +51,7 @@ export default function Analytics() {
 
   const [tab,   setTab]   = useState('Overview')
   const [range, setRange] = useState('6')
-  const [dark,  setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
-
-  useEffect(() => {
-    const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
+  const dark = useDarkMode()
 
   useEffect(() => {
     const load = async () => {

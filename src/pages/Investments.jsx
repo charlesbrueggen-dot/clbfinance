@@ -6,11 +6,9 @@ import {
   PieChart as PieChartIcon, BarChart3, TrendingUp, Sparkle, Zap, RefreshCw, Check,
   AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
 } from 'lucide-react'
-import { fmtCompact } from '../lib/format'
+import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
 import { categoricalColor, groupSmallSlices, PIE_STROKE_PROPS, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle } from '../lib/chartTheme'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
+import { useDarkMode } from '../hooks/useDarkMode'
 
 // Stocks AND ETFs get auto-refresh (both trade on exchanges with real-time tickers)
 const isAutoRefresh = type => type === 'Stock' || type === 'ETF'
@@ -133,13 +131,7 @@ export default function Investments() {
 
   const [isPro, setIsPro] = useState(false)
   const [proLoading, setProLoading] = useState(true)
-  const [dark, setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
-
-  useEffect(() => {
-    const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
+  const dark = useDarkMode()
 
   useEffect(() => {
     const checkPro = async () => {

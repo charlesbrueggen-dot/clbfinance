@@ -7,11 +7,9 @@ import {
   BarChart3, RefreshCw, Plus, Sparkle, Repeat, PiggyBank, ArrowRight,
   ArrowUpRight, ArrowDownRight, Sparkles, PieChart as PieChartIcon,
 } from 'lucide-react'
-import { PIE_STROKE_PROPS } from '../lib/chartTheme'
-
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
-const PIE_COLORS_LIGHT = ['#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#2563eb','#1d4ed8','#1e40af','#dbeafe','#93c5fd','#60a5fa']
-const PIE_COLORS_DARK  = ['#10b981','#34d399','#6ee7b7','#a7f3d0','#059669','#047857','#065f46','#d1fae5','#6ee7b7','#34d399']
+import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK } from '../lib/chartTheme'
+import { fmtCurrency as fmt } from '../lib/format'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -21,13 +19,7 @@ export default function Dashboard() {
   const [goals,    setGoals]    = useState([])
   const [balance,  setBalance]  = useState([])
   const [loading,  setLoading]  = useState(true)
-  const [dark, setDarkDetect]   = useState(document.documentElement.classList.contains('dark'))
-
-  useEffect(() => {
-    const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
+  const dark = useDarkMode()
 
   useEffect(() => {
     const load = async () => {

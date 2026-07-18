@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Tag, Gift, Clover, Cake, Undo2, Sparkles, Pencil, Trash2, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
+import { fmtCurrency as fmt } from '../lib/format'
 
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 
 const GAIN_TYPES = [

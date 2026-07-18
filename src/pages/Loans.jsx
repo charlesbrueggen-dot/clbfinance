@@ -5,17 +5,10 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
-import { fmtCompact } from '../lib/format'
+import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
+import { calcWithInterest } from '../lib/loanMath'
 
-const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
-
-const calcWithInterest = (principal, rate, startDate) => {
-  if (!rate || !startDate) return principal
-  const years = (new Date() - new Date(startDate + 'T12:00:00')) / (365.25 * 24 * 60 * 60 * 1000)
-  if (years <= 0) return principal
-  return principal * Math.pow(1 + rate / 100, years)
-}
 
 function ProGate({ feature, Icon, description, userId }) {
   const [upgrading, setUpgrading] = useState(false)

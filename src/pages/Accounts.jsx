@@ -12,8 +12,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
 import { useTeller } from '../hooks/useTeller'
+import { fmtCurrency as fmt } from '../lib/format'
 
-const fmt   = n  => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
 
 const ACCOUNT_TYPES  = ['Checking', 'Savings', 'Credit Card', 'Investment', 'Cash', 'Other']

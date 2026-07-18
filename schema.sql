@@ -108,6 +108,48 @@ create table if not exists loans (
 alter table loans enable row level security;
 create policy "Users can manage own loans" on loans for all using (auth.uid() = user_id);
 
+-- ACCOUNT_TRANSACTIONS (Teller-synced + manually entered + CSV-imported transactions)
+-- This table existed in production but was never scripted here — it was already being
+-- ALTERed by the Teller/CSV-dedupe migrations below without ever having been CREATEd in
+-- this file. This is its pre-Teller-migration base shape; reverse-engineered from the
+-- live schema on 2026-07-17 (via information_schema + pg_policies) so this file is a
+-- complete, accurate reference again. teller_txn_id, status, running_balance, and the
+-- 'teller' source_type value are added by the Teller migration block right below.
+create table if not exists account_transactions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  account_id uuid references accounts(id) on delete set null,
+  description text not null,
+  amount numeric(12,2) not null,
+  date date not null default current_date,
+  kind text not null default 'expense' check (kind in ('expense', 'income', 'transfer')),
+  category text,
+  subcategory text,
+  source text,
+  merchant text,
+  card_last4 text,
+  card_type text,
+  auto_categorized boolean default false,
+  label text,
+  notes text,
+  source_type text default 'manual',
+  external_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table account_transactions enable row level security;
+create policy "Users manage own transactions" on account_transactions for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Generic "bump updated_at on write" trigger function, reused by any table with an
+-- updated_at column (currently just account_transactions).
+create or replace function set_updated_at()
+returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end;
+$$;
+create trigger trg_acct_txn_updated_at before update on account_transactions
+  for each row execute function set_updated_at();
+
 -- =============================================
 -- TELLER BANK SYNC (migration: replace_plaid_with_teller, applied 2026-07-06)
 -- Replaces the old Plaid integration. Already applied to the live database;
@@ -162,3 +204,104 @@ alter table account_transactions add constraint account_transactions_source_type
 -- distinct in unique constraints, so rows from teller/manual sources (which
 -- never set external_id) can still repeat freely without a partial predicate.
 alter table account_transactions add constraint account_transactions_user_external_id_key unique (user_id, external_id);
+
+-- =============================================
+-- TABLES ADDED DIRECTLY TO THE LIVE DATABASE (never scripted here first)
+-- The five tables below existed in production but were missing from this file.
+-- Definitions were reverse-engineered from the live schema on 2026-07-17 (via
+-- information_schema + pg_policies) so this file is a complete, accurate
+-- reference again.
+-- =============================================
+
+-- BALANCE (manual balance snapshots shown on the Balance page)
+create table if not exists balance (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  label text,
+  amount numeric not null default 0,
+  type text,
+  date date,
+  notes text,
+  created_at timestamptz default now()
+);
+alter table balance enable row level security;
+create policy "Users can view their own balance"   on balance for select using (auth.uid() = user_id);
+create policy "Users can insert their own balance" on balance for insert with check (auth.uid() = user_id);
+create policy "Users can update their own balance" on balance for update using (auth.uid() = user_id);
+create policy "Users can delete their own balance" on balance for delete using (auth.uid() = user_id);
+
+-- BALANCE_ACCOUNTS / BALANCE_GAINS (supporting breakdown tables for the Balance page)
+create table if not exists balance_accounts (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  name text,
+  type text,
+  balance numeric default 0,
+  notes text,
+  created_at timestamptz default now()
+);
+alter table balance_accounts enable row level security;
+create policy "Users can manage their accounts" on balance_accounts for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table if not exists balance_gains (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  description text,
+  amount numeric default 0,
+  type text,
+  date date,
+  notes text,
+  created_at timestamptz default now()
+);
+alter table balance_gains enable row level security;
+create policy "Users can manage their gains" on balance_gains for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- SUBSCRIPTIONS (Stripe Pro subscription state)
+-- Written only by the server-side Stripe webhook (api/webhook.js), which authenticates
+-- with the service role key and therefore bypasses RLS entirely — it does not need, and
+-- must not be given, an explicit write policy here. End users can only read their own row.
+--
+-- SECURITY NOTE (2026-07-17): production briefly had an additional policy here,
+-- "Service role can manage subscriptions", scoped to `public` with `USING (true)` for
+-- ALL commands — despite its name it applied to every signed-in user, not just the
+-- service role, letting anyone grant themselves Pro status for free via the client SDK.
+-- It was dropped directly against the live database. Do not re-add a write policy for
+-- `public`/`authenticated` on this table.
+create table if not exists subscriptions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade unique not null,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  status text default 'free',
+  price_id text,
+  current_period_end timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table subscriptions enable row level security;
+create policy "Users can view own subscription" on subscriptions for select using (auth.uid() = user_id);
+
+-- TRACKED_SUBSCRIPTIONS (detected/manually-added recurring charges, Subscriptions page)
+create table if not exists tracked_subscriptions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  merchant_key text not null,
+  name text not null,
+  amount numeric not null,
+  frequency text not null default 'monthly' check (frequency in ('weekly', 'monthly', 'yearly')),
+  status text not null default 'active' check (status in ('active', 'cancelled')),
+  last_charge_date date,
+  cancel_url text,
+  cancelled_at timestamptz,
+  category text not null default 'Other',
+  next_billing_date date,
+  previous_amount numeric,
+  price_changed_at timestamptz,
+  source text not null default 'detected' check (source in ('detected', 'manual')),
+  created_at timestamptz not null default now()
+);
+alter table tracked_subscriptions enable row level security;
+create policy "Users manage own tracked subscriptions" on tracked_subscriptions for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
