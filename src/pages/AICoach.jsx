@@ -3,6 +3,11 @@ import { Sparkle, Zap, Bot, ArrowUp } from 'lucide-react'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabase'
 import { fmtCurrency as fmt } from '../lib/format'
+import { useTransactions } from '../hooks/useTransactions'
+import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
+import { useDarkMode } from '../hooks/useDarkMode'
+
+const SAVINGS_RATE_MONTHS = 6
 
 const SYSTEM_PROMPT = (financialData) => `You are Stride Coach, a sharp and supportive personal finance coach built into the Stride Finance app. You have a warm but direct style — you don't sugarcoat, but you're always encouraging.
 
@@ -12,15 +17,12 @@ INCOME:
 - Total Income: ${fmt(financialData.totalIncome)}
 - Sources: ${financialData.income.map(i => `${i.source}: ${fmt(i.amount)} (${i.frequency || 'one-time'})`).join(', ') || 'None yet'}
 
-BALANCE (Cash on hand):
-- Total Balance: ${fmt(financialData.totalBalance)}
-
 EXPENSES:
 - Total Expenses: ${fmt(financialData.totalExpenses)}
 - This Month: ${fmt(financialData.monthExpenses)}
 - By Category: ${financialData.expensesByCategory.map(([cat, amt]) => `${cat}: ${fmt(amt)}`).join(', ') || 'None yet'}
 
-SAVINGS RATE: ${financialData.savingsRate}%
+SAVINGS RATE (avg. over the last ${SAVINGS_RATE_MONTHS} months): ${financialData.savingsRate}%
 SURPLUS/DEFICIT: ${financialData.surplus >= 0 ? '+' : ''}${fmt(financialData.surplus)}
 
 GOALS: ${financialData.goals.map(g => `${g.name} (target: ${fmt(g.target_amount)}, saved: ${fmt(g.current_amount)})`).join(', ') || 'No goals set yet'}
@@ -84,9 +86,10 @@ export default function AICoach() {
   const [loading, setLoading] = useState(false)
   const [financialData, setFinancialData] = useState(null)
   const [dataLoading, setDataLoading] = useState(true)
-  const [dark, setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
+  const dark = useDarkMode()
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const { expenseTxns, incomeTxns } = useTransactions()
 
   useEffect(() => {
     const checkPro = async () => {
@@ -103,50 +106,50 @@ export default function AICoach() {
   }, [user.id])
 
   useEffect(() => {
-    const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-
-  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
   useEffect(() => {
     const loadData = async () => {
-      const [{ data: income }, { data: expenses }, { data: goals }, { data: balance }, { data: loans }] = await Promise.all([
+      const [{ data: income }, { data: expenses }, { data: goals }, { data: loans }] = await Promise.all([
         supabase.from('income').select('*').eq('user_id', user.id),
         supabase.from('expenses').select('*').eq('user_id', user.id),
         supabase.from('goals').select('*').eq('user_id', user.id),
-        supabase.from('balance').select('*').eq('user_id', user.id),
         supabase.from('loans').select('*').eq('user_id', user.id),
       ])
 
-      const inc = income || []
-      const exp = expenses || []
       const gls = goals || []
-      const bal = balance || []
       const lns = loans || []
 
-      const totalIncome = inc.reduce((s, i) => s + i.amount, 0)
-      const totalBalance = bal.reduce((s, b) => s + b.amount, 0)
-      const totalExpenses = exp.reduce((s, e) => s + e.amount, 0)
+      // Merge manual entries with synced/imported account transactions — matches Dashboard
+      // and Analytics, so the coach's numbers agree with what the rest of the app shows.
+      const allIncome = [
+        ...(income || []),
+        ...incomeTxns.map(t => ({ id: t.id, amount: t.amount, date: t.date, source: t.source || t.description || 'Account' })),
+      ]
+      const allExpenses = [
+        ...(expenses || []),
+        ...expenseTxns.map(t => ({ id: t.id, amount: t.amount, date: t.date, category: t.category || 'Wants' })),
+      ]
+
+      const totalIncome = allIncome.reduce((s, i) => s + parseFloat(i.amount), 0)
+      const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
       const thisMonth = new Date().toISOString().slice(0, 7)
-      const monthExpenses = exp.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + e.amount, 0)
+      const monthExpenses = allExpenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + parseFloat(e.amount), 0)
 
       const catMap = {}
-      exp.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount })
+      allExpenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + parseFloat(e.amount) })
       const expensesByCategory = Object.entries(catMap).sort((a, b) => b[1] - a[1])
 
-      const savingsBase = totalIncome > 0 ? totalIncome : totalBalance
-      const savingsRate = savingsBase > 0 ? ((savingsBase - totalExpenses) / savingsBase * 100).toFixed(1) : '0.0'
-      const surplus = (totalBalance > 0 ? totalBalance : totalIncome) - totalExpenses
+      const monthlyTotals = bucketMonthlyTotals(allIncome, allExpenses, SAVINGS_RATE_MONTHS)
+      const { rate: savingsRate } = computeSavingsRate(monthlyTotals)
+      const surplus = totalIncome - totalExpenses
 
-      setFinancialData({ income: inc, expenses: exp, goals: gls, balance: bal, loans: lns, totalIncome, totalBalance, totalExpenses, monthExpenses, expensesByCategory, savingsRate, surplus })
+      setFinancialData({ income: allIncome, expenses: allExpenses, goals: gls, loans: lns, totalIncome, totalExpenses, monthExpenses, expensesByCategory, savingsRate, surplus })
       setDataLoading(false)
     }
     loadData()
-  }, [user.id])
+  }, [user.id, incomeTxns, expenseTxns])
 
   const sendMessage = async () => {
     const text = input.trim()
@@ -282,7 +285,7 @@ export default function AICoach() {
       {/* Financial snapshot */}
       <div className="flex-shrink-0 grid grid-cols-3 gap-2 my-3">
         {[
-          { label: 'Balance', val: fmt(financialData.totalBalance) },
+          { label: 'Total Income', val: fmt(financialData.totalIncome) },
           { label: 'This Month', val: fmt(financialData.monthExpenses) },
           { label: 'Savings', val: `${financialData.savingsRate}%` },
         ].map(s => (

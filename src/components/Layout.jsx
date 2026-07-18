@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
-  LayoutDashboard, Sparkle, ArrowUpRight, ArrowDownRight, Sparkles, DollarSign,
+  LayoutDashboard, Sparkle, ArrowUpRight, ArrowDownRight, DollarSign,
   Landmark, PieChart, Download, BarChart3, Target, HandCoins, Repeat, Moon, Sun, X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { path: '/coach', label: 'AI Coach', Icon: Sparkle },
   { path: '/income', label: 'Income', Icon: ArrowUpRight },
   { path: '/expenses', label: 'Expenses', Icon: ArrowDownRight },
-  { path: '/balance', label: 'Balance', Icon: Sparkles },
   { path: '/networth', label: 'Net Worth', Icon: DollarSign },
   { path: '/accounts', label: 'Accounts', Icon: Landmark },
   { path: '/investments', label: 'Investments', Icon: PieChart },

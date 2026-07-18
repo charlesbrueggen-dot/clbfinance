@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import {
-  BarChart3, RefreshCw, Plus, Sparkle, Repeat, PiggyBank, ArrowRight,
-  ArrowUpRight, ArrowDownRight, Sparkles, PieChart as PieChartIcon,
+  BarChart3, RefreshCw, Plus, Sparkle, Repeat, ArrowRight,
+  ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, Trash2, AlertTriangle, X,
 } from 'lucide-react'
 import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
@@ -15,30 +15,47 @@ import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
 
 const SAVINGS_RATE_MONTHS = 6
 
+// Every table that holds the user's actual financial records — cleared by "Clear All Data".
+// Deliberately excludes `subscriptions` (Stripe/Pro billing status) and `teller_enrollments`
+// (bank connection credentials) since those are account/connection state, not "your data" —
+// wiping them would silently cancel Pro access or break an existing bank link.
+const CLEAR_DATA_TABLES = [
+  'income', 'expenses', 'investments', 'loans', 'goals', 'assets',
+  'account_transactions', 'accounts', 'balance', 'balance_accounts', 'balance_gains',
+  'tracked_subscriptions',
+]
+const CLEAR_CONFIRM_PHRASE = 'DELETE'
+
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate  = useNavigate()
   const [income,   setIncome]   = useState([])
   const [expenses, setExpenses] = useState([])
   const [goals,    setGoals]    = useState([])
-  const [balance,  setBalance]  = useState([])
   const [loading,  setLoading]  = useState(true)
   const dark = useDarkMode()
   const [pieActiveIndex, setPieActiveIndex] = useState(null)
   const { expenseTxns, incomeTxns } = useTransactions()
+  const [showClearModal, setShowClearModal] = useState(false)
+  const [clearConfirmText, setClearConfirmText] = useState('')
+  const [clearing, setClearing] = useState(false)
+
+  const handleClearAllData = async () => {
+    setClearing(true)
+    await Promise.all(CLEAR_DATA_TABLES.map(table => supabase.from(table).delete().eq('user_id', user.id)))
+    window.location.reload()
+  }
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: inc }, { data: exp }, { data: gls }, { data: bal }] = await Promise.all([
+      const [{ data: inc }, { data: exp }, { data: gls }] = await Promise.all([
         supabase.from('income').select('*').eq('user_id', user.id),
         supabase.from('expenses').select('*').eq('user_id', user.id),
         supabase.from('goals').select('*').eq('user_id', user.id),
-        supabase.from('balance').select('*').eq('user_id', user.id),
       ])
       setIncome(inc || [])
       setExpenses(exp || [])
       setGoals(gls || [])
-      setBalance(bal || [])
       setLoading(false)
     }
     load()
@@ -58,7 +75,6 @@ export default function Dashboard() {
   ], [expenses, expenseTxns])
 
   const totalIncome   = allIncome.reduce((s, i) => s + parseFloat(i.amount), 0)
-  const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
   const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
   const thisMonth     = new Date().toISOString().slice(0, 7)
   const monthExp      = allExpenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + parseFloat(e.amount), 0)
@@ -88,8 +104,7 @@ export default function Dashboard() {
     ...allExpenses.map(e => ({ ...e, kind: 'expense' })),
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
 
-  const surplusBase  = totalBalance > 0 ? totalBalance : totalIncome
-  const surplus      = surplusBase - totalExpenses
+  const surplus      = totalIncome - totalExpenses
   const surplusColor = surplus >= 0 ? (dark ? '#10b981' : '#059669') : '#ef4444'
 
   if (loading) return (
@@ -140,28 +155,16 @@ export default function Dashboard() {
         </div>
       </Link>
 
-      {/* Income + Balance hero side-by-side */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/income')}>
-          <p className="text-muted text-xs mb-1">Total Income</p>
-          <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
-          <p className="text-muted text-xs mt-1">{allIncome.length} source{allIncome.length !== 1 ? 's' : ''}</p>
-          {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
-            <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
-              <Repeat size={12} /> {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
-            </p>
-          )}
-        </div>
-        <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/balance')}>
-          <p className="text-muted text-xs mb-1">Balance</p>
-          <p className="text-2xl font-black text-primary">{fmt(totalBalance)}</p>
-          <p className="text-muted text-xs mt-1">On hand</p>
-          {balance.filter(b => b.type === 'small-gain').length > 0 && (
-            <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
-              <PiggyBank size={12} /> {balance.filter(b => b.type === 'small-gain').length} small gains
-            </p>
-          )}
-        </div>
+      {/* Income hero */}
+      <div className="card p-5 mb-4 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/income')}>
+        <p className="text-muted text-xs mb-1">Total Income</p>
+        <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
+        <p className="text-muted text-xs mt-1">{allIncome.length} source{allIncome.length !== 1 ? 's' : ''}</p>
+        {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
+          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
+            <Repeat size={12} /> {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
+          </p>
+        )}
       </div>
 
       {/* Income Pie */}
@@ -293,7 +296,6 @@ export default function Dashboard() {
           {[
             { label: 'Add Income',   Icon: ArrowUpRight, path: '/income' },
             { label: 'Add Expense',  Icon: ArrowDownRight, path: '/expenses' },
-            { label: 'Update Balance', Icon: Sparkles, path: '/balance' },
             { label: 'View Reports', Icon: BarChart3, path: '/analytics' },
           ].map(a => (
             <Link key={a.path} to={a.path} className="no-underline">
@@ -306,6 +308,59 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* Danger zone */}
+      <div className="mt-6 flex justify-center">
+        <button onClick={() => setShowClearModal(true)}
+          className="text-xs font-semibold flex items-center gap-1.5 px-3 py-2 rounded-lg transition-opacity hover:opacity-75"
+          style={{ color: '#ef4444' }}>
+          <Trash2 size={13} /> Clear All Data
+        </button>
+      </div>
+
+      {/* Clear All Data confirmation modal */}
+      {showClearModal && (
+        <div className="modal-overlay" onClick={() => !clearing && setShowClearModal(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-black text-lg flex items-center gap-2" style={{ color: '#ef4444' }}>
+                <AlertTriangle size={20} /> Clear All Data
+              </p>
+              {!clearing && (
+                <button onClick={() => setShowClearModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
+              )}
+            </div>
+            <p className="text-muted text-sm mb-4">
+              This permanently deletes all your income, expenses, investments, loans, goals, assets,
+              accounts, and synced transactions. This cannot be undone. Your Pro subscription and any
+              connected bank link are not affected.
+            </p>
+            <label className="label">Type {CLEAR_CONFIRM_PHRASE} to confirm</label>
+            <input
+              className="input-field mb-4"
+              value={clearConfirmText}
+              onChange={e => setClearConfirmText(e.target.value)}
+              placeholder={CLEAR_CONFIRM_PHRASE}
+              disabled={clearing}
+              autoFocus
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setShowClearModal(false)} disabled={clearing} className="btn-secondary justify-center">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAllData}
+                disabled={clearing || clearConfirmText !== CLEAR_CONFIRM_PHRASE}
+                className="btn-primary justify-center"
+                style={{ background: '#ef4444', borderColor: '#ef4444' }}
+              >
+                {clearing ? 'Clearing…' : 'Permanently Delete Everything'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

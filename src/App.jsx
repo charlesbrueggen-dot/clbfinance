@@ -20,7 +20,6 @@ const Goals              = lazy(() => import('./pages/Goals'))
 const Loans              = lazy(() => import('./pages/Loans'))
 const Subscriptions      = lazy(() => import('./pages/Subscriptions'))
 const AICoach            = lazy(() => import('./pages/AICoach'))
-const Balance            = lazy(() => import('./pages/Balance'))
 const Success            = lazy(() => import('./pages/success'))
 const Cancel             = lazy(() => import('./pages/cancel'))
 
@@ -98,7 +97,6 @@ export default function App() {
               <Route path="goals" element={<Goals />} />
               <Route path="loans" element={<Loans />} />
               <Route path="subscriptions" element={<Subscriptions />} />
-              <Route path="balance" element={<Balance />} />
               <Route path="coach" element={<AICoach />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

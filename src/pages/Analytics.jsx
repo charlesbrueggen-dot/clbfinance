@@ -46,7 +46,6 @@ export default function Analytics() {
   const [investments, setInvestments] = useState([])
   const [loans,       setLoans]       = useState([])
   const [assets,      setAssets]      = useState([])
-  const [balance,     setBalance]     = useState([])
   const [dataLoading, setDataLoading] = useState(true)
 
   const [tab,   setTab]   = useState('Overview')
@@ -57,16 +56,15 @@ export default function Analytics() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: inc }, { data: exp }, { data: inv }, { data: ln }, { data: ast }, { data: bal }] = await Promise.all([
+      const [{ data: inc }, { data: exp }, { data: inv }, { data: ln }, { data: ast }] = await Promise.all([
         supabase.from('income').select('*').eq('user_id', user.id),
         supabase.from('expenses').select('*').eq('user_id', user.id),
         supabase.from('investments').select('*').eq('user_id', user.id),
         supabase.from('loans').select('*').eq('user_id', user.id),
         supabase.from('assets').select('*').eq('user_id', user.id),
-        supabase.from('balance').select('*').eq('user_id', user.id),
       ])
       setIncome(inc || []); setExpenses(exp || []); setInvestments(inv || [])
-      setLoans(ln || []); setAssets(ast || []); setBalance(bal || [])
+      setLoans(ln || []); setAssets(ast || [])
       setDataLoading(false)
     }
     load()
@@ -94,7 +92,6 @@ export default function Analytics() {
   // ── Summary numbers ───────────────────────────────────────────────────────
   const totalIncome   = allIncome.reduce((s, i) => s + parseFloat(i.amount), 0)
   const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
-  const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
   const { avgMonthlyIncome, avgMonthlyExpenses, avgMonthlySavings, rate: savingsRate } = computeSavingsRate(chartData)
 
   // ── Net Worth ─────────────────────────────────────────────────────────────
@@ -102,11 +99,11 @@ export default function Analytics() {
   const physicalAssets = assets.reduce((s, a) => s + a.value, 0)
   const moneyLent      = loans.filter(l => l.type === 'lent'     && !l.settled).reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const moneyOwed      = loans.filter(l => l.type === 'borrowed' && !l.settled).reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
-  const cashBase       = totalBalance > 0 ? totalBalance : totalIncome - totalExpenses
+  const cashBase       = totalIncome - totalExpenses
   const netWorth       = cashBase + portValue + physicalAssets + moneyLent - moneyOwed
 
   const nwPieData = sortByValueDesc([
-    cashBase > 0      && { name: 'Cash / Balance',   value: cashBase },
+    cashBase > 0      && { name: 'Cash',              value: cashBase },
     portValue > 0     && { name: 'Investments',       value: portValue },
     physicalAssets > 0 && { name: 'Physical Assets', value: physicalAssets },
     moneyLent > 0     && { name: 'Money Lent',        value: moneyLent },
@@ -387,7 +384,7 @@ export default function Analytics() {
 
           <div className="grid grid-cols-2 gap-3 mb-4">
             {[
-              { label: 'Cash / Balance',   value: cashBase,              color: '#10b981', Icon: Banknote },
+              { label: 'Cash',             value: cashBase,              color: '#10b981', Icon: Banknote },
               { label: 'Portfolio',         value: portValue,             color: '#3b82f6', Icon: TrendingUp },
               { label: 'Physical Assets',   value: physicalAssets,        color: '#8b5cf6', Icon: Home },
               { label: 'Net Loan Position', value: moneyLent - moneyOwed, color: moneyLent - moneyOwed >= 0 ? '#f59e0b' : '#ef4444', Icon: Handshake },

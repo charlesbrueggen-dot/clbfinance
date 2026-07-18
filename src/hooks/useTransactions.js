@@ -12,7 +12,6 @@ const CATEGORY_RULES = [
   { pattern: /interest.?paid|dividend|yield/i,                kind: 'income',  source: 'Investment Return' },
   { pattern: /refund|return.?credit|chargeback/i,             kind: 'income',  source: 'Refund' },
   { pattern: /cashback|cash.?reward/i,                        kind: 'income',  source: 'Cashback' },
-  { pattern: /venmo|paypal|zelle|cash.?app.*\+/i,             kind: 'income',  source: 'Transfer In' },
 
   // ── NEEDS ────────────────────────────────────────────────────────────────
   { pattern: /rent|mortgage|lease|hoa/i,                      kind: 'expense', category: 'Needs', subcategory: 'Rent' },
@@ -37,6 +36,12 @@ const CATEGORY_RULES = [
   // ── SAVINGS / TRANSFERS ───────────────────────────────────────────────────
   { pattern: /transfer.?to.?savings|move.?to.?savings|savings.?deposit/i, kind: 'expense', category: 'Savings', subcategory: 'Emergency Fund' },
   { pattern: /401k|roth.?ira|ira.?contribution|fidelity|vanguard|schwab|etrade|robinhood|brokerage/i, kind: 'expense', category: 'Savings', subcategory: 'Investment' },
+
+  // Payment apps (Venmo/PayPal/Zelle/Cash App) move money both ways, so this only catches
+  // transfers whose description doesn't already match something more specific above — e.g.
+  // "Rent Payment - Zelle" now matches the Rent rule first instead of being misread as income
+  // (which used to make it fall back to a generic Wants/Other category).
+  { pattern: /venmo|paypal|zelle|cash.?app.*\+/i,             kind: 'income',  source: 'Transfer In' },
 ]
 
 export function autoCategorize(description = '', merchant = '') {

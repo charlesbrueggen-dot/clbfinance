@@ -89,10 +89,11 @@ export default function Subscriptions() {
   const allDetected      = useMemo(() => detectRecurring(transactions), [transactions])
   const trackedKeys      = useMemo(() => new Set(trackedSubs.map(s => s.merchant_key)), [trackedSubs])
   const untrackedAll      = useMemo(() => allDetected.filter(d => !trackedKeys.has(d.merchantKey)), [allDetected, trackedKeys])
-  // "possible" = seen once so far, not enough data to confirm a repeat yet —
-  // surfaced separately (read-only) instead of silently dropped or acted on.
+  // "possible" = seen once so far, not enough data to confirm a repeat yet — detection still
+  // runs and keeps track of these internally (so they're ready to graduate the moment a second
+  // charge confirms the pattern), they're just not surfaced in the UI since there's nothing
+  // actionable to do with a single occurrence yet.
   const untrackedDetected = useMemo(() => untrackedAll.filter(d => d.confidence !== 'possible'), [untrackedAll])
-  const possibleWatching  = useMemo(() => untrackedAll.filter(d => d.confidence === 'possible'), [untrackedAll])
 
   // Silently keep already-tracked subscriptions in sync with new transactions
   // (updates amount/last-charge/next-billing-date, flags price changes) —
@@ -227,24 +228,6 @@ export default function Subscriptions() {
         </div>
       )}
 
-      {possibleWatching.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Possible Subscriptions — Monitoring</p>
-          <p className="text-xs text-muted mb-2">Seen once so far — we'll confirm these once a second charge shows up.</p>
-          <div className="space-y-2">
-            {possibleWatching.map(d => (
-              <div key={d.merchantKey} className="card p-3 flex items-center justify-between opacity-70">
-                <div className="flex items-center gap-2">
-                  {(() => { const CIcon = CATEGORY_ICON[d.category] || Repeat; return <CIcon size={16} className="text-primary" /> })()}
-                  <p className="text-sm text-primary">{d.name}</p>
-                </div>
-                <p className="text-xs text-muted">{fmt(d.amount)} · seen {d.lastDate}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {activeSubs.length > 0 && (
         <div className="mb-5">
           <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Your Subscriptions</p>
@@ -297,7 +280,7 @@ export default function Subscriptions() {
         </div>
       )}
 
-      {untrackedDetected.length === 0 && possibleWatching.length === 0 && trackedSubs.length === 0 && (
+      {untrackedDetected.length === 0 && trackedSubs.length === 0 && (
         <div className="card p-12 text-center" style={{ border: '2px dashed var(--card-border)' }}>
           <div className="flex justify-center mb-3 text-muted"><Repeat size={36} /></div>
           <p className="font-black text-primary text-lg mb-2">No recurring charges detected yet</p>
