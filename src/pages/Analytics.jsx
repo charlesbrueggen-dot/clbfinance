@@ -17,13 +17,13 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts'
-import { PIE_STROKE_PROPS, renderActivePieSector, pieCellOpacity } from '../lib/chartTheme'
+import { PIE_STROKE_PROPS, renderActivePieSector, pieCellOpacity, renderLegend } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
+import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
 import { useDarkMode } from '../hooks/useDarkMode'
 
 const fmtShort = n => { if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}k`; return fmt(n) }
-const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const TABS     = ['Overview', 'Cash Flow', 'Spending', 'Net Worth', 'Loans']
 const PIE_COLORS = ['#3b82f6','#f97316','#8b5cf6','#ef4444','#06b6d4','#84cc16','#ec4899','#14b8a6','#f59e0b','#64748b']
 
@@ -85,28 +85,17 @@ export default function Analytics() {
 
   // ── Month buckets ─────────────────────────────────────────────────────────
   const months = parseInt(range)
-  const now    = new Date()
 
-  const chartData = useMemo(() => {
-    const monthMap = {}
-    for (let i = months - 1; i >= 0; i--) {
-      const d   = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      monthMap[key] = { label: `${MONTHS[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`, income: 0, expenses: 0 }
-    }
-    allIncome.forEach(i => { if (monthMap[i.date?.slice(0, 7)]) monthMap[i.date.slice(0, 7)].income += parseFloat(i.amount) })
-    allExpenses.forEach(e => { if (monthMap[e.date?.slice(0, 7)]) monthMap[e.date.slice(0, 7)].expenses += parseFloat(e.amount) })
-    return Object.values(monthMap).map(m => ({ ...m, net: m.income - m.expenses, savings: Math.max(0, m.income - m.expenses) }))
-  }, [allIncome, allExpenses, months])
+  const chartData = useMemo(
+    () => bucketMonthlyTotals(allIncome, allExpenses, months),
+    [allIncome, allExpenses, months]
+  )
 
   // ── Summary numbers ───────────────────────────────────────────────────────
   const totalIncome   = allIncome.reduce((s, i) => s + parseFloat(i.amount), 0)
   const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
   const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
-  const avgMonthlyIncome   = chartData.length ? chartData.reduce((s, m) => s + m.income, 0) / chartData.length : 0
-  const avgMonthlyExpenses = chartData.length ? chartData.reduce((s, m) => s + m.expenses, 0) / chartData.length : 0
-  const avgMonthlySavings  = avgMonthlyIncome - avgMonthlyExpenses
-  const savingsRate = avgMonthlyIncome > 0 ? ((avgMonthlySavings / avgMonthlyIncome) * 100).toFixed(1) : '0.0'
+  const { avgMonthlyIncome, avgMonthlyExpenses, avgMonthlySavings, rate: savingsRate } = computeSavingsRate(chartData)
 
   // ── Net Worth ─────────────────────────────────────────────────────────────
   const portValue      = investments.reduce((s, i) => s + (i.shares * (i.current_price || i.avg_cost)), 0)
@@ -257,7 +246,7 @@ export default function Analytics() {
                 <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                <Legend content={renderLegend} />
                 <Area type="monotone" dataKey="income"   name="Income"   stroke={lineColorIncome} fill="url(#colorInc)" strokeWidth={2.5} dot={{ r: 3 }} />
                 <Area type="monotone" dataKey="expenses" name="Expenses" stroke={lineColorExp}    fill="url(#colorExp)" strokeWidth={2.5} dot={{ r: 3 }} />
               </AreaChart>
@@ -296,7 +285,7 @@ export default function Analytics() {
                 <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                <Legend content={renderLegend} />
                 <Line type="monotone" dataKey="income"   name="Income"   stroke={lineColorIncome} strokeWidth={2.5} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="expenses" name="Expenses" stroke={lineColorExp}    strokeWidth={2.5} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="net"      name="Net"      stroke={lineColorNet}    strokeWidth={2}   dot={{ r: 3 }} strokeDasharray="4 2" />

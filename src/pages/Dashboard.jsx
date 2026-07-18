@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
@@ -10,6 +10,10 @@ import {
 import { PIE_STROKE_PROPS, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { useTransactions } from '../hooks/useTransactions'
+import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
+
+const SAVINGS_RATE_MONTHS = 6
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -21,6 +25,7 @@ export default function Dashboard() {
   const [loading,  setLoading]  = useState(true)
   const dark = useDarkMode()
   const [pieActiveIndex, setPieActiveIndex] = useState(null)
+  const { expenseTxns, incomeTxns } = useTransactions()
 
   useEffect(() => {
     const load = async () => {
@@ -39,28 +44,48 @@ export default function Dashboard() {
     load()
   }, [user.id])
 
-  const totalIncome   = income.reduce((s, i) => s + i.amount, 0)
-  const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0)
-  const thisMonth     = new Date().toISOString().slice(0, 7)
-  const monthExp      = expenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + e.amount, 0)
+  // Merge manual entries with synced/imported account transactions — matches how
+  // Analytics/Income/Expenses compute totals, so the numbers agree across pages instead of
+  // Dashboard only reflecting whatever was entered manually.
+  const allIncome = useMemo(() => [
+    ...income,
+    ...incomeTxns.map(t => ({ id: t.id, amount: t.amount, date: t.date, source: t.source || t.description || 'Account', created_at: t.created_at })),
+  ], [income, incomeTxns])
 
-  const savingsBase   = totalIncome > 0 ? totalIncome : totalBalance
-  const savingsPct    = savingsBase > 0 ? ((savingsBase - totalExpenses) / savingsBase * 100).toFixed(1) : '0.0'
+  const allExpenses = useMemo(() => [
+    ...expenses,
+    ...expenseTxns.map(t => ({ id: t.id, amount: t.amount, date: t.date, description: t.description, category: t.category || 'Wants', created_at: t.created_at })),
+  ], [expenses, expenseTxns])
+
+  const totalIncome   = allIncome.reduce((s, i) => s + parseFloat(i.amount), 0)
+  const totalBalance  = balance.reduce((s, b) => s + b.amount, 0)
+  const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
+  const thisMonth     = new Date().toISOString().slice(0, 7)
+  const monthExp      = allExpenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + parseFloat(e.amount), 0)
+
+  // Trailing-6-month average savings rate — the same shared calculation Analytics uses by
+  // default, so both pages agree instead of Dashboard's old all-time/manual-only figure
+  // (which could go wildly negative once real spending outpaced a handful of manually-
+  // entered income rows).
+  const monthlyTotals = useMemo(
+    () => bucketMonthlyTotals(allIncome, allExpenses, SAVINGS_RATE_MONTHS),
+    [allIncome, allExpenses]
+  )
+  const { rate: savingsPct } = computeSavingsRate(monthlyTotals)
 
   const srcMap = {}
-  income.forEach(i => { srcMap[i.source] = (srcMap[i.source] || 0) + i.amount })
+  allIncome.forEach(i => { srcMap[i.source] = (srcMap[i.source] || 0) + parseFloat(i.amount) })
   const pieData   = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
   const catMap   = {}
-  expenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + e.amount })
+  allExpenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + parseFloat(e.amount) })
   const sorted   = Object.entries(catMap).sort((a, b) => b[1] - a[1])
   const largestCat = sorted[0] || ['N/A', 0]
 
   const recentActivity = [
-    ...income.map(i => ({ ...i, kind: 'income' })),
-    ...expenses.map(e => ({ ...e, kind: 'expense' })),
+    ...allIncome.map(i => ({ ...i, kind: 'income' })),
+    ...allExpenses.map(e => ({ ...e, kind: 'expense' })),
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
 
   const surplusBase  = totalBalance > 0 ? totalBalance : totalIncome
@@ -120,7 +145,7 @@ export default function Dashboard() {
         <div className="card p-5 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/income')}>
           <p className="text-muted text-xs mb-1">Total Income</p>
           <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
-          <p className="text-muted text-xs mt-1">{income.length} source{income.length !== 1 ? 's' : ''}</p>
+          <p className="text-muted text-xs mt-1">{allIncome.length} source{allIncome.length !== 1 ? 's' : ''}</p>
           {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
             <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#10b981' }}>
               <Repeat size={12} /> {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
@@ -144,7 +169,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 mb-1 font-bold" style={{ color: 'var(--text-primary)' }}>
           <PieChartIcon size={16} /><span>Income: {fmt(totalIncome)}</span>
         </div>
-        <p className="text-muted text-xs mb-3">{income.length} income source{income.length !== 1 ? 's' : ''}</p>
+        <p className="text-muted text-xs mb-3">{allIncome.length} income source{allIncome.length !== 1 ? 's' : ''}</p>
         {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
@@ -176,7 +201,7 @@ export default function Dashboard() {
         <div className="card p-4">
           <p className="text-muted text-xs mb-1">Savings Rate</p>
           <p className="text-2xl font-black text-primary">{savingsPct}%</p>
-          <p className="text-xs text-muted mt-1">Of {totalIncome > 0 ? 'income' : 'balance'} saved</p>
+          <p className="text-xs text-muted mt-1">Avg. last {SAVINGS_RATE_MONTHS} months</p>
         </div>
       </div>
 
@@ -213,7 +238,7 @@ export default function Dashboard() {
             {surplus >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {fmt(Math.abs(surplus))} {surplus >= 0 ? 'surplus' : 'deficit'}
           </span>
         </div>
-        {expenses.length === 0 ? (
+        {allExpenses.length === 0 ? (
           <div className="text-center py-6 text-muted text-sm">No budget data yet — add some expenses</div>
         ) : (
           <div className="space-y-3">

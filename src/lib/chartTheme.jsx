@@ -51,3 +51,23 @@ export const renderActivePieSector = (dark) => (props) => {
 // Full opacity for the active slice (or all slices when none is active), dimmed otherwise.
 export const pieCellOpacity = (activeIndex, i) =>
   activeIndex == null || activeIndex === i ? 1 : 0.45
+
+// Recharts' default <Legend> colors each label's TEXT in that series' own line/fill color
+// (not the page's text color) — several of this app's series colors (e.g. the light-mode
+// "Income"/"Expenses" line colors) have very poor contrast against the card background as a
+// result. This keeps the colored dot for visual association but always renders the label
+// itself in the theme's readable primary text color. Usage: <Legend content={renderLegend} />
+export const renderLegend = (props) => {
+  const { payload } = props
+  if (!payload) return null
+  return (
+    <ul style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, listStyle: 'none', padding: 0, margin: '4px 0 0' }}>
+      {payload.map((entry, i) => (
+        <li key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, display: 'inline-block', flexShrink: 0 }} />
+          <span style={{ color: 'var(--text-primary)' }}>{entry.value}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
