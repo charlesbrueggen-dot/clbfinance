@@ -17,6 +17,7 @@ const Investments        = lazy(() => import('./pages/Investments'))
 const Import             = lazy(() => import('./pages/Import'))
 const Analytics          = lazy(() => import('./pages/Analytics'))
 const Goals              = lazy(() => import('./pages/Goals'))
+const Budgets            = lazy(() => import('./pages/Budgets'))
 const Loans              = lazy(() => import('./pages/Loans'))
 const Subscriptions      = lazy(() => import('./pages/Subscriptions'))
 const AICoach            = lazy(() => import('./pages/AICoach'))
@@ -95,6 +96,7 @@ export default function App() {
               <Route path="import" element={<Import />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="goals" element={<Goals />} />
+              <Route path="budgets" element={<Budgets />} />
               <Route path="loans" element={<Loans />} />
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="coach" element={<AICoach />} />

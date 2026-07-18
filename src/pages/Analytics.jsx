@@ -50,6 +50,7 @@ export default function Analytics() {
 
   const [tab,   setTab]   = useState('Overview')
   const [range, setRange] = useState('6')
+  const [subCatRange, setSubCatRange] = useState('all')
   const dark = useDarkMode()
   const [catActiveIndex, setCatActiveIndex] = useState(null)
   const [nwActiveIndex,  setNwActiveIndex]  = useState(null)
@@ -108,19 +109,32 @@ export default function Analytics() {
     physicalAssets > 0 && { name: 'Physical Assets', value: physicalAssets },
     moneyLent > 0     && { name: 'Money Lent',        value: moneyLent },
   ].filter(Boolean))
+  const nwPieTotal = nwPieData.reduce((s, d) => s + d.value, 0)
 
   // ── Spending by category (merged) ─────────────────────────────────────────
   const catMap = {}
   allExpenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + parseFloat(e.amount) })
   const catData = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }))
 
-  // Subcategory breakdown (new — powered by account_transactions)
+  // Subcategory breakdown (new — powered by account_transactions), independently
+  // time-filtered from the page-level range selector above.
+  const subCatExpenses = useMemo(() => {
+    if (subCatRange === 'all') return allExpenses
+    const cutoff = new Date()
+    if (subCatRange === '1w') cutoff.setDate(cutoff.getDate() - 7)
+    else if (subCatRange === '1m') cutoff.setMonth(cutoff.getMonth() - 1)
+    else if (subCatRange === '1y') cutoff.setFullYear(cutoff.getFullYear() - 1)
+    const cutoffStr = cutoff.toISOString().split('T')[0]
+    return allExpenses.filter(e => e.date >= cutoffStr)
+  }, [allExpenses, subCatRange])
+
   const subCatMap = {}
-  allExpenses.forEach(e => {
+  subCatExpenses.forEach(e => {
     const key = `${e.category}: ${e.subcategory || 'Other'}`
     subCatMap[key] = (subCatMap[key] || 0) + parseFloat(e.amount)
   })
-  const subCatData = Object.entries(subCatMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, value]) => ({ name, value }))
+  const subCatData  = Object.entries(subCatMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, value]) => ({ name, value }))
+  const subCatTotal = subCatExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
 
   const spendTrendData   = chartData.map(m => ({ label: m.label, expenses: m.expenses }))
   const savingsRateData  = chartData.map(m => ({ label: m.label, rate: m.income > 0 ? parseFloat(((m.income - m.expenses) / m.income * 100).toFixed(1)) : 0 }))
@@ -318,7 +332,6 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
                     activeIndex={catActiveIndex} activeShape={renderActivePieSector(dark)}
                     onMouseEnter={(_, i) => setCatActiveIndex(i)}
                     onMouseLeave={() => setCatActiveIndex(null)}
@@ -331,14 +344,47 @@ export default function Analytics() {
                   <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="mt-2 space-y-1">
+                {catData.map((c, i) => (
+                  <div key={c.name} className="flex justify-between text-xs cursor-pointer"
+                    style={{ opacity: pieCellOpacity(catActiveIndex, i) }}
+                    onMouseEnter={() => setCatActiveIndex(i)}
+                    onMouseLeave={() => setCatActiveIndex(null)}
+                    onClick={() => setCatActiveIndex(prev => (prev === i ? null : i))}>
+                    <span className="flex items-center gap-1 min-w-0">
+                      <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-muted truncate">{c.name}</span>
+                    </span>
+                    <span className="font-medium text-primary flex-shrink-0 ml-2">{fmt(c.value)} · {totalExpenses > 0 ? ((c.value / totalExpenses) * 100).toFixed(0) : '0'}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {/* Subcategory breakdown — powered by account_transactions data */}
-          {subCatData.length > 0 && (
+          {allExpenses.length > 0 && (
             <div className="card p-5 mb-4">
-              <p className="font-bold text-primary text-sm mb-1">Subcategory Breakdown</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-bold text-primary text-sm">Subcategory Breakdown</p>
+                <div className="flex gap-1">
+                  {[['1w','1W'],['1m','1M'],['1y','1Y'],['all','All Time']].map(([v, l]) => (
+                    <button key={v} onClick={() => setSubCatRange(v)}
+                      className="px-2 py-1 rounded-lg text-xs font-bold transition-all"
+                      style={{
+                        background: subCatRange === v ? 'var(--text-primary)' : 'var(--input-bg)',
+                        color:      subCatRange === v ? 'var(--page-bg)'       : 'var(--text-muted)',
+                        border:     '1px solid var(--card-border)',
+                      }}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="text-muted text-xs mb-3">Top 8 subcategories across all sources</p>
+              {subCatData.length === 0 ? (
+                <div className="text-center py-6 text-muted text-sm">No spending in this range</div>
+              ) : (
               <div className="space-y-3">
                 {subCatData.map(({ name, value }) => (
                   <div key={name}>
@@ -347,11 +393,12 @@ export default function Analytics() {
                       <span className="text-muted">{fmt(value)}</span>
                     </div>
                     <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${Math.min(100, (value / totalExpenses) * 100)}%` }} />
+                      <div className="progress-fill" style={{ width: `${Math.min(100, (value / subCatTotal) * 100)}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
 
@@ -407,7 +454,6 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={nwPieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...pieStrokeProps(dark)}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} fontSize={10}
                     activeIndex={nwActiveIndex} activeShape={renderActivePieSector(dark)}
                     onMouseEnter={(_, i) => setNwActiveIndex(i)}
                     onMouseLeave={() => setNwActiveIndex(null)}
@@ -420,6 +466,21 @@ export default function Analytics() {
                   <Tooltip formatter={v => fmt(v)} contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="mt-2 space-y-1">
+                {nwPieData.map((d, i) => (
+                  <div key={d.name} className="flex justify-between text-xs cursor-pointer"
+                    style={{ opacity: pieCellOpacity(nwActiveIndex, i) }}
+                    onMouseEnter={() => setNwActiveIndex(i)}
+                    onMouseLeave={() => setNwActiveIndex(null)}
+                    onClick={() => setNwActiveIndex(prev => (prev === i ? null : i))}>
+                    <span className="flex items-center gap-1 min-w-0">
+                      <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-muted truncate">{d.name}</span>
+                    </span>
+                    <span className="font-medium text-primary flex-shrink-0 ml-2">{fmt(d.value)} · {((d.value / nwPieTotal) * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
