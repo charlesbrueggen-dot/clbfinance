@@ -187,7 +187,7 @@ export default function Analytics() {
       {/* Account txn inclusion notice */}
       {(expenseTxns.length > 0 || incomeTxns.length > 0) && (
         <div className="rounded-xl px-4 py-3 mb-4 flex items-center gap-2 text-xs font-medium"
-          style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', color: '#3b82f6' }}>
+          style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)', color: 'var(--text-primary)' }}>
           <CreditCard size={14} />
           <span>Includes {expenseTxns.length} account expense{expenseTxns.length !== 1 ? 's' : ''} and {incomeTxns.length} account income transaction{incomeTxns.length !== 1 ? 's' : ''}</span>
         </div>
@@ -200,7 +200,7 @@ export default function Analytics() {
             className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all"
             style={{
               background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--bg-primary)'   : 'var(--text-muted)',
+              color:      tab === t ? 'var(--page-bg)'       : 'var(--text-muted)',
               border:     '1px solid var(--card-border)',
             }}>
             {t}
@@ -214,7 +214,7 @@ export default function Analytics() {
             className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
             style={{
               background: range === v ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      range === v ? 'var(--bg-primary)'   : 'var(--text-muted)',
+              color:      range === v ? 'var(--page-bg)'       : 'var(--text-muted)',
               border:     '1px solid var(--card-border)',
             }}>
             {l}

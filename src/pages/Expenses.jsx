@@ -274,7 +274,7 @@ export default function Expenses() {
             className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all"
             style={{
               background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--bg-primary)'   : 'var(--text-muted)',
+              color:      tab === t ? 'var(--page-bg)'       : 'var(--text-muted)',
               border:     '1px solid var(--card-border)',
             }}>
             {t}
@@ -285,63 +285,69 @@ export default function Expenses() {
       </div>
 
       {/* Expense list */}
-      <div className="card p-4">
-        {filtered.length === 0 ? (
+      {filtered.length === 0 ? (
+        <div className="card p-4">
           <div className="text-center py-12">
             <div className="flex justify-center mb-3 text-muted"><Receipt size={36} /></div>
             <p className="font-semibold text-primary">No expenses yet</p>
             <p className="text-muted text-sm mt-1">Start tracking your spending</p>
             <button onClick={openAdd} className="btn-primary mt-4">+ Add Expense</button>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map(item => {
-              const isRecurring = item.frequency && item.frequency !== 'none'
-              const isAccTxn    = item._source === 'account_txn'
-              return (
-                <div key={`${item._source}-${item.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl border"
-                  style={{ borderColor: 'var(--card-border)' }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-sm text-primary">{item.description}</p>
-                      {isAccTxn && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                          style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}>
-                          <CreditCard size={11} className="inline mr-0.5" /> {item._account?.name || 'Account'}
-                          {item.card_last4 ? ` ··${item.card_last4}` : ''}
-                        </span>
-                      )}
-                      {item.label && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                          style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
-                          {item.label}
-                        </span>
-                      )}
-                      {isRecurring && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-semibold"
-                          style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
-                          <Repeat size={11} className="inline mr-0.5" /> {frequencyLabel(item.frequency)}
-                        </span>
-                      )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filtered.map(item => {
+            const isRecurring = item.frequency && item.frequency !== 'none'
+            const isAccTxn    = item._source === 'account_txn'
+            return (
+              <div key={`${item._source}-${item.id}`} className="card p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-primary"
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+                      {isAccTxn ? <CreditCard size={18} /> : <Receipt size={18} />}
                     </div>
-                    <p className="text-xs text-muted mt-0.5">
-                      {item.category} · {item.subcategory} · {item.date}
-                      {isRecurring && item.next_due ? ` · Next: ${item.next_due}` : ''}
-                    </p>
-                    {item.notes && <p className="text-xs text-muted">{item.notes}</p>}
+                    <div>
+                      <p className="font-bold text-primary">{item.description}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {isRecurring && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
+                            <Repeat size={11} className="inline mr-0.5" /> {frequencyLabel(item.frequency)}
+                          </span>
+                        )}
+                        {isAccTxn && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                            <CreditCard size={11} className="inline mr-0.5" /> {item._account?.name || 'Account'}
+                            {item.card_last4 ? ` ··${item.card_last4}` : ''}
+                          </span>
+                        )}
+                        {item.label && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
+                            {item.label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
-                    <span className="font-bold text-red-500">-{fmt(item.amount)}</span>
-                    <button onClick={() => openEdit(item)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
-                    <button onClick={() => handleDelete(item)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEdit(item)} className="text-muted hover:text-primary transition-colors"><Pencil size={14} /></button>
+                    <button onClick={() => handleDelete(item)} className="transition-colors" style={{ color: '#ef4444' }}><Trash2 size={14} /></button>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                <p className="text-2xl font-black" style={{ color: '#ef4444' }}>-{fmt(item.amount)}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <p className="text-muted text-sm">{item.category} · {item.subcategory} · {item.date}</p>
+                  {isRecurring && item.next_due && <p className="text-xs text-muted">· Next: {item.next_due}</p>}
+                </div>
+                {item.notes && <p className="text-xs text-muted mt-1">{item.notes}</p>}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Quick Category Modal ── */}
       {step === 'quick' && (

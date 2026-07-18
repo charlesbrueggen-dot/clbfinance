@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
+import { fmtCompact } from '../lib/format'
 
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
 const today = () => new Date().toISOString().split('T')[0]
@@ -124,19 +125,19 @@ export default function Loans() {
       <button onClick={openAdd} className="btn-primary mb-6">+ Add Loan</button>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money Lent Out</p>
-          <p className="text-2xl font-bold text-primary">{fmt(moneyLent)}</p>
+          <p className="text-2xl font-bold text-primary truncate" title={fmt(moneyLent)}>{fmtCompact(moneyLent)}</p>
           <p className="text-muted text-xs">{active.filter(l => l.type === 'lent').length} active</p>
         </div>
-        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Money You Owe</p>
-          <p className="text-2xl font-bold text-primary">{fmt(moneyOwed)}</p>
+          <p className="text-2xl font-bold text-primary truncate" title={fmt(moneyOwed)}>{fmtCompact(moneyOwed)}</p>
           <p className="text-muted text-xs">{active.filter(l => l.type === 'borrowed').length} active</p>
         </div>
-        <div className="card p-4">
+        <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Net Position</p>
-          <p className={`text-2xl font-bold ${netPosition >= 0 ? 'text-primary' : 'text-red-400'}`}>{fmt(netPosition)}</p>
+          <p className={`text-2xl font-bold truncate ${netPosition >= 0 ? 'text-primary' : 'text-red-400'}`} title={fmt(netPosition)}>{fmtCompact(netPosition)}</p>
           <p className="text-muted text-xs">{settled.length} settled</p>
         </div>
       </div>
@@ -164,23 +165,23 @@ export default function Loans() {
               const interest = currentAmt - loan.amount
               const isLent = loan.type === 'lent'
               return (
-                <div key={loan.id} className="flex items-center justify-between p-4 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                <div key={loan.id} className="flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl" style={{ border: '1px solid var(--card-border)' }}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ background: isLent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isLent ? '#10b981' : '#ef4444' }}>
                       {isLent ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
                     </div>
-                    <div>
-                      <p className="font-semibold text-primary">{loan.person_name}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-primary truncate">{loan.person_name}</p>
                       <p className="text-xs text-muted">{isLent ? 'You lent' : 'You borrowed'} · {loan.loan_date}</p>
-                      {loan.interest_rate > 0 && <p className="text-xs text-muted">{loan.interest_rate}% APR · Interest: {fmt(interest)}</p>}
-                      {loan.notes && <p className="text-xs text-muted">{loan.notes}</p>}
+                      {loan.interest_rate > 0 && <p className="text-xs text-muted">{loan.interest_rate}% APR · Interest: {fmtCompact(interest)}</p>}
+                      {loan.notes && <p className="text-xs text-muted truncate">{loan.notes}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="text-right">
-                      <p className="font-bold" style={{ color: isLent ? 'var(--text-primary)' : '#ef4444' }}>{fmt(currentAmt)}</p>
-                      {loan.interest_rate > 0 && <p className="text-xs text-muted">Original: {fmt(loan.amount)}</p>}
+                      <p className="font-bold" style={{ color: isLent ? 'var(--text-primary)' : '#ef4444' }} title={fmt(currentAmt)}>{fmtCompact(currentAmt)}</p>
+                      {loan.interest_rate > 0 && <p className="text-xs text-muted">Original: {fmtCompact(loan.amount)}</p>}
                     </div>
                     <div className="flex gap-1">
                       {!loan.settled && (

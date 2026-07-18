@@ -40,7 +40,7 @@ export default function Layout({ dark, setDark }) {
       <nav className="nav-bg sticky top-0 z-40" style={{ borderBottom: '1px solid var(--card-border)' }}>
         <div className="flex items-center justify-between px-4 h-14">
           <Link to="/" className="flex items-center gap-2.5 no-underline">
-            <img src="/logo.png" alt="Stride" className="w-10 h-10 object-contain" />
+            <img src={dark ? '/logo-dark.png' : '/logo.png'} alt="Stride" className="w-10 h-10 object-contain" />
             <span className="font-black text-lg text-primary hidden sm:block tracking-tight">Stride</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ export default function Layout({ dark, setDark }) {
           >
             <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
               <div className="flex items-center gap-2.5">
-                <img src="/logo.png" alt="Stride" className="w-10 h-10 object-contain" />
+                <img src={dark ? '/logo-dark.png' : '/logo.png'} alt="Stride" className="w-10 h-10 object-contain" />
                 <span className="font-black text-white text-xl tracking-tight">Stride</span>
               </div>
               <button onClick={() => setMenuOpen(false)} className="text-white/50 hover:text-white"><X size={22} /></button>

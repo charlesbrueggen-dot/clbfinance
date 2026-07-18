@@ -6,10 +6,11 @@ import {
   PieChart as PieChartIcon, BarChart3, TrendingUp, Sparkle, Zap, RefreshCw, Check,
   AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
 } from 'lucide-react'
+import { fmtCompact } from '../lib/format'
+import { pieColors, pieStrokeProps, pieTooltipStyle, pieTooltipItemStyle, pieTooltipLabelStyle } from '../lib/chartTheme'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0)
-const PIE_COLORS = ['#3b82f6','#f97316','#8b5cf6','#ef4444','#06b6d4','#84cc16','#ec4899','#14b8a6']
 
 // Stocks AND ETFs get auto-refresh (both trade on exchanges with real-time tickers)
 const isAutoRefresh = type => type === 'Stock' || type === 'ETF'
@@ -132,6 +133,13 @@ export default function Investments() {
 
   const [isPro, setIsPro] = useState(false)
   const [proLoading, setProLoading] = useState(true)
+  const [dark, setDarkDetect] = useState(document.documentElement.classList.contains('dark'))
+
+  useEffect(() => {
+    const obs = new MutationObserver(() => setDarkDetect(document.documentElement.classList.contains('dark')))
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
 
   useEffect(() => {
     const checkPro = async () => {
@@ -807,9 +815,9 @@ export default function Investments() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Portfolio Value</p>
-          <p className="text-xl font-bold text-primary">{fmt(totalValue)}</p>
+          <p className="text-xl font-bold text-primary truncate" title={fmt(totalValue)}>{fmtCompact(totalValue)}</p>
           <p className="text-muted text-xs mt-0.5">
             {consolidatedInvestments.length} holding{consolidatedInvestments.length !== 1 ? 's' : ''}
             {investments.length > consolidatedInvestments.length && (
@@ -817,16 +825,16 @@ export default function Investments() {
             )}
           </p>
         </div>
-        <div className="rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+        <div className="rounded-xl p-4 min-w-0" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
           <p className="text-muted text-xs mb-1">Total Gain / Loss</p>
-          <p className="text-xl font-bold" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }}>
-            {totalGL >= 0 ? '+' : ''}{fmt(totalGL)}
+          <p className="text-xl font-bold truncate" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }} title={fmt(totalGL)}>
+            {totalGL >= 0 ? '+' : ''}{fmtCompact(totalGL)}
           </p>
           <p className="text-muted text-xs mt-0.5">vs cost basis</p>
         </div>
-        <div className="card p-4">
+        <div className="card p-4 min-w-0">
           <p className="text-muted text-xs mb-1">Total Return</p>
-          <p className="text-xl font-bold" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }}>
+          <p className="text-xl font-bold truncate" style={{ color: totalGL >= 0 ? '#10b981' : '#ef4444' }}>
             {totalRet}%
           </p>
           <p className="text-muted text-xs mt-0.5">all time</p>
@@ -862,29 +870,27 @@ export default function Investments() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 gap-6 mb-6"
-        style={{ gridTemplateColumns: sectorData.length > 0 && typeData.length > 0 ? '1fr 1fr' : '1fr' }}>
+      <div className={`grid gap-6 mb-6 ${sectorData.length > 0 && typeData.length > 0 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
 
         {sectorData.length > 0 && (
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><BarChart3 size={16} /><span>Sector Allocation</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={75}
-                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`} fontSize={10}>
-                  {sectorData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                <Pie data={sectorData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}>
+                  {sectorData.map((_, i) => <Cell key={i} fill={pieColors(dark)[i % pieColors(dark).length]} />)}
                 </Pie>
-                <Tooltip formatter={v => fmt(v)} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-primary)' }} />
+                <Tooltip formatter={v => fmt(v)} contentStyle={pieTooltipStyle(dark)} itemStyle={pieTooltipItemStyle} labelStyle={pieTooltipLabelStyle} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-2 space-y-1">
               {sectorData.map((s, i) => (
                 <div key={s.name} className="flex justify-between text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                    <span className="text-muted">{s.name}</span>
+                  <span className="flex items-center gap-1 min-w-0">
+                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors(dark)[i % pieColors(dark).length] }} />
+                    <span className="text-muted truncate">{s.name}</span>
                   </span>
-                  <span className="font-medium text-primary">{fmt(s.value)}</span>
+                  <span className="font-medium text-primary flex-shrink-0 ml-2">{fmtCompact(s.value)}</span>
                 </div>
               ))}
             </div>
@@ -896,21 +902,20 @@ export default function Investments() {
             <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><PieChartIcon size={16} /><span>By Type</span></div>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={75}
-                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`} fontSize={10}>
-                  {typeData.map((_, i) => <Cell key={i} fill={PIE_COLORS[(i + 4) % PIE_COLORS.length]} />)}
+                <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={80} {...pieStrokeProps(dark)}>
+                  {typeData.map((_, i) => <Cell key={i} fill={pieColors(dark)[(i + 4) % pieColors(dark).length]} />)}
                 </Pie>
-                <Tooltip formatter={v => fmt(v)} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 8, color: 'var(--text-primary)' }} />
+                <Tooltip formatter={v => fmt(v)} contentStyle={pieTooltipStyle(dark)} itemStyle={pieTooltipItemStyle} labelStyle={pieTooltipLabelStyle} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-2 space-y-1">
               {typeData.map((t, i) => (
                 <div key={t.name} className="flex justify-between text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: PIE_COLORS[(i + 4) % PIE_COLORS.length] }} />
-                    <span className="text-muted">{t.name}</span>
+                  <span className="flex items-center gap-1 min-w-0">
+                    <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors(dark)[(i + 4) % pieColors(dark).length] }} />
+                    <span className="text-muted truncate">{t.name}</span>
                   </span>
-                  <span className="font-medium text-primary">{fmt(t.value)}</span>
+                  <span className="font-medium text-primary flex-shrink-0 ml-2">{fmtCompact(t.value)}</span>
                 </div>
               ))}
             </div>
