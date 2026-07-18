@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { PieChart as PieChartIcon, Landmark, Repeat, DollarSign, Banknote, X, Pencil, Trash2 } from 'lucide-react'
 import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
+import { detectBankIncomeFrequencies } from '../lib/incomeFrequency'
 import { useDarkMode } from '../hooks/useDarkMode'
 
 const QUICK_AMOUNTS = [1, 5, 10, 50, 100, 500]
@@ -94,6 +95,11 @@ export default function Income() {
   const recurring = income.filter(i => i.frequency && i.frequency !== 'one-time')
   const oneTime   = income.filter(i => !i.frequency || i.frequency === 'one-time')
 
+  // Bank-synced transactions have no declared frequency (they're individual deposits, not
+  // recurring definitions like manual entries), so a repeating paycheck has to be inferred from
+  // how often the same source shows up.
+  const bankFrequencyTotals = detectBankIncomeFrequencies(bankIncome)
+
   // Pie: merge manual sources + bank-synced sources
   const normalizeSource = source => {
     if (!source) return 'Other'
@@ -138,7 +144,7 @@ export default function Income() {
       {/* Frequency breakdown mini-stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {['weekly','biweekly','monthly'].map(freq => {
-          const total = recurring.filter(i => i.frequency === freq).reduce((s, i) => s + Number(i.amount), 0)
+          const total = recurring.filter(i => i.frequency === freq).reduce((s, i) => s + Number(i.amount), 0) + bankFrequencyTotals[freq]
           return (
             <div key={freq} className="card p-4">
               <p className="text-muted text-xs mb-1">{frequencyLabel(freq)}</p>
