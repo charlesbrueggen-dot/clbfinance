@@ -140,6 +140,7 @@ export default function Investments() {
   const dark = useDarkMode()
   const [sectorActiveIndex, setSectorActiveIndex] = useState(null)
   const [typeActiveIndex, setTypeActiveIndex] = useState(null)
+  const [growthRange, setGrowthRange] = useState('all') // '1w' | '1m' | '1y' | 'all'
 
   useEffect(() => {
     const checkPro = async () => {
@@ -421,7 +422,7 @@ export default function Investments() {
   // Portfolio growth over time. There's no stored daily price history, so this can't show
   // day-to-day market movement — instead it tracks cumulative cost basis vs. cumulative current
   // value as of each holding's purchase date, i.e. growth via contributions.
-  const growthData = investments
+  const growthSeriesFull = investments
     .filter(i => i.purchase_date)
     .slice()
     .sort((a, b) => new Date(a.purchase_date) - new Date(b.purchase_date))
@@ -432,6 +433,34 @@ export default function Investments() {
       acc.push({ date: i.purchase_date, cost, value })
       return acc
     }, [])
+
+  // Windows the full cumulative series to the selected range. The Y-values stay true cumulative
+  // totals (a purchase from 3 years ago still counts) — only which points are drawn changes. If
+  // nothing was purchased inside the window, the last totals from before it are extended flat to
+  // today rather than leaving the chart empty, since the portfolio didn't stop existing.
+  const growthData = (() => {
+    if (growthRange === 'all') {
+      if (growthSeriesFull.length !== 1) return growthSeriesFull
+      const todayStr = new Date().toISOString().split('T')[0]
+      return growthSeriesFull[0].date === todayStr ? growthSeriesFull : [growthSeriesFull[0], { ...growthSeriesFull[0], date: todayStr }]
+    }
+    if (growthSeriesFull.length === 0) return []
+    const cutoff = new Date()
+    if (growthRange === '1w') cutoff.setDate(cutoff.getDate() - 7)
+    else if (growthRange === '1m') cutoff.setMonth(cutoff.getMonth() - 1)
+    else if (growthRange === '1y') cutoff.setFullYear(cutoff.getFullYear() - 1)
+    const cutoffStr = cutoff.toISOString().split('T')[0]
+
+    const before = growthSeriesFull.filter(p => p.date < cutoffStr)
+    const within = growthSeriesFull.filter(p => p.date >= cutoffStr)
+    if (before.length === 0) return within
+
+    const anchor = { ...before[before.length - 1], date: cutoffStr }
+    if (within.length > 0) return [anchor, ...within]
+    const todayStr = new Date().toISOString().split('T')[0]
+    return anchor.date === todayStr ? [anchor] : [anchor, { ...anchor, date: todayStr }]
+  })()
+
   const lineColorCost  = dark ? '#60a5fa' : '#1a3a6b'
   const lineColorValue = dark ? '#10b981' : '#047857'
 
@@ -886,21 +915,42 @@ export default function Investments() {
       </div>
 
       {/* Portfolio Growth */}
-      {growthData.length >= 2 && (
+      {growthSeriesFull.length > 0 && (
         <div className="card p-5 mb-6">
-          <div className="flex items-center gap-2 mb-4 font-semibold text-primary text-sm"><TrendingUp size={16} /><span>Portfolio Growth</span></div>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={growthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-              <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, fontSize: 13 }} />
-              <Legend content={renderLegend} />
-              <Line type="monotone" dataKey="cost"  name="Invested"       stroke={lineColorCost}  strokeWidth={2}   dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="value" name="Current Value" stroke={lineColorValue} strokeWidth={2.5} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-          <p className="text-muted text-xs mt-2">Cumulative cost basis vs. current value as holdings were added — not day-to-day market movement.</p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 font-semibold text-primary text-sm"><TrendingUp size={16} /><span>Portfolio Growth</span></div>
+            <div className="flex gap-1">
+              {[['1w','1W'],['1m','1M'],['1y','1Y'],['all','All Time']].map(([v, l]) => (
+                <button key={v} onClick={() => setGrowthRange(v)}
+                  className="px-2 py-1 rounded-lg text-xs font-bold transition-all"
+                  style={{
+                    background: growthRange === v ? 'var(--text-primary)' : 'var(--input-bg)',
+                    color:      growthRange === v ? 'var(--page-bg)'      : 'var(--text-muted)',
+                    border:     '1px solid var(--card-border)',
+                  }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          {growthData.length < 2 ? (
+            <div className="text-center py-10 text-muted text-sm">No purchases in this range</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={growthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
+                  <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtCompact} />
+                  <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, fontSize: 13 }} />
+                  <Legend content={renderLegend} />
+                  <Line type="monotone" dataKey="cost"  name="Invested"       stroke={lineColorCost}  strokeWidth={2}   dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="value" name="Current Value" stroke={lineColorValue} strokeWidth={2.5} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-muted text-xs mt-2">Cumulative cost basis vs. current value as holdings were added — not day-to-day market movement.</p>
+            </>
+          )}
         </div>
       )}
 

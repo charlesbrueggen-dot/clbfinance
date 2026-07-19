@@ -46,6 +46,7 @@ export default function Analytics() {
   const [investments, setInvestments] = useState([])
   const [loans,       setLoans]       = useState([])
   const [assets,      setAssets]      = useState([])
+  const [accounts,    setAccounts]    = useState([])
   const [dataLoading, setDataLoading] = useState(true)
 
   const [tab,   setTab]   = useState('Overview')
@@ -57,15 +58,16 @@ export default function Analytics() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: inc }, { data: exp }, { data: inv }, { data: ln }, { data: ast }] = await Promise.all([
+      const [{ data: inc }, { data: exp }, { data: inv }, { data: ln }, { data: ast }, { data: acc }] = await Promise.all([
         supabase.from('income').select('*').eq('user_id', user.id),
         supabase.from('expenses').select('*').eq('user_id', user.id),
         supabase.from('investments').select('*').eq('user_id', user.id),
         supabase.from('loans').select('*').eq('user_id', user.id),
         supabase.from('assets').select('*').eq('user_id', user.id),
+        supabase.from('accounts').select('*').eq('user_id', user.id),
       ])
       setIncome(inc || []); setExpenses(exp || []); setInvestments(inv || [])
-      setLoans(ln || []); setAssets(ast || [])
+      setLoans(ln || []); setAssets(ast || []); setAccounts(acc || [])
       setDataLoading(false)
     }
     load()
@@ -100,7 +102,15 @@ export default function Analytics() {
   const physicalAssets = assets.reduce((s, a) => s + a.value, 0)
   const moneyLent      = loans.filter(l => l.type === 'lent'     && !l.settled).reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const moneyOwed      = loans.filter(l => l.type === 'borrowed' && !l.settled).reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
-  const cashBase       = totalIncome - totalExpenses
+  // "Cash" prefers real, connected/manual account balances (the same numbers the Accounts page
+  // shows as Total Assets/Total Debt) over a lifetime income-minus-expenses estimate — the latter
+  // only ever approximates cash on hand, and drifts further from reality the longer someone's
+  // been recording transactions (a year of CSV-imported history can make it wildly wrong). It's
+  // kept as a fallback for anyone tracking income/expenses manually with no accounts set up yet.
+  const usingRealCash  = accounts.length > 0
+  const cashBase       = usingRealCash
+    ? accounts.reduce((s, a) => s + (a.type === 'Credit Card' ? -a.balance : a.balance), 0)
+    : totalIncome - totalExpenses
   const netWorth       = cashBase + portValue + physicalAssets + moneyLent - moneyOwed
 
   const nwPieData = sortByValueDesc([
@@ -430,7 +440,10 @@ export default function Analytics() {
             <div>
               <p className="text-muted text-xs mb-1">Total Net Worth</p>
               <p className="text-4xl font-black" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(Math.abs(netWorth))}</p>
-              <p className="text-xs text-muted mt-1">{netWorth >= 0 ? 'Positive position' : 'Deficit'}</p>
+              <p className="text-xs text-muted mt-1">
+                {netWorth >= 0 ? 'Positive position' : 'Deficit'}
+                {' · Cash from '}{usingRealCash ? 'connected/manual account balances' : 'recorded income minus expenses (no accounts yet)'}
+              </p>
             </div>
             <span className="opacity-30">{netWorth >= 0 ? <ArrowUpRight size={48} /> : <ArrowDownRight size={48} />}</span>
           </div>

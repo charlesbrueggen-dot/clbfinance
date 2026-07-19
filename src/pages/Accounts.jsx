@@ -349,7 +349,7 @@ export default function Accounts() {
             className="px-4 py-2 rounded-full text-sm font-bold transition-all inline-flex items-center gap-1.5"
             style={{
               background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--bg-primary)'   : 'var(--text-muted)',
+              color:      tab === t ? 'var(--page-bg)'      : 'var(--text-muted)',
               border:     '1px solid var(--card-border)',
             }}>
             <Icon size={15} /> {label}
