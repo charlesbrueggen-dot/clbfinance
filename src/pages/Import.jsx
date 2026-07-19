@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Sparkle, Zap, Check, Cloud, AlertTriangle, PartyPopper, FolderOpen,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, authHeader } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
 import {
@@ -277,7 +277,7 @@ export default function Import() {
         const batch = targets.slice(i, i + AI_BATCH_SIZE)
         const res = await fetch('/api/categorize', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
           body: JSON.stringify({
             userId: user.id,
             transactions: batch.map(r => ({ id: String(r._idx), description: r.description, kind: r.kind })),

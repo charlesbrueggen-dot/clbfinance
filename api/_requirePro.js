@@ -5,11 +5,9 @@
 // endpoints directly (no Pro subscription, no auth at all) and run up the
 // Anthropic bill for free.
 //
-// NOTE: this trusts the `userId` the caller supplies — it checks "is this
-// user id Pro", not "is the caller actually this user". Closing that second
-// gap (verifying the caller's Supabase session matches the given userId) is
-// being handled separately across the Plaid/Stripe endpoints; once that
-// lands, wire these two endpoints into it the same way.
+// This only checks "is this user id Pro" — callers must also pass the
+// request through verifyCaller() (see _supabase.js) first, to confirm the
+// caller's session actually belongs to that user id.
 import { getServiceClient } from './_supabase.js'
 
 export async function isUserPro(userId) {

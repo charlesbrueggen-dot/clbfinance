@@ -18,7 +18,7 @@
 // Link itself — it only ever uses the server-issued link token.
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, authHeader } from '../lib/supabase'
 
 const PLAID_LINK_SCRIPT_SRC = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'
 
@@ -61,7 +61,7 @@ export function usePlaid(userId) {
       try {
         const res = await fetch('/api/plaid/enroll', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
           body:    JSON.stringify({ mode: 'create_link_token', userId }),
         })
         const data = await res.json()
@@ -125,7 +125,7 @@ export function usePlaid(userId) {
   const exchangeWithBackend = async (payload) => {
     const res = await fetch('/api/plaid/enroll', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
       body:    JSON.stringify({ mode: 'exchange', userId, ...payload }),
     })
     const data = await res.json()
@@ -185,7 +185,7 @@ export function usePlaid(userId) {
     try {
       const res = await fetch('/api/plaid/sync-transactions', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body:    JSON.stringify({ userId }),
       })
       const data = await res.json()
@@ -208,7 +208,7 @@ export function usePlaid(userId) {
     try {
       const res = await fetch('/api/plaid/disconnect', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body:    JSON.stringify({ userId, itemId }),
       })
       const data = await res.json()

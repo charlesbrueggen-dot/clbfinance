@@ -9,13 +9,16 @@
 // bookkeeping needed.
 //
 // POST body: { userId, itemId }  (itemId = plaid_items.id)
-import { getServiceClient } from './_supabase.js'
+import { getServiceClient, verifyCaller } from './_supabase.js'
 import { removeItem } from './_plaid-client.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   const { userId, itemId } = req.body || {}
   if (!userId || !itemId) return res.status(400).json({ error: 'userId and itemId required' })
+  if (!(await verifyCaller(req, userId))) {
+    return res.status(401).json({ error: 'Not authenticated as this user' })
+  }
 
   try {
     const supabase = getServiceClient()

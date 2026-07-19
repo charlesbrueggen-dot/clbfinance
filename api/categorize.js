@@ -20,6 +20,7 @@
 // Response:  { assignments: [{ id, category?, subcategory?, source? }] }
 
 import { isUserPro } from './_requirePro.js'
+import { verifyCaller } from './_supabase.js'
 
 const MODEL = 'claude-haiku-4-5-20251001'
 
@@ -83,6 +84,9 @@ export default async function handler(req, res) {
   const { userId, transactions } = req.body || {}
   if (!Array.isArray(transactions) || transactions.length === 0) {
     return res.status(400).json({ error: { message: 'transactions (non-empty array) required' } })
+  }
+  if (!(await verifyCaller(req, userId))) {
+    return res.status(401).json({ error: { message: 'Not authenticated as this user' } })
   }
   if (!(await isUserPro(userId))) {
     return res.status(403).json({ error: { message: 'Pro subscription required' } })

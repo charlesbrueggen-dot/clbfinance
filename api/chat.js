@@ -1,4 +1,5 @@
 import { isUserPro } from './_requirePro.js'
+import { verifyCaller } from './_supabase.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,6 +12,9 @@ export default async function handler(req, res) {
   }
 
   const { userId, ...anthropicBody } = req.body || {}
+  if (!(await verifyCaller(req, userId))) {
+    return res.status(401).json({ error: { message: 'Not authenticated as this user' } })
+  }
   if (!(await isUserPro(userId))) {
     return res.status(403).json({ error: { message: 'Pro subscription required' } })
   }

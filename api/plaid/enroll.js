@@ -12,7 +12,7 @@
 //
 // In mock mode the Plaid fields are optional for both modes — sample values
 // are substituted so the flow can be exercised with no credentials at all.
-import { getServiceClient } from './_supabase.js'
+import { getServiceClient, verifyCaller } from './_supabase.js'
 import { syncItem } from './_sync-core.js'
 import { createLinkToken, exchangePublicToken, isMockMode } from './_plaid-client.js'
 import { mockItem } from './_mock-data.js'
@@ -22,6 +22,9 @@ export default async function handler(req, res) {
 
   const { mode, userId } = req.body || {}
   if (!userId) return res.status(400).json({ error: 'userId required' })
+  if (!(await verifyCaller(req, userId))) {
+    return res.status(401).json({ error: 'Not authenticated as this user' })
+  }
 
   if (mode === 'create_link_token') {
     try {

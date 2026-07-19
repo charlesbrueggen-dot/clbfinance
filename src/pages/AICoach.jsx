@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sparkle, Zap, Bot, ArrowUp } from 'lucide-react'
 import { useAuth } from '../App'
-import { supabase } from '../lib/supabase'
+import { supabase, authHeader } from '../lib/supabase'
 import { fmtCurrency as fmt } from '../lib/format'
 import { useTransactions } from '../hooks/useTransactions'
 import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
@@ -164,7 +164,7 @@ export default function AICoach() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({
           userId: user.id,
           model: 'claude-sonnet-5',

@@ -4,7 +4,7 @@
 // webhook.js runs the same _sync-core.js logic when Plaid pushes.
 //
 // POST body: { userId }
-import { getServiceClient } from './_supabase.js'
+import { getServiceClient, verifyCaller } from './_supabase.js'
 import { syncItem } from './_sync-core.js'
 import { isMockMode } from './_plaid-client.js'
 
@@ -12,6 +12,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   const { userId } = req.body || {}
   if (!userId) return res.status(400).json({ error: 'userId required' })
+  if (!(await verifyCaller(req, userId))) {
+    return res.status(401).json({ error: 'Not authenticated as this user' })
+  }
 
   try {
     const supabase = getServiceClient()

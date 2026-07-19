@@ -14,3 +14,16 @@ export function getServiceClient() {
   cached = createClient(url, key)
   return cached
 }
+
+// Confirms the request actually comes from the account it claims to act as
+// — a bare `userId` in the body is just an unverified claim, and these
+// endpoints link/unlink/sync real bank connections. The frontend sends the
+// caller's Supabase session token as `Authorization: Bearer <access_token>`;
+// this resolves that token back to a user id via Supabase Auth and checks
+// it matches.
+export async function verifyCaller(req, claimedUserId) {
+  const token = (req.headers.authorization || '').match(/^Bearer (.+)$/)?.[1]
+  if (!token || !claimedUserId) return false
+  const { data, error } = await getServiceClient().auth.getUser(token)
+  return !error && data?.user?.id === claimedUserId
+}
