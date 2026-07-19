@@ -23,18 +23,11 @@ import { calcWithInterest } from '../lib/loanMath'
 import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
 import { useDarkMode } from '../hooks/useDarkMode'
 
+import { PageHeader, StatCard, PageSkeleton, SegTabs } from '../components/ui'
+
 const fmtShort = n => { if (Math.abs(n) >= 1000) return `$${(n / 1000).toFixed(1)}k`; return fmt(n) }
 const TABS     = ['Overview', 'Cash Flow', 'Spending', 'Net Worth', 'Loans']
 const PIE_COLORS = ['#3b82f6','#f97316','#8b5cf6','#ef4444','#06b6d4','#84cc16','#ec4899','#14b8a6','#f59e0b','#64748b']
-
-const StatCard = ({ label, value, sub, color, onClick }) => (
-  <div className="card p-4 cursor-pointer hover:opacity-90 transition-opacity" onClick={onClick}
-    style={{ borderLeft: color ? `3px solid ${color}` : undefined }}>
-    <p className="text-muted text-xs mb-1">{label}</p>
-    <p className="text-xl font-black text-primary">{value}</p>
-    {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
-  </div>
-)
 
 export default function Analytics() {
   const { user }                              = useAuth()
@@ -175,22 +168,13 @@ export default function Analytics() {
   }
 
   const loading = dataLoading || txnLoading
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (loading) return <PageSkeleton stats={4} hero={false} />
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-primary tracking-tight">Analytics</h1>
-          <p className="text-muted text-sm mt-1">Full picture — manual entries + account transactions</p>
-        </div>
-        <button onClick={exportCSV} className="btn-secondary text-sm flex-shrink-0"><Download size={15} /> CSV</button>
-      </div>
+      <PageHeader title="Analytics" subtitle="Full picture — manual entries + account transactions">
+        <button onClick={exportCSV} className="btn-secondary text-sm flex-shrink-0"><Download size={15} /> Export CSV</button>
+      </PageHeader>
 
       {/* Account txn inclusion notice */}
       {(expenseTxns.length > 0 || incomeTxns.length > 0) && (
@@ -202,42 +186,23 @@ export default function Analytics() {
       )}
 
       {/* Range selector + tabs */}
-      <div className="flex gap-2 overflow-x-auto mb-4 pb-1" style={{ scrollbarWidth: 'none' }}>
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all"
-            style={{
-              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--page-bg)'       : 'var(--text-muted)',
-              border:     '1px solid var(--card-border)',
-            }}>
-            {t}
-          </button>
-        ))}
+      <div className="mb-3">
+        <SegTabs tabs={TABS} active={tab} onChange={setTab} />
       </div>
 
-      <div className="flex gap-2 mb-5">
-        {[['3','3M'],['6','6M'],['12','1Y']].map(([v, l]) => (
-          <button key={v} onClick={() => setRange(v)}
-            className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
-            style={{
-              background: range === v ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      range === v ? 'var(--page-bg)'       : 'var(--text-muted)',
-              border:     '1px solid var(--card-border)',
-            }}>
-            {l}
-          </button>
-        ))}
+      <div className="mb-5">
+        <SegTabs small active={range} onChange={setRange}
+          tabs={[{ value: '3', label: '3M' }, { value: '6', label: '6M' }, { value: '12', label: '1Y' }]} />
       </div>
 
       {/* ═══════════════════════ OVERVIEW ═══════════════════════ */}
       {tab === 'Overview' && (
         <>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <StatCard label="Total Income"    value={fmt(totalIncome)}   sub={`${allIncome.length} entries`}   color="#10b981" />
-            <StatCard label="Total Expenses"  value={fmt(totalExpenses)} sub={`${allExpenses.length} entries`} color="#ef4444" />
-            <StatCard label="Avg Monthly Income"  value={fmt(avgMonthlyIncome)}   sub="over selected period" color={lineColorIncome} />
-            <StatCard label="Avg Monthly Expense" value={fmt(avgMonthlyExpenses)} sub="over selected period" color={lineColorExp} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <StatCard label="Total Income"    value={fmt(totalIncome)}   sub={`${allIncome.length} entries`}   tone="#10b981" />
+            <StatCard label="Total Expenses"  value={fmt(totalExpenses)} sub={`${allExpenses.length} entries`} tone="#ef4444" />
+            <StatCard label="Avg Monthly Income"  value={fmt(avgMonthlyIncome)}   sub="over selected period" tone={lineColorIncome} />
+            <StatCard label="Avg Monthly Expense" value={fmt(avgMonthlyExpenses)} sub="over selected period" tone={lineColorExp} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
@@ -301,8 +266,8 @@ export default function Analytics() {
       {tab === 'Cash Flow' && (
         <>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <StatCard label="Total Cash In"  value={fmt(totalIncome)}   sub={`${allIncome.length} entries`}   color="#10b981" />
-            <StatCard label="Total Cash Out" value={fmt(totalExpenses)} sub={`${allExpenses.length} entries`} color="#ef4444" />
+            <StatCard label="Total Cash In"  value={fmt(totalIncome)}   sub={`${allIncome.length} entries`}   tone="#10b981" />
+            <StatCard label="Total Cash Out" value={fmt(totalExpenses)} sub={`${allExpenses.length} entries`} tone="#ef4444" />
           </div>
           <div className="card p-5 mb-4">
             <p className="font-bold text-primary text-sm mb-3">Cash Flow Over Time</p>
@@ -338,8 +303,8 @@ export default function Analytics() {
       {tab === 'Spending' && (
         <>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <StatCard label="Total Spent"   value={fmt(totalExpenses)}  sub={`${allExpenses.length} entries`} color="#ef4444" />
-            <StatCard label="Avg / Month"   value={fmt(avgMonthlyExpenses)} sub="over period" color="#f97316" />
+            <StatCard label="Total Spent"   value={fmt(totalExpenses)}  sub={`${allExpenses.length} entries`} tone="#ef4444" />
+            <StatCard label="Avg / Month"   value={fmt(avgMonthlyExpenses)} sub="over period" tone="#f97316" />
           </div>
 
           {catData.length > 0 && (
@@ -383,19 +348,8 @@ export default function Analytics() {
             <div className="card p-5 mb-4">
               <div className="flex items-center justify-between mb-1">
                 <p className="font-bold text-primary text-sm">Subcategory Breakdown</p>
-                <div className="flex gap-1">
-                  {[['1w','1W'],['1m','1M'],['1y','1Y'],['all','All Time']].map(([v, l]) => (
-                    <button key={v} onClick={() => setSubCatRange(v)}
-                      className="px-2 py-1 rounded-lg text-xs font-bold transition-all"
-                      style={{
-                        background: subCatRange === v ? 'var(--text-primary)' : 'var(--input-bg)',
-                        color:      subCatRange === v ? 'var(--page-bg)'       : 'var(--text-muted)',
-                        border:     '1px solid var(--card-border)',
-                      }}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
+                <SegTabs small active={subCatRange} onChange={setSubCatRange}
+                  tabs={[{ value: '1w', label: '1W' }, { value: '1m', label: '1M' }, { value: '1y', label: '1Y' }, { value: 'all', label: 'All' }]} />
               </div>
               <p className="text-muted text-xs mb-3">Top 8 subcategories across all sources</p>
               {subCatData.length === 0 ? (
@@ -523,9 +477,9 @@ export default function Analytics() {
       {tab === 'Loans' && (
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <StatCard label="Money Lent Out"   value={fmt(totalLent)} sub={`${lentLoans.length} active`}     color="#10b981" />
-            <StatCard label="Money You Owe"    value={fmt(totalOwed)} sub={`${borrowedLoans.length} active`} color="#ef4444" />
-            <StatCard label="Net Loan Position" value={fmt(totalLent - totalOwed)} sub={totalLent - totalOwed >= 0 ? 'In your favor' : 'You owe more'} color={totalLent - totalOwed >= 0 ? '#10b981' : '#ef4444'} />
+            <StatCard label="Money Lent Out"   value={fmt(totalLent)} sub={`${lentLoans.length} active`}     tone="#10b981" />
+            <StatCard label="Money You Owe"    value={fmt(totalOwed)} sub={`${borrowedLoans.length} active`} tone="#ef4444" />
+            <StatCard label="Net Loan Position" value={fmt(totalLent - totalOwed)} sub={totalLent - totalOwed >= 0 ? 'In your favor' : 'You owe more'} tone={totalLent - totalOwed >= 0 ? '#10b981' : '#ef4444'} />
           </div>
 
           {activeLoans.length > 0 && (

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { fmtCurrency as fmt } from '../lib/format'
 import Budgets from './Budgets'
+import { PageHeader, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
 
 const CATEGORIES = ['Emergency Fund', 'Vacation', 'Car', 'Home', 'Education', 'Retirement', 'Investment', 'Other']
 const PRIORITIES = ['low', 'medium', 'high']
@@ -71,45 +72,34 @@ export default function Goals() {
     return Math.ceil(diff)
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin"></div></div>
+  if (loading) return <PageSkeleton stats={2} hero={false} />
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Goals & Budgets</h1>
-        <p className="text-muted text-sm mt-1">Set savings targets and monthly spending limits</p>
-      </div>
+      <PageHeader title="Goals & Budgets" subtitle="Set savings targets and monthly spending limits">
+        {tab === 'goals' && <button onClick={openAdd} className="btn-primary text-sm">+ New Goal</button>}
+      </PageHeader>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-5">
-        {[['goals', Target, 'Goals'], ['budgets', Wallet, 'Budgets']].map(([t, Icon, label]) => (
-          <button key={t} onClick={() => setTab(t)}
-            className="px-4 py-2 rounded-full text-sm font-bold transition-all inline-flex items-center gap-1.5"
-            style={{
-              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--page-bg)'       : 'var(--text-muted)',
-              border:     '1px solid var(--card-border)',
-            }}>
-            <Icon size={15} /> {label}
-          </button>
-        ))}
+      <div className="mb-5">
+        <SegTabs
+          tabs={[{ value: 'goals', label: 'Goals', Icon: Target }, { value: 'budgets', label: 'Budgets', Icon: Wallet }]}
+          active={tab} onChange={setTab}
+        />
       </div>
 
       {tab === 'budgets' && <Budgets />}
 
       {tab === 'goals' && (
       <>
-      <button onClick={openAdd} className="btn-primary mb-6">+ New Goal</button>
-
       {goals.length === 0 ? (
-        <div className="card p-12 text-center">
-          <div className="flex justify-center mb-3 text-muted"><Target size={36} /></div>
-          <p className="font-semibold text-primary">No goals yet</p>
-          <p className="text-muted text-sm mt-1">Set your first financial goal to start tracking progress</p>
-          <button onClick={openAdd} className="btn-primary mt-4">+ New Goal</button>
+        <div className="card">
+          <EmptyState Icon={Target} title="No goals yet" sub="Set your first financial goal to start tracking progress.">
+            <button onClick={openAdd} className="btn-primary">+ New Goal</button>
+          </EmptyState>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {goals.map(goal => {
             const pct = goal.target_amount > 0 ? Math.min(100, (goal.current_amount / goal.target_amount) * 100) : 0
             const dl = daysLeft(goal.target_date)

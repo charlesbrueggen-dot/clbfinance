@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
-  Sparkle, Zap, Check, Cloud, AlertTriangle, PartyPopper, FolderOpen,
+  Sparkle, Check, Cloud, AlertTriangle, PartyPopper, FolderOpen,
 } from 'lucide-react'
 import { supabase, authHeader } from '../lib/supabase'
 import { useAuth } from '../App'
@@ -11,6 +11,8 @@ import {
 } from '../lib/importParsing'
 import { fmtCurrency as fmt } from '../lib/format'
 
+import ProGate from '../components/ProGate'
+
 const DATE_FORMAT_OPTIONS = [
   { value: 'auto', label: 'Auto-detect' },
   { value: 'MDY', label: 'MM/DD/YYYY (US)' },
@@ -18,40 +20,6 @@ const DATE_FORMAT_OPTIONS = [
   { value: 'YMD', label: 'YYYY-MM-DD (ISO)' },
   { value: 'MONTH_NAME', label: 'Month name (e.g. Jan 5, 2024)' },
 ]
-
-function ProGate({ feature, Icon, description, userId }) {
-  const [upgrading, setUpgrading] = useState(false)
-
-  const handleUpgrade = async () => {
-    setUpgrading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-    } catch {
-      setUpgrading(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="mb-4 text-primary"><Icon size={48} /></div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
-        <Sparkle size={12} /> Pro Feature
-      </div>
-      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
-      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
-      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
-      </button>
-    </div>
-  )
-}
 
 // category/subcategory/source for a CSV row: reuse the same keyword
 // classifier used elsewhere in the app, but the row's `kind` comes from the
@@ -354,9 +322,10 @@ export default function Import() {
   }
 
   if (proLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
+    <div className="card p-5">
+      <div className="skeleton mb-3" style={{ width: '40%', height: 18 }} />
+      <div className="skeleton mb-2" style={{ width: '100%', height: 90, borderRadius: 14 }} />
+      <div className="skeleton" style={{ width: '60%', height: 12 }} />
     </div>
   )
 

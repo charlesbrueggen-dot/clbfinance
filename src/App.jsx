@@ -25,11 +25,15 @@ export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
 
 function PageLoader() {
+  // Branded splash: logo pulse + shimmer bar (dark-mode logo swaps via the .dark class)
+  const dark = document.documentElement.classList.contains('dark')
   return (
     <div className="flex items-center justify-center min-h-screen page-bg">
       <div className="text-center">
-        <div className="w-10 h-10 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-3" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div>
-        <p className="text-muted text-sm">Loading...</p>
+        <img src={dark ? '/logo-dark.png' : '/logo.png'} alt="Stride"
+          className="w-20 h-20 object-contain mx-auto mb-4 splash-logo" />
+        <p className="font-black text-primary text-lg tracking-tight mb-3">Stride</p>
+        <div className="skeleton mx-auto" style={{ width: 120, height: 5, borderRadius: 99 }} />
       </div>
     </div>
   )

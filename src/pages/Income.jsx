@@ -7,6 +7,7 @@ import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSecto
 import { fmtCurrency as fmt } from '../lib/format'
 import { detectBankIncomeFrequencies } from '../lib/incomeFrequency'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { PageHeader, StatCard, EmptyState, PageSkeleton } from '../components/ui'
 
 const QUICK_AMOUNTS = [1, 5, 10, 50, 100, 500]
 const today = () => new Date().toISOString().split('T')[0]
@@ -111,48 +112,38 @@ export default function Income() {
   const pieData   = sortByValueDesc(Object.entries(srcMap).map(([name, value]) => ({ name, value })))
   const pieColors = dark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div>
-    </div>
-  )
+  if (loading) return <PageSkeleton stats={3} />
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-primary tracking-tight">Income</h1>
-        <p className="text-muted text-sm mt-1">Track all your income streams — recurring and one-time</p>
-      </div>
+      <PageHeader title="Income" subtitle="Track all your income streams — recurring and one-time">
+        <button onClick={openAdd} className="btn-primary text-sm">+ Add Income</button>
+      </PageHeader>
 
-      <button onClick={openAdd} className="btn-primary mb-6">+ Add Income</button>
-
-      {/* Hero */}
-      <div className="card p-6 mb-6">
-        <div className="w-11 h-11 rounded-full flex items-center justify-center mb-4"
-          style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-          <DollarSign className="text-primary" size={22} />
+      {/* Hero + frequency stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div className="card p-6">
+          <div className="icon-chip mb-4" style={{ borderRadius: 99 }}>
+            <DollarSign size={20} />
+          </div>
+          <p className="text-muted text-sm mb-1">Total Income</p>
+          <p className="text-4xl font-black text-primary tnum">{fmt(totalIncome)}</p>
+          <p className="text-muted text-sm mt-2">
+            {recurring.length} recurring · {oneTime.length} one-time
+            {bankIncome.length > 0 && <span> · {bankIncome.length} from bank</span>}
+          </p>
         </div>
-        <p className="text-muted text-sm mb-1">Total Income</p>
-        <p className="text-4xl font-black text-primary">{fmt(totalIncome)}</p>
-        <p className="text-muted text-sm mt-2">
-          {recurring.length} recurring · {oneTime.length} one-time
-          {bankIncome.length > 0 && <span> · {bankIncome.length} from bank</span>}
-        </p>
-      </div>
-
-      {/* Frequency breakdown mini-stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {['weekly','biweekly','monthly'].map(freq => {
-          const total = recurring.filter(i => i.frequency === freq).reduce((s, i) => s + Number(i.amount), 0) + bankFrequencyTotals[freq]
-          return (
-            <div key={freq} className="card p-4">
-              <p className="text-muted text-xs mb-1">{frequencyLabel(freq)}</p>
-              <p className="font-black text-primary text-sm">{fmt(total)}</p>
-              <p className="text-xs text-muted mt-1">{frequencyIcon(freq)}</p>
-            </div>
-          )
-        })}
+        <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
+          {['weekly','biweekly','monthly'].map(freq => {
+            const total = recurring.filter(i => i.frequency === freq).reduce((s, i) => s + Number(i.amount), 0) + bankFrequencyTotals[freq]
+            return (
+              <div key={freq} className="card p-4 lg:flex lg:items-center lg:justify-between">
+                <p className="text-muted text-xs mb-1 lg:mb-0 font-semibold">{frequencyLabel(freq)}</p>
+                <p className="font-black text-primary text-sm tnum">{fmt(total)}</p>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Pie */}
@@ -161,9 +152,9 @@ export default function Income() {
           <PieChartIcon size={16} /><span>Income Sources Breakdown</span>
         </div>
         {pieData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={210}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={85} {...pieStrokeProps(dark)}
+              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={52} outerRadius={85} {...pieStrokeProps(dark)}
                 activeIndex={pieActiveIndex} activeShape={renderActivePieSector(dark)}
                 onMouseEnter={(_, i) => setPieActiveIndex(i)}
                 onMouseLeave={() => setPieActiveIndex(null)}
@@ -177,7 +168,7 @@ export default function Income() {
             </PieChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-40 flex items-center justify-center text-muted text-sm">No income data yet</div>
+          <EmptyState Icon={PieChartIcon} title="No income data yet" sub="Add an entry above to see your source breakdown." />
         )}
       </div>
 
@@ -185,7 +176,7 @@ export default function Income() {
       {bankIncome.length > 0 && (
         <div className="mb-4">
           <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider flex items-center gap-1.5"><Landmark size={14} /> Bank Income</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {bankIncome.map(item => (
               <div key={item.id} className="card p-4">
                 <div className="flex items-start justify-between mb-3">
@@ -215,7 +206,7 @@ export default function Income() {
       {recurring.length > 0 && (
         <div className="mb-4">
           <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider flex items-center gap-1.5"><Repeat size={14} /> Recurring Income</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {recurring.map(item => <IncomeCard key={item.id} item={item} onEdit={openEdit} onDelete={handleDelete} />)}
           </div>
         </div>
@@ -225,14 +216,18 @@ export default function Income() {
       {oneTime.length > 0 && (
         <div className="mb-4">
           <h2 className="font-bold text-primary mb-3 text-sm uppercase tracking-wider flex items-center gap-1.5"><Banknote size={14} /> One-Time Income</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {oneTime.map(item => <IncomeCard key={item.id} item={item} onEdit={openEdit} onDelete={handleDelete} />)}
           </div>
         </div>
       )}
 
       {income.length === 0 && bankIncome.length === 0 && (
-        <div className="text-center py-12 text-muted">No income entries yet. Add your first above!</div>
+        <div className="card">
+          <EmptyState Icon={Banknote} title="No income entries yet" sub="Add your first income source to start tracking.">
+            <button onClick={openAdd} className="btn-primary">+ Add Income</button>
+          </EmptyState>
+        </div>
       )}
 
       {/* Modal */}

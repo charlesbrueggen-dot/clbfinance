@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts'
 import {
-  PieChart as PieChartIcon, BarChart3, TrendingUp, Sparkle, Zap, RefreshCw, Check,
+  PieChart as PieChartIcon, BarChart3, TrendingUp, RefreshCw, Check,
   AlertTriangle, Landmark, Info, Pencil, Trash2, X, ArrowUpRight,
 } from 'lucide-react'
 import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
@@ -25,35 +25,8 @@ const TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'Mutual Fund']
 const SECTORS = ['Technology','Healthcare','Finance','Energy','Consumer','Real Estate','Utilities','Materials','Communication','Industrials','Other']
 
 
-function ProGate({ feature, Icon, description, userId }) {
-  const [upgrading, setUpgrading] = useState(false)
-  const handleUpgrade = async () => {
-    setUpgrading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-    } catch { setUpgrading(false) }
-  }
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="mb-4 text-primary"><Icon size={48} /></div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
-        <Sparkle size={12} /> Pro Feature
-      </div>
-      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
-      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
-      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
-      </button>
-    </div>
-  )
-}
+import ProGate from '../components/ProGate'
+import { PageHeader, StatCard, EmptyState, PageSkeleton } from '../components/ui'
 
 // ─── Offline ticker hints (Stocks + ETFs) ─────────────────────────────────────
 const TICKER_HINTS = {
@@ -818,13 +791,8 @@ export default function Investments() {
     )
   }
 
-  // ─── Loading spinner ──────────────────────────────────────────────────────
-  if (proLoading || loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  // ─── Loading skeleton ─────────────────────────────────────────────────────
+  if (proLoading || loading) return <PageSkeleton stats={3} hero={false} />
 
   if (!isPro) return (
     <ProGate
@@ -838,18 +806,12 @@ export default function Investments() {
   // ─── Main render ──────────────────────────────────────────────────────────
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Investments</h1>
-        <p className="text-muted text-sm mt-1">Track your portfolio across stocks, ETFs, crypto, bonds & funds</p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-3 mb-1 flex-wrap items-center">
-        <button onClick={refreshPrices} disabled={refreshing} className="btn-secondary">
-          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Refreshing…' : `Refresh Prices (${refreshableCount} stocks & ETFs)`}
+      <PageHeader title="Investments" subtitle="Track your portfolio across stocks, ETFs, crypto, bonds & funds">
+        <button onClick={refreshPrices} disabled={refreshing} className="btn-secondary text-sm">
+          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Refreshing…' : `Refresh Prices (${refreshableCount})`}
         </button>
-        <button onClick={openAdd} className="btn-primary">+ Add Investment</button>
-      </div>
+        <button onClick={openAdd} className="btn-primary text-sm">+ Add Investment</button>
+      </PageHeader>
       {manualCount > 0 && (
         <p className="text-xs text-muted mb-2 mt-1 flex items-center gap-1">
           <Info size={12} /> {manualCount} holding{manualCount !== 1 ? 's' : ''} (crypto / bonds / mutual funds) require manual price updates.
@@ -892,12 +854,9 @@ export default function Investments() {
           <PieChartIcon size={16} /><span>Portfolio Holdings</span>
         </div>
         {investments.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="flex justify-center mb-3 text-muted"><BarChart3 size={36} /></div>
-            <p className="font-semibold text-primary">No Investments Yet</p>
-            <p className="text-muted text-sm mt-1">Add your first investment to start tracking performance.</p>
-            <button onClick={openAdd} className="btn-primary mt-4">+ Add Your First Investment</button>
-          </div>
+          <EmptyState Icon={BarChart3} title="No Investments Yet" sub="Add your first investment to start tracking performance.">
+            <button onClick={openAdd} className="btn-primary">+ Add Your First Investment</button>
+          </EmptyState>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

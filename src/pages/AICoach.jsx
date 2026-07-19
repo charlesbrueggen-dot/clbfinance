@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Sparkle, Zap, Bot, ArrowUp } from 'lucide-react'
+import { Bot, ArrowUp } from 'lucide-react'
+import ProGate from '../components/ProGate'
+import { PageSkeleton } from '../components/ui'
 import { useAuth } from '../App'
 import { supabase, authHeader } from '../lib/supabase'
 import { fmtCurrency as fmt } from '../lib/format'
@@ -37,40 +39,6 @@ Guidelines:
 - You can suggest they navigate to specific pages in the app (Income, Expenses, Goals, etc.)
 - Never make up financial data — only use what's provided above
 - Format numbers in USD when referencing amounts`
-
-function ProGate({ feature, Icon, description, userId }) {
-  const [upgrading, setUpgrading] = useState(false)
-
-  const handleUpgrade = async () => {
-    setUpgrading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-    } catch {
-      setUpgrading(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="mb-4 text-primary"><Icon size={48} /></div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
-        <Sparkle size={12} /> Pro Feature
-      </div>
-      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
-      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
-      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
-      </button>
-    </div>
-  )
-}
 
 export default function AICoach() {
   const { user } = useAuth()
@@ -205,12 +173,7 @@ export default function AICoach() {
     "How can I reduce my expenses?",
   ]
 
-  if (proLoading || dataLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (proLoading || dataLoading) return <PageSkeleton stats={3} hero={false} />
 
   if (!isPro) return (
     <ProGate
@@ -222,7 +185,7 @@ export default function AICoach() {
   )
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 56px - 48px)', maxHeight: '800px' }}>
+    <div className="flex flex-col h-[calc(100dvh-215px)] lg:h-[calc(100dvh-130px)]" style={{ maxHeight: 820, minHeight: 380 }}>
       {/* Header */}
       <div className="mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">

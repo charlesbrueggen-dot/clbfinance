@@ -43,6 +43,12 @@
   --info: #1d4ed8;
   --info-strong: #1e3a8a;
   --info-bg: #dbeafe;
+
+  /* Layout-shell tints — same white-overlay values the old top-nav used inline */
+  --nav-item-active: rgba(255,255,255,0.18);
+  --nav-item-hover: rgba(255,255,255,0.08);
+  --nav-soft: rgba(255,255,255,0.1);
+  --skeleton-shine: rgba(255,255,255,0.22);
 }
 
 /* ── STRIDE DARK MODE ── Black bg, emerald green text */
@@ -79,20 +85,29 @@
   --info: #3b82f6;
   --info-strong: #3b82f6;
   --info-bg: rgba(59,130,246,0.12);
+
+  --nav-item-active: rgba(16,185,129,0.14);
+  --nav-item-hover: rgba(16,185,129,0.06);
+  --nav-soft: rgba(16,185,129,0.1);
+  --skeleton-shine: rgba(16,185,129,0.08);
 }
 
 body {
   background-color: var(--page-bg);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.25s, color 0.25s;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Financial figures line up in columns when digits share a fixed width */
+.tnum { font-variant-numeric: tabular-nums; }
 
 .card {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 16px;
+  border-radius: 18px;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 4px 24px var(--shadow-color);
@@ -102,6 +117,18 @@ body {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* Clickable cards get a gentle lift instead of the old opacity fade */
+.card-tap {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card-tap:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px var(--shadow-color);
+  border-color: var(--input-border);
+}
+.card-tap:active { transform: translateY(0); }
 
 .page-bg { background-color: var(--page-bg); }
 .nav-bg { background-color: var(--nav-bg); }
@@ -113,7 +140,7 @@ body {
 .input-field {
   background-color: var(--input-bg);
   border: 1px solid var(--input-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 14px;
   color: var(--text-primary);
   width: 100%;
@@ -154,12 +181,12 @@ select.input-field option {
   background-color: var(--btn-primary-bg);
   color: var(--btn-primary-text);
   border: 1px solid var(--btn-primary-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 20px;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.15s, transform 0.1s;
+  transition: background-color 0.15s, transform 0.1s, box-shadow 0.15s;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -167,6 +194,7 @@ select.input-field option {
 .btn-primary:hover {
   background-color: var(--btn-primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 6px 18px var(--shadow-color);
 }
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
@@ -175,7 +203,7 @@ select.input-field option {
   background-color: transparent;
   color: var(--text-primary);
   border: 1px solid var(--card-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 18px;
   font-weight: 600;
   font-size: 14px;
@@ -211,6 +239,11 @@ select.input-field option {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  animation: modal-pop 0.22s cubic-bezier(0.32, 1.2, 0.5, 1);
+}
+@keyframes modal-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .label {
@@ -224,7 +257,7 @@ select.input-field option {
 }
 
 .progress-bar {
-  height: 6px;
+  height: 8px;
   background-color: var(--progress-track);
   border-radius: 99px;
   overflow: hidden;
@@ -234,6 +267,155 @@ select.input-field option {
   border-radius: 99px;
   background-color: var(--accent);
   transition: width 0.55s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Page scaffolding ──────────────────────────────────────────────────────── */
+.page-enter { animation: page-fade 0.3s ease both; }
+@keyframes page-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Segmented pill tabs (shared look for every page's filter/tab row) */
+.seg-tab {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.seg-tab:hover { color: var(--text-primary); }
+.seg-tab-active {
+  background: var(--text-primary);
+  color: var(--page-bg);
+  border-color: var(--text-primary);
+}
+.seg-tab-active:hover { color: var(--page-bg); }
+
+/* Icon chip — small rounded square holding an icon at the left of rows/cards */
+.icon-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+}
+
+/* List rows inside a card (transaction-style lists) */
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--card-border);
+}
+.list-row:last-child { border-bottom: none; }
+
+/* ── Sidebar / bottom-nav shell ────────────────────────────────────────────── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  border: 1px solid transparent;
+}
+.nav-item:hover { background: var(--nav-item-hover); color: var(--text-primary); }
+.nav-item-active {
+  background: var(--nav-item-active);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.nav-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  opacity: 0.7;
+  padding: 0 14px;
+  margin: 18px 0 6px;
+}
+
+.bottomnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--nav-bg);
+  border-top: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.bottomnav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+  min-width: 56px;
+  transition: color 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.bottomnav-item-active { color: var(--text-primary); }
+
+/* ── Skeleton loading (shimmer placeholders) ───────────────────────────────── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--input-bg);
+  border-radius: 10px;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  100% { transform: translateX(100%); }
+}
+
+/* Branded splash loader (route-level suspense + auth check) */
+.splash-logo { animation: splash-pulse 1.6s ease-in-out infinite; }
+@keyframes splash-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.06); opacity: 0.85; }
 }
 
 ::-webkit-scrollbar { width: 4px; }

@@ -5,7 +5,7 @@ export default function Cancel() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen text-center px-6">
+    <div className="flex flex-col items-center justify-center min-h-screen text-center px-6 page-bg page-enter">
       <div className="flex justify-center mb-4 text-muted"><Frown size={52} /></div>
       <h2 className="text-xl font-black text-primary mb-2">Payment cancelled</h2>
       <p className="text-muted text-sm mb-8">No worries — you haven't been charged. You can upgrade anytime.</p>

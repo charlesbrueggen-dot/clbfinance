@@ -1,44 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
-  Sparkle, Zap, Handshake, ArrowUpRight, ArrowDownRight, Check, Trash2,
+  Handshake, ArrowUpRight, ArrowDownRight, Check, Trash2,
   Users, HandCoins, Wallet, X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
+import ProGate from '../components/ProGate'
+import { PageHeader, StatCard, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
 
 const today = () => new Date().toISOString().split('T')[0]
-
-function ProGate({ feature, Icon, description, userId }) {
-  const [upgrading, setUpgrading] = useState(false)
-  const handleUpgrade = async () => {
-    setUpgrading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-    } catch { setUpgrading(false) }
-  }
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="mb-4 text-primary"><Icon size={48} /></div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
-        <Sparkle size={12} /> Pro Feature
-      </div>
-      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
-      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
-      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
-      </button>
-    </div>
-  )
-}
 
 export default function Loans() {
   const { user } = useAuth()
@@ -97,7 +69,7 @@ export default function Loans() {
   const moneyOwed = active.filter(l => l.type === 'borrowed').reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const netPosition = moneyLent - moneyOwed
 
-  if (proLoading || loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div></div>
+  if (proLoading || loading) return <PageSkeleton stats={3} hero={false} />
 
   if (!isPro) return (
     <ProGate
@@ -110,49 +82,35 @@ export default function Loans() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Loans & Debts</h1>
-        <p className="text-muted text-sm mt-1">Track money lent and owed with interest</p>
-      </div>
-
-      <button onClick={openAdd} className="btn-primary mb-6">+ Add Loan</button>
+      <PageHeader title="Loans & Debts" subtitle="Track money lent and owed with interest">
+        <button onClick={openAdd} className="btn-primary text-sm">+ Add Loan</button>
+      </PageHeader>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <div className="card p-4 min-w-0">
-          <p className="text-muted text-xs mb-1">Money Lent Out</p>
-          <p className="text-2xl font-bold text-primary break-words" title={fmt(moneyLent)}>{fmtCompact(moneyLent)}</p>
-          <p className="text-muted text-xs">{active.filter(l => l.type === 'lent').length} active</p>
-        </div>
-        <div className="card p-4 min-w-0">
-          <p className="text-muted text-xs mb-1">Money You Owe</p>
-          <p className="text-2xl font-bold text-primary break-words" title={fmt(moneyOwed)}>{fmtCompact(moneyOwed)}</p>
-          <p className="text-muted text-xs">{active.filter(l => l.type === 'borrowed').length} active</p>
-        </div>
-        <div className="card p-4 min-w-0">
-          <p className="text-muted text-xs mb-1">Net Position</p>
-          <p className={`text-2xl font-bold break-words ${netPosition >= 0 ? 'text-primary' : ''}`}
-            style={netPosition < 0 ? { color: 'var(--negative-strong)' } : undefined}
-            title={fmt(netPosition)}>{fmtCompact(netPosition)}</p>
-          <p className="text-muted text-xs">{settled.length} settled</p>
-        </div>
+        <StatCard label="Money Lent Out" value={fmtCompact(moneyLent)} tone="#10b981"
+          sub={`${active.filter(l => l.type === 'lent').length} active`} />
+        <StatCard label="Money You Owe" value={fmtCompact(moneyOwed)} tone="#ef4444"
+          sub={`${active.filter(l => l.type === 'borrowed').length} active`} />
+        <StatCard label="Net Position" value={fmtCompact(netPosition)}
+          valueStyle={netPosition < 0 ? { color: 'var(--negative-strong)' } : undefined}
+          sub={`${settled.length} settled`} />
       </div>
 
-      <div className="flex gap-2 mb-4">
-        {['active', 'settled'].map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ background: tab === t ? 'rgba(255,255,255,0.22)' : 'transparent', color: 'var(--text-primary)', border: tab === t ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--card-border)', borderRadius: 12, padding: '8px 18px', fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.15s' }}>
-            {t === 'active' ? `Active (${active.length})` : `Settled (${settled.length})`}
-          </button>
-        ))}
+      <div className="mb-4">
+        <SegTabs
+          tabs={[
+            { value: 'active', label: `Active (${active.length})` },
+            { value: 'settled', label: `Settled (${settled.length})` },
+          ]}
+          active={tab} onChange={setTab}
+        />
       </div>
 
       <div className="card p-5">
         {displayed.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="flex justify-center mb-3 text-muted"><Users size={36} /></div>
-            <p className="font-semibold text-primary">No {tab === 'active' ? 'Active' : 'Settled'} Loans</p>
-            {tab === 'active' && <button onClick={openAdd} className="btn-primary mt-4">+ Add a Loan</button>}
-          </div>
+          <EmptyState Icon={Users} title={`No ${tab === 'active' ? 'Active' : 'Settled'} Loans`}>
+            {tab === 'active' && <button onClick={openAdd} className="btn-primary">+ Add a Loan</button>}
+          </EmptyState>
         ) : (
           <div className="space-y-3">
             {displayed.map(loan => {

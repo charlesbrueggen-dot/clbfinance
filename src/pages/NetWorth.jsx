@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
 import { fmtCurrency as fmt } from '../lib/format'
+import { PageHeader, EmptyState, PageSkeleton } from '../components/ui'
 
 const today = () => new Date().toISOString().split('T')[0]
 const CATEGORIES = ['Real Estate', 'Vehicle', 'Electronics', 'Jewelry', 'Savings', 'Cash', 'Other']
@@ -98,46 +99,39 @@ export default function NetWorth() {
     { label: 'Money You Owe',     value: -moneyOwed,     Icon: HandCoins,  show: true, negative: true },
   ].filter(b => b.show)
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <PageSkeleton stats={4} />
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Net Worth</h1>
-        <p className="text-muted text-sm mt-1">Total financial position including accounts & transactions</p>
-      </div>
-
-      <button onClick={openAdd} className="btn-primary mb-6">+ Add Asset</button>
+      <PageHeader title="Net Worth" subtitle="Total financial position including accounts & transactions">
+        <button onClick={openAdd} className="btn-primary text-sm">+ Add Asset</button>
+      </PageHeader>
 
       {/* Net Worth Hero */}
-      <div className="rounded-2xl p-6 mb-6 flex items-center justify-between" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+      <div className="card p-6 mb-4 flex items-center justify-between">
         <div>
           <p className="text-muted text-sm mb-1">Total Net Worth</p>
-          <p className="text-4xl font-bold" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(netWorth)}</p>
+          <p className="text-4xl sm:text-5xl font-black tnum" style={{ color: netWorth >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(netWorth)}</p>
           {accounts.length > 0 && (
-            <p className="text-xs text-muted mt-1">Includes {accounts.length} connected account{accounts.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-muted mt-2">Includes {accounts.length} connected account{accounts.length !== 1 ? 's' : ''}</p>
           )}
         </div>
-        <span className="text-muted opacity-50">{netWorth >= 0 ? <ArrowUpRight size={40} /> : <ArrowDownRight size={40} />}</span>
+        <span className="text-muted opacity-40">{netWorth >= 0 ? <ArrowUpRight size={44} /> : <ArrowDownRight size={44} />}</span>
       </div>
 
       {/* Breakdown Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         {breakdown.map(item => (
           <div key={item.label} className="card p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-muted text-xs mb-1">{item.label}</p>
-                <p className={`text-xl font-bold ${item.negative ? '' : 'text-primary'}`}
+              <div className="min-w-0">
+                <p className="text-muted text-xs mb-1 font-semibold">{item.label}</p>
+                <p className={`text-xl font-black tnum ${item.negative ? '' : 'text-primary'}`}
                   style={item.negative ? { color: 'var(--negative-strong)' } : undefined}>
                   {item.negative ? '-' : ''}{fmt(Math.abs(item.value))}
                 </p>
               </div>
-              <span className="opacity-30"><item.Icon size={26} /></span>
+              <span className="opacity-30 flex-shrink-0"><item.Icon size={24} /></span>
             </div>
           </div>
         ))}
@@ -168,8 +162,14 @@ export default function NetWorth() {
       )}
 
       {/* Physical Asset Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {assets.length === 0 && <div className="col-span-2 text-center py-12 text-muted">No physical assets added yet.</div>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {assets.length === 0 && (
+          <div className="col-span-full card">
+            <EmptyState Icon={Package} title="No physical assets yet" sub="Add things you own — house, car, electronics — to complete your net worth.">
+              <button onClick={openAdd} className="btn-primary">+ Add Asset</button>
+            </EmptyState>
+          </div>
+        )}
         {assets.map(item => (
           <div key={item.id} className="card p-4">
             <div className="flex items-start justify-between mb-3">

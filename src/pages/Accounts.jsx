@@ -14,6 +14,8 @@ import { useTransactions, autoCategorize } from '../hooks/useTransactions'
 import { usePlaid } from '../hooks/usePlaid'
 import { fmtCurrency as fmt } from '../lib/format'
 import Import from './Import'
+import ProGate from '../components/ProGate'
+import { PageHeader, StatCard, EmptyState, PageSkeleton } from '../components/ui'
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -60,36 +62,6 @@ const blankTxn = () => ({
   merchant: '', card_last4: '', account_id: '',
 })
 
-
-function ProGate({ feature, Icon, description, userId }) {
-  const [upgrading, setUpgrading] = useState(false)
-  const handleUpgrade = async () => {
-    setUpgrading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-    } catch { setUpgrading(false) }
-  }
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="mb-4 text-primary"><Icon size={48} /></div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
-        <Sparkle size={12} /> Pro Feature
-      </div>
-      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
-      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
-      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
-      </button>
-    </div>
-  )
-}
 
 function CardVisual({ account }) {
   const isCard = account.type === 'Credit Card'
@@ -312,55 +284,37 @@ export default function Accounts() {
     })
   }, [transactions, selectedAcc, txnFilter, search])
 
-  if (proLoading || loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (proLoading || loading) return <PageSkeleton stats={2} hero={false} />
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-primary tracking-tight">Accounts & Cards</h1>
-        <p className="text-muted text-sm mt-1">Connect your bank or track accounts manually</p>
-      </div>
+      <PageHeader title="Accounts & Cards" subtitle="Connect your bank or track accounts manually" />
 
       {/* Summary Bar */}
       {accounts.length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <div className="card p-4">
-            <p className="text-muted text-xs mb-1">Total Assets</p>
-            <p className="text-2xl font-black text-primary">{fmt(totalAssets)}</p>
-            <p className="text-xs text-muted mt-1">{accounts.filter(a => a.type !== 'Credit Card').length} accounts</p>
-          </div>
-          <div className="card p-4">
-            <p className="text-muted text-xs mb-1">Total Debt</p>
-            <p className="text-2xl font-black" style={{ color: 'var(--negative-strong)' }}>{fmt(totalDebt)}</p>
-            <p className="text-xs text-muted mt-1">{accounts.filter(a => a.type === 'Credit Card').length} cards</p>
-          </div>
+          <StatCard label="Total Assets" value={fmt(totalAssets)} tone="#10b981"
+            sub={`${accounts.filter(a => a.type !== 'Credit Card').length} accounts`} />
+          <StatCard label="Total Debt" value={fmt(totalDebt)} tone="#ef4444"
+            valueStyle={{ color: 'var(--negative-strong)' }}
+            sub={`${accounts.filter(a => a.type === 'Credit Card').length} cards`} />
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {[['accounts', Landmark, 'Accounts'], ['connect', Link2, 'Connect Bank'], ['import', Download, 'Import']].map(([t, Icon, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className="px-4 py-2 rounded-full text-sm font-bold transition-all inline-flex items-center gap-1.5"
-            style={{
-              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--page-bg)'      : 'var(--text-muted)',
-              border:     '1px solid var(--card-border)',
-            }}>
+            className={`seg-tab ${tab === t ? 'seg-tab-active' : ''}`}>
             <Icon size={15} /> {label}
             {t === 'connect' && connectedItems.length > 0 && (
-              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-bold"
+              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold"
                 style={{ background: '#10b981', color: '#000' }}>
                 {connectedItems.length}
               </span>
             )}
             {t === 'connect' && connectedItems.length === 0 && !isPro && (
-              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-bold"
+              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold"
                 style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                 PRO
               </span>
@@ -630,14 +584,11 @@ export default function Accounts() {
           )}
 
           {accounts.length === 0 && (
-            <div className="card p-12 text-center mb-5" style={{ border: '2px dashed var(--card-border)' }}>
-              <div className="flex justify-center mb-3 text-muted"><Landmark size={40} /></div>
-              <p className="font-black text-primary text-lg mb-2">No accounts yet</p>
-              <p className="text-muted text-sm mb-4">Connect your bank automatically or add accounts manually.</p>
-              <div className="flex gap-3 justify-center">
+            <div className="card mb-5" style={{ border: '2px dashed var(--card-border)' }}>
+              <EmptyState Icon={Landmark} title="No accounts yet" sub="Connect your bank automatically or add accounts manually.">
                 <button onClick={() => setTab('connect')} className="btn-primary"><Link2 size={15} /> Connect Bank</button>
                 <button onClick={openAddAcc} className="btn-secondary">+ Add Manually</button>
-              </div>
+              </EmptyState>
             </div>
           )}
 
@@ -670,11 +621,10 @@ export default function Accounts() {
             </div>
 
             {visibleTxns.length === 0 ? (
-              <div className="card p-10 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-                <div className="flex justify-center mb-2 text-muted"><ClipboardList size={28} /></div>
-                <p className="font-bold text-primary mb-1">No transactions yet</p>
-                <p className="text-muted text-sm mb-4">Connect a bank to auto-sync, or log one manually.</p>
-                <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-primary">+ Log Transaction</button>
+              <div className="card" style={{ border: '2px dashed var(--card-border)' }}>
+                <EmptyState Icon={ClipboardList} title="No transactions yet" sub="Connect a bank to auto-sync, or log one manually.">
+                  <button onClick={() => openAddTxn(selectedAcc || '')} className="btn-primary">+ Log Transaction</button>
+                </EmptyState>
               </div>
             ) : (
               <div className="space-y-2">

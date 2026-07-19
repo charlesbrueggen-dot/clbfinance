@@ -5,7 +5,7 @@
 // provider — so we deep-link to their account page and let the user
 // confirm once they've finished it there.
 import { useState, useEffect, useMemo } from 'react'
-import { Sparkle, Zap, Repeat, AlertTriangle, ArrowUp, ArrowUpRight, X } from 'lucide-react'
+import { Repeat, AlertTriangle, ArrowUp, ArrowUpRight, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
@@ -14,36 +14,8 @@ import {
   CATEGORIES, CATEGORY_ICON,
 } from '../hooks/useSubscriptions'
 import { fmtCurrency as fmt } from '../lib/format'
-
-function ProGate({ feature, Icon, description, userId }) {
-  const [upgrading, setUpgrading] = useState(false)
-  const handleUpgrade = async () => {
-    setUpgrading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-    } catch { setUpgrading(false) }
-  }
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center px-6">
-      <div className="mb-4 text-primary"><Icon size={48} /></div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
-        style={{ background: 'var(--positive-bg)', color: 'var(--positive)', border: '1px solid var(--positive)' }}>
-        <Sparkle size={12} /> Pro Feature
-      </div>
-      <h2 className="text-xl font-black text-primary mb-2">{feature}</h2>
-      <p className="text-muted text-sm mb-6 max-w-xs">{description}</p>
-      <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary px-8">
-        {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
-      </button>
-    </div>
-  )
-}
+import ProGate from '../components/ProGate'
+import { PageHeader, EmptyState, PageSkeleton } from '../components/ui'
 
 function RenewalBadge({ date }) {
   const d = daysUntil(date)
@@ -137,11 +109,7 @@ export default function Subscriptions() {
     setSaving(false); setShowForm(false)
   }
 
-  if (proLoading || loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }} />
-    </div>
-  )
+  if (proLoading || loading) return <PageSkeleton stats={2} hero={false} />
 
   if (!isPro) return (
     <ProGate
@@ -154,13 +122,9 @@ export default function Subscriptions() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-black text-primary tracking-tight">Subscriptions</h1>
-          <p className="text-muted text-sm mt-1">Recurring charges detected from your transactions</p>
-        </div>
+      <PageHeader title="Subscriptions" subtitle="Recurring charges detected from your transactions">
         <button onClick={openAdd} className="btn-primary text-sm px-4">+ Add</button>
-      </div>
+      </PageHeader>
 
       <div className="mb-4 p-3 rounded-xl text-xs flex items-start gap-1.5"
         style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning)', color: 'var(--warning)' }}>
@@ -281,11 +245,11 @@ export default function Subscriptions() {
       )}
 
       {untrackedDetected.length === 0 && trackedSubs.length === 0 && (
-        <div className="card p-12 text-center" style={{ border: '2px dashed var(--card-border)' }}>
-          <div className="flex justify-center mb-3 text-muted"><Repeat size={36} /></div>
-          <p className="font-black text-primary text-lg mb-2">No recurring charges detected yet</p>
-          <p className="text-muted text-sm mb-4">Once you log or sync a few months of transactions, repeating charges show up here automatically.</p>
-          <button onClick={openAdd} className="btn-secondary">+ Add one manually</button>
+        <div className="card" style={{ border: '2px dashed var(--card-border)' }}>
+          <EmptyState Icon={Repeat} title="No recurring charges detected yet"
+            sub="Once you log or sync a few months of transactions, repeating charges show up here automatically.">
+            <button onClick={openAdd} className="btn-secondary">+ Add one manually</button>
+          </EmptyState>
         </div>
       )}
 

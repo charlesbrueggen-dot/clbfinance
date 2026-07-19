@@ -27,15 +27,15 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(145deg, #1a5a94 0%, #2a7ab8 50%, #3a8acc 100%)' }}>
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md page-enter">
         {/* Logo */}
-        <div className="text-center mb-10">
-          <img src="/logo.png" alt="Stride" className="w-32 h-32 object-contain mx-auto mb-5" />
+        <div className="text-center mb-8">
+          <img src="/logo.png" alt="Stride" className="w-28 h-28 object-contain mx-auto mb-4" />
           <h1 className="text-4xl font-black text-white tracking-tight">Stride</h1>
-          <p className="text-white/65 mt-2 text-sm font-medium">Your personal financial dashboard</p>
+          <p className="text-white/65 mt-2 text-sm font-medium">Money, made clear.</p>
         </div>
 
-        <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(16px)' }}>
+        <div className="rounded-3xl p-8" style={{ background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(16px)', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}>
           {/* Tabs */}
           <div className="flex rounded-xl p-1 mb-7" style={{ background: 'rgba(0,0,0,0.15)' }}>
             <button

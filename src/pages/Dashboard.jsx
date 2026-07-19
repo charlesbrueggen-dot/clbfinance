@@ -4,14 +4,15 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import {
-  BarChart3, RefreshCw, Plus, Sparkle, Repeat, ArrowRight,
-  ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, Trash2, AlertTriangle, X,
+  BarChart3, RefreshCw, Plus, Sparkle, ArrowRight, Download, Target, TrendingUp,
+  ArrowUpRight, ArrowDownRight, Trash2, AlertTriangle, X, Wallet, PiggyBank,
 } from 'lucide-react'
 import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useTransactions } from '../hooks/useTransactions'
 import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
+import { PageHeader, StatCard, EmptyState, PageSkeleton, SectionTitle } from '../components/ui'
 
 const SAVINGS_RATE_MONTHS = 6
 
@@ -26,6 +27,13 @@ const CLEAR_DATA_TABLES = [
 ]
 const CLEAR_CONFIRM_PHRASE = 'DELETE'
 
+const greeting = () => {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate  = useNavigate()
@@ -35,6 +43,7 @@ export default function Dashboard() {
   const [loading,  setLoading]  = useState(true)
   const dark = useDarkMode()
   const [pieActiveIndex, setPieActiveIndex] = useState(null)
+  const [spendActiveIndex, setSpendActiveIndex] = useState(null)
   const { expenseTxns, incomeTxns } = useTransactions()
   const [showClearModal, setShowClearModal] = useState(false)
   const [clearConfirmText, setClearConfirmText] = useState('')
@@ -78,6 +87,8 @@ export default function Dashboard() {
   const totalExpenses = allExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
   const thisMonth     = new Date().toISOString().slice(0, 7)
   const monthExp      = allExpenses.filter(e => e.date?.slice(0, 7) === thisMonth).reduce((s, e) => s + parseFloat(e.amount), 0)
+  const monthInc      = allIncome.filter(i => i.date?.slice(0, 7) === thisMonth).reduce((s, i) => s + parseFloat(i.amount), 0)
+  const monthNet      = monthInc - monthExp
 
   // Trailing-6-month average savings rate — the same shared calculation Analytics uses by
   // default, so both pages agree instead of Dashboard's old all-time/manual-only figure
@@ -97,40 +108,35 @@ export default function Dashboard() {
   const catMap   = {}
   allExpenses.forEach(e => { catMap[e.category] = (catMap[e.category] || 0) + parseFloat(e.amount) })
   const sorted   = Object.entries(catMap).sort((a, b) => b[1] - a[1])
-  const largestCat = sorted[0] || ['N/A', 0]
+  const spendPieData = sortByValueDesc(Object.entries(catMap).map(([name, value]) => ({ name, value })))
 
   const recentActivity = [
     ...allIncome.map(i => ({ ...i, kind: 'income' })),
     ...allExpenses.map(e => ({ ...e, kind: 'expense' })),
-  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)
+  ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6)
 
   const surplus = totalIncome - totalExpenses
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div>
-    </div>
+  const pieTooltip = (
+    <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--positive)', fontSize: 13 }} itemStyle={{ color: 'var(--positive)' }} labelStyle={{ color: 'var(--positive)' }} />
   )
+
+  if (loading) return <PageSkeleton />
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-primary tracking-tight">Dashboard</h1>
-        <p className="text-muted text-sm mt-1">Real-time overview of your financial health</p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <Link to="/analytics" className="btn-secondary justify-center text-sm no-underline"><BarChart3 size={16} /> Analytics</Link>
-        <button className="btn-secondary justify-center text-sm" onClick={() => window.location.reload()}><RefreshCw size={16} /> Refresh</button>
-        <Link to="/income" className="btn-primary justify-center text-sm no-underline"><Plus size={16} /> Add</Link>
-      </div>
+      <PageHeader
+        title={greeting()}
+        subtitle={new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+      >
+        <button className="btn-secondary text-sm" onClick={() => window.location.reload()}><RefreshCw size={15} /> Refresh</button>
+        <Link to="/income" className="btn-primary text-sm no-underline"><Plus size={15} /> Add</Link>
+      </PageHeader>
 
       {/* ── AI COACH BANNER ── */}
-      <Link to="/coach" className="no-underline block mb-4">
+      <Link to="/coach" className="no-underline block mb-5">
         <div
-          className="rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-opacity hover:opacity-90"
+          className="rounded-2xl p-4 flex items-center justify-between cursor-pointer transition-transform hover:-translate-y-0.5"
           style={{
             background: dark
               ? 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)'
@@ -154,162 +160,188 @@ export default function Dashboard() {
         </div>
       </Link>
 
-      {/* Income hero */}
-      <div className="card p-5 mb-4 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/income')}>
-        <p className="text-muted text-xs mb-1">Total Income</p>
-        <p className="text-2xl font-black text-primary">{fmt(totalIncome)}</p>
-        <p className="text-muted text-xs mt-1">{allIncome.length} source{allIncome.length !== 1 ? 's' : ''}</p>
-        {income.filter(i => i.frequency && i.frequency !== 'one-time').length > 0 && (
-          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--positive-strong)' }}>
-            <Repeat size={12} /> {income.filter(i => i.frequency && i.frequency !== 'one-time').length} recurring
-          </p>
-        )}
+      {/* ── THIS MONTH AT A GLANCE ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <StatCard label="Income this month" value={fmt(monthInc)} Icon={ArrowUpRight}
+          sub={`${fmt(totalIncome)} all time`} onClick={() => navigate('/income')} />
+        <StatCard label="Spent this month" value={fmt(monthExp)} Icon={ArrowDownRight}
+          sub={`${fmt(totalExpenses)} all time`} onClick={() => navigate('/expenses')} />
+        <StatCard label="Net this month" value={`${monthNet >= 0 ? '+' : '−'}${fmt(Math.abs(monthNet))}`} Icon={Wallet}
+          valueStyle={monthNet < 0 ? { color: 'var(--negative-strong)' } : undefined}
+          sub={monthNet >= 0 ? 'Cash positive' : 'Spending exceeds income'} />
+        <StatCard label="Savings rate" value={`${savingsPct}%`} Icon={PiggyBank}
+          sub={`Avg. last ${SAVINGS_RATE_MONTHS} months`} onClick={() => navigate('/analytics')} />
       </div>
 
-      {/* Income Pie */}
-      <div className="card p-5 mb-4">
-        <div className="flex items-center gap-2 mb-1 font-bold" style={{ color: 'var(--text-primary)' }}>
-          <PieChartIcon size={16} /><span>Income: {fmt(totalIncome)}</span>
-        </div>
-        <p className="text-muted text-xs mb-3">{allIncome.length} income source{allIncome.length !== 1 ? 's' : ''}</p>
-        {pieData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={75} {...pieStrokeProps(dark)}
-                activeIndex={pieActiveIndex} activeShape={renderActivePieSector(dark)}
-                onMouseEnter={(_, i) => setPieActiveIndex(i)}
-                onMouseLeave={() => setPieActiveIndex(null)}
-                onClick={(_, i) => setPieActiveIndex(prev => (prev === i ? null : i))}
-                style={{ cursor: 'pointer' }}>
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(pieActiveIndex, i)} />
+      {/* ── CHARTS ROW ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Spending by category */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-black text-primary">Spending Breakdown</p>
+            <Link to="/analytics" className="text-xs text-muted no-underline hover:text-primary">Details →</Link>
+          </div>
+          <p className="text-muted text-xs mb-2">{fmt(totalExpenses)} across {allExpenses.length} entries</p>
+          {spendPieData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={190}>
+                <PieChart>
+                  <Pie data={spendPieData} dataKey="value" cx="50%" cy="50%" innerRadius={48} outerRadius={78} {...pieStrokeProps(dark)}
+                    activeIndex={spendActiveIndex} activeShape={renderActivePieSector(dark)}
+                    onMouseEnter={(_, i) => setSpendActiveIndex(i)}
+                    onMouseLeave={() => setSpendActiveIndex(null)}
+                    onClick={(_, i) => setSpendActiveIndex(prev => (prev === i ? null : i))}
+                    style={{ cursor: 'pointer' }}>
+                    {spendPieData.map((_, i) => (
+                      <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(spendActiveIndex, i)} />
+                    ))}
+                  </Pie>
+                  {pieTooltip}
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1 mt-1">
+                {spendPieData.slice(0, 4).map((c, i) => (
+                  <div key={c.name} className="flex justify-between text-xs" style={{ opacity: pieCellOpacity(spendActiveIndex, i) }}>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors[i % pieColors.length] }} />
+                      <span className="text-muted truncate">{c.name}</span>
+                    </span>
+                    <span className="font-semibold text-primary tnum">{fmt(c.value)}</span>
+                  </div>
                 ))}
-              </Pie>
-              <Tooltip formatter={v => fmt(v)} contentStyle={{ background: dark ? '#111' : '#fff', border: '1px solid var(--card-border)', borderRadius: 10, color: 'var(--positive)', fontSize: 13 }} itemStyle={{ color: 'var(--positive)' }} labelStyle={{ color: 'var(--positive)' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-32 flex items-center justify-center text-muted text-sm">Add income entries to see breakdown</div>
-        )}
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="card p-4">
-          <p className="text-muted text-xs mb-1">Monthly Expenses</p>
-          <p className="text-2xl font-black text-primary">{fmt(monthExp)}</p>
-          <p className="text-xs text-muted mt-1">This month</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-muted text-xs mb-1">Savings Rate</p>
-          <p className="text-2xl font-black text-primary">{savingsPct}%</p>
-          <p className="text-xs text-muted mt-1">Avg. last {SAVINGS_RATE_MONTHS} months</p>
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="card p-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/expenses')}>
-          <p className="text-muted text-xs mb-1">Top Expense</p>
-          <p className="font-black text-primary text-sm">{largestCat[0]}</p>
-          <p className="text-muted text-sm mt-0.5">{fmt(largestCat[1])}</p>
-        </div>
-        <div className="card p-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/goals')}>
-          <p className="text-muted text-xs mb-1">Active Goals</p>
-          <p className="font-black text-primary text-2xl">{goals.length}</p>
-          <p className="text-muted text-xs">in progress</p>
-        </div>
-        <div className="card p-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/import')}>
-          <p className="text-muted text-xs font-semibold mb-1">Bank Sync</p>
-          <p className="font-black text-primary text-sm">Import Data</p>
-          <p className="text-muted text-xs">Upload CSV files</p>
-        </div>
-        <div className="card p-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/investments')}>
-          <p className="text-muted text-xs font-semibold mb-1">Portfolio</p>
-          <p className="font-black text-primary text-sm">Investments</p>
-          <p className="text-muted text-xs">Track holdings</p>
-        </div>
-      </div>
-
-      {/* Budget Overview */}
-      <div className="card p-5 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-black text-primary">Budget Overview</h2>
-          <span className="text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1"
-            style={{ background: surplus >= 0 ? 'var(--positive-bg)' : 'var(--negative-bg)', color: surplus >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
-            {surplus >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {fmt(Math.abs(surplus))} {surplus >= 0 ? 'surplus' : 'deficit'}
-          </span>
-        </div>
-        {allExpenses.length === 0 ? (
-          <div className="text-center py-6 text-muted text-sm">No budget data yet — add some expenses</div>
-        ) : (
-          <div className="space-y-3">
-            {sorted.slice(0, 4).map(([cat, amt]) => (
-              <div key={cat}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-primary font-semibold">{cat}</span>
-                  <span className="text-muted">{fmt(amt)}</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${Math.min(100, (amt / totalExpenses) * 100)}%` }}></div>
-                </div>
               </div>
-            ))}
+            </>
+          ) : (
+            <EmptyState Icon={ArrowDownRight} title="No spending yet" sub="Add expenses to see where your money goes." />
+          )}
+        </div>
+
+        {/* Income by source */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-black text-primary">Income Sources</p>
+            <Link to="/income" className="text-xs text-muted no-underline hover:text-primary">Details →</Link>
           </div>
-        )}
+          <p className="text-muted text-xs mb-2">{fmt(totalIncome)} from {pieData.length} source{pieData.length !== 1 ? 's' : ''}</p>
+          {pieData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={190}>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={48} outerRadius={78} {...pieStrokeProps(dark)}
+                    activeIndex={pieActiveIndex} activeShape={renderActivePieSector(dark)}
+                    onMouseEnter={(_, i) => setPieActiveIndex(i)}
+                    onMouseLeave={() => setPieActiveIndex(null)}
+                    onClick={(_, i) => setPieActiveIndex(prev => (prev === i ? null : i))}
+                    style={{ cursor: 'pointer' }}>
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={pieColors[i % pieColors.length]} fillOpacity={pieCellOpacity(pieActiveIndex, i)} />
+                    ))}
+                  </Pie>
+                  {pieTooltip}
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1 mt-1">
+                {pieData.slice(0, 4).map((c, i) => (
+                  <div key={c.name} className="flex justify-between text-xs" style={{ opacity: pieCellOpacity(pieActiveIndex, i) }}>
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: pieColors[i % pieColors.length] }} />
+                      <span className="text-muted truncate">{c.name}</span>
+                    </span>
+                    <span className="font-semibold text-primary tnum">{fmt(c.value)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <EmptyState Icon={ArrowUpRight} title="No income yet" sub="Add income entries to see your sources." />
+          )}
+        </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="card p-5 mb-4">
-        <h2 className="font-black text-primary mb-4">Recent Activity</h2>
-        {recentActivity.length === 0 ? (
-          <div className="text-center py-6 text-muted text-sm">No activity yet</div>
-        ) : (
-          <div className="space-y-1">
-            {recentActivity.map(item => (
-              <div key={item.id + item.kind} className="flex items-center justify-between py-2.5"
-                style={{ borderBottom: '1px solid var(--card-border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                    style={{ background: item.kind === 'income' ? 'var(--positive-bg)' : 'var(--negative-bg)', color: item.kind === 'income' ? 'var(--positive)' : 'var(--negative)' }}>
-                    {item.kind === 'income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+      {/* ── BUDGET + ACTIVITY ROW ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Budget Overview */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-black text-primary">Budget Overview</p>
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1"
+              style={{ background: surplus >= 0 ? 'var(--positive-bg)' : 'var(--negative-bg)', color: surplus >= 0 ? 'var(--positive)' : 'var(--negative)' }}>
+              {surplus >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {fmt(Math.abs(surplus))} {surplus >= 0 ? 'surplus' : 'deficit'}
+            </span>
+          </div>
+          {allExpenses.length === 0 ? (
+            <EmptyState Icon={Wallet} title="No budget data yet" sub="Add some expenses to see category totals here." />
+          ) : (
+            <div className="space-y-3">
+              {sorted.slice(0, 4).map(([cat, amt]) => (
+                <div key={cat}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-primary font-semibold">{cat}</span>
+                    <span className="text-muted tnum">{fmt(amt)}</span>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm text-primary">{item.source || item.description}</p>
-                    <p className="text-xs text-muted">{item.date}</p>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${Math.min(100, (amt / totalExpenses) * 100)}%` }}></div>
                   </div>
                 </div>
-                <span className="font-black text-sm" style={{ color: item.kind === 'income' ? 'var(--text-primary)' : 'var(--negative-strong)' }}>
-                  {item.kind === 'income' ? '+' : '-'}{fmt(item.amount)}
-                </span>
-              </div>
-            ))}
+              ))}
+              <Link to="/goals" className="text-xs text-muted no-underline hover:text-primary inline-block pt-1">
+                Set monthly limits in Goals & Budgets →
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Recent Activity */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-black text-primary">Recent Activity</p>
+            <Link to="/accounts" className="text-xs text-muted no-underline hover:text-primary">All transactions →</Link>
           </div>
-        )}
+          {recentActivity.length === 0 ? (
+            <EmptyState Icon={BarChart3} title="No activity yet" sub="Your latest income and expenses will show up here." />
+          ) : (
+            <div>
+              {recentActivity.map(item => (
+                <div key={item.id + item.kind} className="list-row">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: item.kind === 'income' ? 'var(--positive-bg)' : 'var(--negative-bg)', color: item.kind === 'income' ? 'var(--positive)' : 'var(--negative)' }}>
+                      {item.kind === 'income' ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-primary truncate">{item.source || item.description}</p>
+                      <p className="text-xs text-muted">{item.date}</p>
+                    </div>
+                  </div>
+                  <span className="font-black text-sm tnum flex-shrink-0" style={{ color: item.kind === 'income' ? 'var(--text-primary)' : 'var(--negative-strong)' }}>
+                    {item.kind === 'income' ? '+' : '-'}{fmt(item.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="card p-5">
-        <h2 className="font-black text-primary mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: 'Add Income',   Icon: ArrowUpRight, path: '/income' },
-            { label: 'Add Expense',  Icon: ArrowDownRight, path: '/expenses' },
-            { label: 'View Reports', Icon: BarChart3, path: '/analytics' },
-          ].map(a => (
-            <Link key={a.path} to={a.path} className="no-underline">
-              <button className="w-full py-4 rounded-xl font-bold text-sm text-primary flex flex-col items-center gap-2 transition-opacity hover:opacity-75"
-                style={{ border: '1px solid var(--card-border)', background: 'var(--input-bg)' }}>
-                <a.Icon size={20} />
-                {a.label}
-              </button>
-            </Link>
-          ))}
-        </div>
+      {/* ── QUICK ACCESS ── */}
+      <SectionTitle>Quick access</SectionTitle>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {[
+          { label: 'Goals', sub: `${goals.length} in progress`, Icon: Target, path: '/goals' },
+          { label: 'Investments', sub: 'Track holdings', Icon: TrendingUp, path: '/investments' },
+          { label: 'Import Data', sub: 'Upload CSV files', Icon: Download, path: '/accounts' },
+          { label: 'Analytics', sub: 'Charts & reports', Icon: BarChart3, path: '/analytics' },
+        ].map(a => (
+          <div key={a.label} className="card card-tap p-4" onClick={() => navigate(a.path)}>
+            <div className="icon-chip mb-3" style={{ width: 36, height: 36 }}><a.Icon size={17} /></div>
+            <p className="font-black text-primary text-sm">{a.label}</p>
+            <p className="text-muted text-xs mt-0.5">{a.sub}</p>
+          </div>
+        ))}
       </div>
 
       {/* Danger zone */}
-      <div className="mt-6 flex justify-center">
+      <div className="mt-8 flex justify-center">
         <button onClick={() => setShowClearModal(true)}
           className="text-xs font-semibold flex items-center gap-1.5 px-3 py-2 rounded-lg transition-opacity hover:opacity-75"
           style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>

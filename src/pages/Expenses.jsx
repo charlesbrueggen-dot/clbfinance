@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
 import { fmtCurrency as fmt } from '../lib/format'
+import { PageHeader, StatCard, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
 
 const today = () => new Date().toISOString().split('T')[0]
 const QUICK_AMOUNTS = [1, 5, 10, 50, 100, 500]
@@ -192,49 +193,20 @@ export default function Expenses() {
     .sort((a, b) => new Date(a.next_due) - new Date(b.next_due))
     .slice(0, 5)
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <PageSkeleton stats={4} hero={false} />
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary">Expenses</h1>
-        <p className="text-muted text-sm mt-1">All spending — manual entries & account transactions</p>
-      </div>
-
-      <button onClick={openAdd} className="btn-primary mb-6">+ Add Expense</button>
+      <PageHeader title="Expenses" subtitle="All spending — manual entries & account transactions">
+        <button onClick={openAdd} className="btn-primary text-sm">+ Add Expense</button>
+      </PageHeader>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="card p-4">
-          <p className="text-muted text-xs mb-1">Total Expenses</p>
-          <p className="text-2xl font-bold text-primary">{fmt(totalExpenses)}</p>
-          <p className="text-xs text-muted mt-1">{allExpenses.length} entries</p>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-muted text-xs">Needs</p>
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981' }} />
-          </div>
-          <p className="font-bold text-primary">{fmt(needs)}</p>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-muted text-xs">Wants</p>
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#f59e0b' }} />
-          </div>
-          <p className="font-bold text-primary">{fmt(wants)}</p>
-        </div>
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-muted text-xs">Savings</p>
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#3b82f6' }} />
-          </div>
-          <p className="font-bold text-primary">{fmt(savings)}</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <StatCard label="Total Expenses" value={fmt(totalExpenses)} sub={`${allExpenses.length} entries`} />
+        <StatCard label="Needs" value={fmt(needs)} tone="#10b981" />
+        <StatCard label="Wants" value={fmt(wants)} tone="#f59e0b" />
+        <StatCard label="Savings" value={fmt(savings)} tone="#3b82f6" />
       </div>
 
       {/* Upcoming recurring */}
@@ -268,81 +240,65 @@ export default function Expenses() {
       )}
 
       {/* Filter tabs + search */}
-      <div className="flex items-center gap-2 overflow-x-auto mb-4 pb-1" style={{ scrollbarWidth: 'none' }}>
-        {FILTER_TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all"
-            style={{
-              background: tab === t ? 'var(--text-primary)' : 'var(--input-bg)',
-              color:      tab === t ? 'var(--page-bg)'       : 'var(--text-muted)',
-              border:     '1px solid var(--card-border)',
-            }}>
-            {t}
-          </button>
-        ))}
-        <input className="input-field flex-1 text-sm min-w-32" placeholder="Search…"
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <SegTabs tabs={FILTER_TABS} active={tab} onChange={setTab} />
+        <input className="input-field flex-1 text-sm min-w-32" style={{ maxWidth: 280 }} placeholder="Search…"
           value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {/* Expense list */}
       {filtered.length === 0 ? (
-        <div className="card p-4">
-          <div className="text-center py-12">
-            <div className="flex justify-center mb-3 text-muted"><Receipt size={36} /></div>
-            <p className="font-semibold text-primary">No expenses yet</p>
-            <p className="text-muted text-sm mt-1">Start tracking your spending</p>
-            <button onClick={openAdd} className="btn-primary mt-4">+ Add Expense</button>
-          </div>
+        <div className="card">
+          <EmptyState Icon={Receipt} title="No expenses yet" sub="Start tracking your spending.">
+            <button onClick={openAdd} className="btn-primary">+ Add Expense</button>
+          </EmptyState>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="card px-4 py-1">
           {filtered.map(item => {
             const isRecurring = item.frequency && item.frequency !== 'none'
             const isAccTxn    = item._source === 'account_txn'
             return (
-              <div key={`${item._source}-${item.id}`} className="card p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-primary"
-                      style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-                      {isAccTxn ? <CreditCard size={18} /> : <Receipt size={18} />}
-                    </div>
-                    <div>
-                      <p className="font-bold text-primary">{item.description}</p>
-                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                        {isRecurring && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                            style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
-                            <Repeat size={11} className="inline mr-0.5" /> {frequencyLabel(item.frequency)}
-                          </span>
-                        )}
-                        {isAccTxn && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                            style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
-                            <CreditCard size={11} className="inline mr-0.5" /> {item._account?.name || 'Account'}
-                            {item.card_last4 ? ` ··${item.card_last4}` : ''}
-                          </span>
-                        )}
-                        {item.label && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
-                            {item.label}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+              <div key={`${item._source}-${item.id}`} className="list-row">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="icon-chip">
+                    {isAccTxn ? <CreditCard size={17} /> : <Receipt size={17} />}
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => openEdit(item)} className="text-muted hover:text-primary transition-colors"><Pencil size={14} /></button>
-                    <button onClick={() => handleDelete(item)} className="transition-colors" style={{ color: 'var(--negative-strong)' }}><Trash2 size={14} /></button>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-bold text-primary text-sm truncate">{item.description}</p>
+                      {isRecurring && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                          style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
+                          <Repeat size={11} className="inline mr-0.5" /> {frequencyLabel(item.frequency)}
+                        </span>
+                      )}
+                      {isAccTxn && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                          style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
+                          <CreditCard size={11} className="inline mr-0.5" /> {item._account?.name || 'Account'}
+                          {item.card_last4 ? ` ··${item.card_last4}` : ''}
+                        </span>
+                      )}
+                      {item.label && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                          style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-muted)' }}>
+                          {item.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-muted text-xs mt-0.5 truncate">
+                      {item.category} · {item.subcategory} · {item.date}
+                      {isRecurring && item.next_due && <span> · Next: {item.next_due}</span>}
+                      {item.notes && <span> · {item.notes}</span>}
+                    </p>
                   </div>
                 </div>
-                <p className="text-2xl font-black" style={{ color: 'var(--negative-strong)' }}>-{fmt(item.amount)}</p>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <p className="text-muted text-sm">{item.category} · {item.subcategory} · {item.date}</p>
-                  {isRecurring && item.next_due && <p className="text-xs text-muted">· Next: {item.next_due}</p>}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className="font-black text-sm tnum" style={{ color: 'var(--negative-strong)' }}>-{fmt(item.amount)}</p>
+                  <button onClick={() => openEdit(item)} className="text-muted hover:text-primary transition-colors p-1"><Pencil size={14} /></button>
+                  <button onClick={() => handleDelete(item)} className="transition-colors p-1" style={{ color: 'var(--negative-strong)' }}><Trash2 size={14} /></button>
                 </div>
-                {item.notes && <p className="text-xs text-muted mt-1">{item.notes}</p>}
               </div>
             )
           })}
@@ -361,8 +317,8 @@ export default function Expenses() {
             <div className="grid grid-cols-3 gap-3 mb-4">
               {QUICK_CATS.map(qc => (
                 <button key={qc.label} onClick={() => selectQuickCat(qc)}
-                  className="flex flex-col items-center gap-2 p-4 border rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  style={{ borderColor: 'var(--card-border)' }}>
+                  className="flex flex-col items-center gap-2 p-4 border rounded-xl transition-colors text-primary"
+                  style={{ borderColor: 'var(--card-border)', background: 'var(--input-bg)' }}>
                   <qc.Icon size={26} />
                   <span className="text-xs font-medium text-primary text-center">{qc.label}</span>
                 </button>
@@ -398,8 +354,8 @@ export default function Expenses() {
                 <div className="flex flex-wrap gap-2">
                   {QUICK_AMOUNTS.map(a => (
                     <button key={a} type="button" onClick={() => setForm(f => ({ ...f, amount: String((parseFloat(f.amount) || 0) + a) }))}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-primary"
-                      style={{ borderColor: 'var(--card-border)' }}>
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors text-primary"
+                      style={{ borderColor: 'var(--card-border)', background: 'var(--input-bg)' }}>
                       + ${a}
                     </button>
                   ))}

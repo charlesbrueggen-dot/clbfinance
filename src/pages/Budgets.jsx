@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
 import { fmtCurrency as fmt } from '../lib/format'
+import { EmptyState, PageSkeleton } from '../components/ui'
 
 const CATEGORIES    = ['Needs', 'Wants', 'Savings']
 const SUBCATEGORIES = {
@@ -121,38 +122,33 @@ export default function Budgets() {
     load()
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-        style={{ borderColor: 'var(--text-primary)', borderTopColor: 'transparent' }}></div>
-    </div>
-  )
+  if (loading) return <PageSkeleton stats={2} hero={false} />
 
   return (
     <div>
       <button onClick={openAdd} className="btn-primary mb-6"><Plus size={16} /> Add Budget</button>
 
       {budgets.length > 0 && (
-        <div className="card p-6 mb-6">
-          <div className="w-11 h-11 rounded-full flex items-center justify-center mb-4"
-            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
-            <Wallet className="text-primary" size={22} />
+        <div className="card p-6 mb-6 flex items-center gap-5">
+          <div className="icon-chip flex-shrink-0" style={{ width: 52, height: 52, borderRadius: 99 }}>
+            <Wallet size={24} />
           </div>
-          <p className="text-muted text-sm mb-1">Left to Spend This Month</p>
-          <p className="text-4xl font-black" style={{ color: totalLeft >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(totalLeft)}</p>
-          <p className="text-muted text-sm mt-2">{fmt(totalSpent)} spent of {fmt(totalLimit)} budgeted</p>
+          <div>
+            <p className="text-muted text-sm mb-1">Left to Spend This Month</p>
+            <p className="text-4xl font-black tnum" style={{ color: totalLeft >= 0 ? 'var(--text-primary)' : 'var(--negative-strong)' }}>{fmt(totalLeft)}</p>
+            <p className="text-muted text-sm mt-1">{fmt(totalSpent)} spent of {fmt(totalLimit)} budgeted</p>
+          </div>
         </div>
       )}
 
       {budgets.length === 0 ? (
-        <div className="card p-10 text-center">
-          <div className="flex justify-center mb-3 text-muted"><Wallet size={36} /></div>
-          <p className="font-semibold text-primary">No Budgets Yet</p>
-          <p className="text-muted text-sm mt-1 mb-4">Set a monthly limit for a category to start tracking it here.</p>
-          <button onClick={openAdd} className="btn-primary"><Plus size={16} /> Add Your First Budget</button>
+        <div className="card">
+          <EmptyState Icon={Wallet} title="No Budgets Yet" sub="Set a monthly limit for a category to start tracking it here.">
+            <button onClick={openAdd} className="btn-primary"><Plus size={16} /> Add Your First Budget</button>
+          </EmptyState>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {rows.map(r => (
             <div key={r.id} className="card p-4">
               <div className="flex items-start justify-between mb-2">
