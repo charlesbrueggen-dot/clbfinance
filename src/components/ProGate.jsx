@@ -3,6 +3,7 @@
 // per-page copies (POST /api/checkout → Stripe redirect), single styled version.
 import { useState } from 'react'
 import { Sparkle, Zap, Check } from 'lucide-react'
+import { authHeader } from '../lib/supabase'
 
 const PRO_PERKS = [
   'AI Coach with your real numbers',
@@ -19,7 +20,7 @@ export default function ProGate({ feature, Icon, description, userId }) {
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ userId }),
       })
       const data = await res.json()

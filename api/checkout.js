@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { verifyCaller } from './_supabase.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -6,6 +7,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { userId } = req.body;
+  if (!(await verifyCaller(req, userId))) {
+    return res.status(401).json({ error: 'Not authenticated as this user' });
+  }
 
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],

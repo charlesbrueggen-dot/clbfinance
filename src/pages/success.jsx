@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PartyPopper, AlertTriangle, ArrowRight } from 'lucide-react'
 import { useAuth } from '../App'
+import { authHeader } from '../lib/supabase'
 
 export default function Success() {
   const navigate = useNavigate()
@@ -19,17 +20,20 @@ export default function Success() {
       return
     }
 
-    fetch('/api/verify-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-    })
-      .then(async r => {
+    ;(async () => {
+      try {
+        const r = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+          body: JSON.stringify({ sessionId }),
+        })
         const data = await r.json()
         if (data.success) setStatus('success')
         else { setErrorDetail(data.error); setStatus('error') }
-      })
-      .catch(err => { setErrorDetail(err.message); setStatus('error') })
+      } catch (err) {
+        setErrorDetail(err.message); setStatus('error')
+      }
+    })()
   }, [user])
 
   return (

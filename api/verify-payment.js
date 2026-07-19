@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { verifyCaller } from './_supabase.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -22,6 +23,11 @@ export default async function handler(req, res) {
 
     const userId = session.client_reference_id;
     if (!userId) return res.status(400).json({ error: 'No user ID on session' });
+    // The checkout session records which user it was started for; confirm the caller
+    // activating it is actually that user before writing a Pro subscription row for them.
+    if (!(await verifyCaller(req, userId))) {
+      return res.status(401).json({ error: 'Not authenticated as this user' });
+    }
 
     const subscription = await stripe.subscriptions.retrieve(session.subscription);
     const periodEnd =
