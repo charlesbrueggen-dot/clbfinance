@@ -20,7 +20,7 @@ import {
 import { pieStrokeProps, renderActivePieSector, pieCellOpacity, renderLegend, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
-import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
+import { bucketMonthlyTotals, computeSavingsRate, bucketDailyTotals, rollingSavingsRate } from '../lib/savingsRate'
 import { useDarkMode } from '../hooks/useDarkMode'
 
 import { PageHeader, StatCard, PageSkeleton, SegTabs } from '../components/ui'
@@ -77,13 +77,28 @@ export default function Analytics() {
     ...expenseTxns.map(t => ({ id: t.id, amount: t.amount, date: t.date, category: t.category || 'Wants', subcategory: t.subcategory || 'Other', _fromAcct: true })),
   ], [expenses, expenseTxns])
 
-  // ── Month buckets ─────────────────────────────────────────────────────────
+  // ── Month buckets (stat cards, CSV export, monthly bar charts) ─────────────
   const months = parseInt(range)
 
   const chartData = useMemo(
     () => bucketMonthlyTotals(allIncome, allExpenses, months),
     [allIncome, allExpenses, months]
   )
+
+  // ── Day buckets (line/area charts — real resolution instead of 3-12 chunky dots) ──
+  const days = useMemo(() => {
+    const now   = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth() - months, now.getDate())
+    return Math.max(1, Math.round((now - start) / 86400000) + 1)
+  }, [months])
+
+  const dailyData = useMemo(
+    () => bucketDailyTotals(allIncome, allExpenses, days),
+    [allIncome, allExpenses, days]
+  )
+  // Cap shown x-axis labels at ~8 regardless of range length so a year of daily points
+  // doesn't render 365 overlapping ticks.
+  const dailyTickInterval = Math.max(0, Math.ceil(dailyData.length / 8) - 1)
 
   // ── Summary numbers ───────────────────────────────────────────────────────
   const totalIncome   = allIncome.reduce((s, i) => s + parseFloat(i.amount), 0)
@@ -140,7 +155,7 @@ export default function Analytics() {
   const subCatTotal = subCatExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
 
   const spendTrendData   = chartData.map(m => ({ label: m.label, expenses: m.expenses }))
-  const savingsRateData  = chartData.map(m => ({ label: m.label, rate: m.income > 0 ? parseFloat(((m.income - m.expenses) / m.income * 100).toFixed(1)) : 0 }))
+  const savingsRateData  = useMemo(() => rollingSavingsRate(dailyData, 7), [dailyData])
 
   // Loans
   const activeLoans   = loans.filter(l => !l.settled)
@@ -223,7 +238,7 @@ export default function Analytics() {
           <div className="card p-5 mb-4">
             <p className="font-bold text-primary text-sm mb-3">Income vs Expenses</p>
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor={lineColorIncome} stopOpacity={0.3} />
@@ -235,12 +250,12 @@ export default function Analytics() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" interval={dailyTickInterval} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
                 <Legend content={renderLegend} />
-                <Area type="monotone" dataKey="income"   name="Income"   stroke={lineColorIncome} fill="url(#colorInc)" strokeWidth={2.5} dot={{ r: 3 }} />
-                <Area type="monotone" dataKey="expenses" name="Expenses" stroke={lineColorExp}    fill="url(#colorExp)" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Area type="monotone" dataKey="income"   name="Income"   stroke={lineColorIncome} fill="url(#colorInc)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Area type="monotone" dataKey="expenses" name="Expenses" stroke={lineColorExp}    fill="url(#colorExp)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -272,27 +287,27 @@ export default function Analytics() {
           <div className="card p-5 mb-4">
             <p className="font-bold text-primary text-sm mb-3">Cash Flow Over Time</p>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <LineChart data={dailyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" interval={dailyTickInterval} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
                 <Legend content={renderLegend} />
-                <Line type="monotone" dataKey="income"   name="Income"   stroke={lineColorIncome} strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="expenses" name="Expenses" stroke={lineColorExp}    strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="net"      name="Net"      stroke={lineColorNet}    strokeWidth={2}   dot={{ r: 3 }} strokeDasharray="4 2" />
+                <Line type="monotone" dataKey="income"   name="Income"   stroke={lineColorIncome} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="expenses" name="Expenses" stroke={lineColorExp}    strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="net"      name="Net"      stroke={lineColorNet}    strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} strokeDasharray="4 2" />
               </LineChart>
             </ResponsiveContainer>
           </div>
           <div className="card p-5">
             <p className="font-bold text-primary text-sm mb-3">Savings Accumulated</p>
             <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" interval={dailyTickInterval} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtShort} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => fmt(v)} />
-                <Area type="monotone" dataKey="savings" name="Saved" stroke="#10b981" fill="rgba(16,185,129,0.15)" strokeWidth={2} />
+                <Area type="monotone" dataKey="cumulativeSavings" name="Saved" stroke="#10b981" fill="rgba(16,185,129,0.15)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -459,14 +474,14 @@ export default function Analytics() {
 
           <div className="card p-5">
             <p className="font-bold text-primary mb-3 text-sm">Savings Rate Trend</p>
-            <p className="text-muted text-xs mb-3">20%+ is considered healthy</p>
+            <p className="text-muted text-xs mb-3">7-day trailing average · 20%+ is considered healthy</p>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={savingsRateData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
-                <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" interval={dailyTickInterval} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={v => `${v}%`} />
-                <Line type="monotone" dataKey="rate" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Savings Rate" />
+                <Line type="monotone" dataKey="rate" stroke="#10b981" strokeWidth={2} dot={false} activeDot={{ r: 4 }} name="Savings Rate" />
               </LineChart>
             </ResponsiveContainer>
           </div>
