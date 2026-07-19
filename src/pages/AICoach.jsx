@@ -166,6 +166,7 @@ export default function AICoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: user.id,
           model: 'claude-sonnet-5',
           max_tokens: 1024,
           system: SYSTEM_PROMPT(financialData),

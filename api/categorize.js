@@ -11,8 +11,15 @@
 // definition lives in one place instead of being duplicated into every
 // caller.
 //
-// POST body: { transactions: [{ id, description, merchant?, kind }] }
+// Requires an active Pro subscription (checked server-side via
+// isUserPro() in _requirePro.js — the client-side ProGate on the Import page
+// isn't enough on its own since this endpoint could otherwise be called
+// directly).
+//
+// POST body: { userId, transactions: [{ id, description, merchant?, kind }] }
 // Response:  { assignments: [{ id, category?, subcategory?, source? }] }
+
+import { isUserPro } from './_requirePro.js'
 
 const MODEL = 'claude-haiku-4-5-20251001'
 
@@ -73,9 +80,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY is not set in environment variables' } })
   }
 
-  const { transactions } = req.body || {}
+  const { userId, transactions } = req.body || {}
   if (!Array.isArray(transactions) || transactions.length === 0) {
     return res.status(400).json({ error: { message: 'transactions (non-empty array) required' } })
+  }
+  if (!(await isUserPro(userId))) {
+    return res.status(403).json({ error: { message: 'Pro subscription required' } })
   }
 
   try {

@@ -279,6 +279,7 @@ export default function Import() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            userId: user.id,
             transactions: batch.map(r => ({ id: String(r._idx), description: r.description, kind: r.kind })),
           }),
         })
