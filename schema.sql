@@ -108,13 +108,14 @@ create table if not exists loans (
 alter table loans enable row level security;
 create policy "Users can manage own loans" on loans for all using (auth.uid() = user_id);
 
--- ACCOUNT_TRANSACTIONS (Teller-synced + manually entered + CSV-imported transactions)
+-- ACCOUNT_TRANSACTIONS (Plaid-synced + manually entered + CSV-imported transactions)
 -- This table existed in production but was never scripted here — it was already being
 -- ALTERed by the Teller/CSV-dedupe migrations below without ever having been CREATEd in
 -- this file. This is its pre-Teller-migration base shape; reverse-engineered from the
 -- live schema on 2026-07-17 (via information_schema + pg_policies) so this file is a
--- complete, accurate reference again. teller_txn_id, status, running_balance, and the
--- 'teller' source_type value are added by the Teller migration block right below.
+-- complete, accurate reference again. plaid_transaction_id, status, and the 'plaid'
+-- source_type value are added by the Plaid migration block below (which superseded the
+-- original Teller migration block's teller_txn_id/running_balance columns on 2026-07-19).
 create table if not exists account_transactions (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
@@ -151,43 +152,49 @@ create trigger trg_acct_txn_updated_at before update on account_transactions
   for each row execute function set_updated_at();
 
 -- =============================================
--- TELLER BANK SYNC (migration: replace_plaid_with_teller, applied 2026-07-06)
--- Replaces the old Plaid integration. Already applied to the live database;
--- kept here so the schema file stays a complete reference.
+-- PLAID BANK SYNC (migration: replace_teller_with_plaid, applied 2026-07-19)
+-- Replaces the Teller integration, which never left mock mode in production
+-- (account approval never came through) — this was a pure rename/reshape,
+-- not a data migration; see api/plaid/_sync-core.js for the sync logic.
+-- Already applied to the live database; kept here so the schema file stays a
+-- complete reference.
 -- =============================================
 
--- One row per Teller Connect enrollment (bank login). access_token is used by
--- the backend (service role) to call the Teller API on the user's behalf.
-create table if not exists teller_enrollments (
+-- One row per Plaid Item (one bank login, can cover multiple accounts).
+-- access_token is used by the backend (service role) to call the Plaid API
+-- on the user's behalf. cursor is /transactions/sync's pagination cursor,
+-- persisted between syncs.
+create table if not exists plaid_items (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade not null,
-  enrollment_id text not null,              -- Teller enrollment id (enr_...)
-  access_token text not null,               -- Teller access token (token_...)
+  item_id text not null,                    -- Plaid item id
+  access_token text not null,               -- Plaid access token
   institution_id text,
   institution_name text,
   status text default 'connected' check (status in ('connected', 'disconnected')),
   last_synced_at timestamptz,
   created_at timestamptz default now(),
-  unique (user_id, enrollment_id)
+  cursor text,
+  unique (user_id, item_id)
 );
-alter table teller_enrollments enable row level security;
-create policy "Users can view own teller enrollments"
-  on teller_enrollments for select using (auth.uid() = user_id);
+alter table plaid_items enable row level security;
+create policy "Users can view own plaid items"
+  on plaid_items for select using (auth.uid() = user_id);
 
--- Teller link columns on accounts
-alter table accounts add column if not exists teller_account_id text;
-alter table accounts add column if not exists teller_enrollment_id uuid references teller_enrollments(id) on delete set null;
-alter table accounts add constraint accounts_user_teller_account_unique unique (user_id, teller_account_id);
+-- Plaid link columns on accounts
+alter table accounts add column if not exists plaid_account_id text;
+alter table accounts add column if not exists plaid_item_id uuid references plaid_items(id) on delete set null;
+alter table accounts add constraint accounts_user_plaid_account_unique unique (user_id, plaid_account_id);
 
--- Teller columns on account_transactions. running_balance is Teller's balance
--- immediately after the transaction posted — account balances are derived from
--- the newest posted transaction instead of Teller's paid Balance endpoint.
-alter table account_transactions add column if not exists teller_txn_id text unique;
+-- Plaid columns on account_transactions. Unlike Teller (which required
+-- deriving balance from each transaction's running_balance to avoid a paid
+-- Balance endpoint), Plaid's /accounts/get returns each account's cached
+-- balance for free — so there's no running_balance column here at all.
+alter table account_transactions add column if not exists plaid_transaction_id text unique;
 alter table account_transactions add column if not exists status text default 'posted' check (status in ('posted', 'pending'));
-alter table account_transactions add column if not exists running_balance numeric(12,2);
 alter table account_transactions drop constraint if exists account_transactions_source_type_check;
 alter table account_transactions add constraint account_transactions_source_type_check
-  check (source_type = any (array['manual'::text, 'csv_import'::text, 'teller'::text]));
+  check (source_type = any (array['manual'::text, 'csv_import'::text, 'plaid'::text]));
 
 -- =============================================
 -- CSV IMPORT DEDUPE (migrations: account_transactions_csv_import_dedupe_index,

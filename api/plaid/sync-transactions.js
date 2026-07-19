@@ -1,12 +1,12 @@
-// api/teller/sync-transactions.js
-// Syncs accounts, transactions, and balances for every connected Teller
-// enrollment belonging to a user. Triggered from the UI ("Sync All" / after
-// connect); webhook.js runs the same _sync-core.js logic when Teller pushes.
+// api/plaid/sync-transactions.js
+// Syncs accounts, transactions, and balances for every connected Plaid item
+// belonging to a user. Triggered from the UI ("Sync All" / after connect);
+// webhook.js runs the same _sync-core.js logic when Plaid pushes.
 //
 // POST body: { userId }
 import { getServiceClient } from './_supabase.js'
-import { syncEnrollment } from './_sync-core.js'
-import { isMockMode } from './_teller-client.js'
+import { syncItem } from './_sync-core.js'
+import { isMockMode } from './_plaid-client.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -16,39 +16,39 @@ export default async function handler(req, res) {
   try {
     const supabase = getServiceClient()
 
-    const { data: enrollments, error: listErr } = await supabase
-      .from('teller_enrollments')
+    const { data: items, error: listErr } = await supabase
+      .from('plaid_items')
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'connected')
     if (listErr) throw listErr
-    if (!enrollments?.length) {
+    if (!items?.length) {
       return res.status(200).json({ synced: 0, message: 'No connected banks' })
     }
 
-    // Each enrollment is synced independently — one rate-limited or broken
-    // enrollment shouldn't block the others from syncing.
+    // Each item is synced independently — one rate-limited or broken item
+    // shouldn't block the others from syncing.
     let totalSynced = 0
     let anySkipped = false
     let rateLimitedMs = 0
-    for (const enrollment of enrollments) {
+    for (const item of items) {
       try {
-        const result = await syncEnrollment(supabase, enrollment)
+        const result = await syncItem(supabase, item)
         totalSynced += result.synced
         if (result.skipped) anySkipped = true
       } catch (err) {
         if (err.rateLimited) {
-          rateLimitedMs = Math.max(rateLimitedMs, (err.retryAfterSeconds || 60) * 1000)
-          console.error(`teller/sync: rate limited by Teller on enrollment ${enrollment.id}`)
+          rateLimitedMs = Math.max(rateLimitedMs, 60_000)
+          console.error(`plaid/sync: rate limited by Plaid on item ${item.id}`)
         } else {
-          console.error(`teller/sync: enrollment ${enrollment.id} failed:`, err.message)
+          console.error(`plaid/sync: item ${item.id} failed:`, err.message)
         }
       }
     }
 
     if (rateLimitedMs > 0) {
       return res.status(429).json({
-        error: 'Teller rate limit reached — please wait before syncing again.',
+        error: 'Plaid rate limit reached — please wait before syncing again.',
         rateLimited: true,
         retryAfterMs: rateLimitedMs,
         synced: totalSynced,
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ synced: totalSynced, skipped: anySkipped, mock: isMockMode() })
   } catch (err) {
-    console.error('teller/sync error:', err.message)
+    console.error('plaid/sync error:', err.message)
     res.status(500).json({ error: err.message })
   }
 }

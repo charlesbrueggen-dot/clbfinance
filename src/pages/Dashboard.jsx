@@ -16,7 +16,7 @@ import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
 const SAVINGS_RATE_MONTHS = 6
 
 // Every table that holds the user's actual financial records — cleared by "Clear All Data".
-// Deliberately excludes `subscriptions` (Stripe/Pro billing status) and `teller_enrollments`
+// Deliberately excludes `subscriptions` (Stripe/Pro billing status) and `plaid_items`
 // (bank connection credentials) since those are account/connection state, not "your data" —
 // wiping them would silently cancel Pro access or break an existing bank link.
 const CLEAR_DATA_TABLES = [

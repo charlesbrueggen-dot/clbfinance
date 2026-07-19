@@ -1,43 +1,46 @@
-// src/hooks/useTeller.js
-// Handles all Teller frontend logic:
-//   - Opening Teller Connect (bank connection flow)
+// src/hooks/usePlaid.js
+// Handles all Plaid frontend logic:
+//   - Opening Plaid Link (bank connection flow)
 //   - Syncing transactions
-//   - Loading connected enrollments (banks)
+//   - Loading connected banks (plaid_items)
 //   - Disconnecting banks
 //
-// MOCK MODE: while VITE_TELLER_APPLICATION_ID is unset, connectBank() skips
-// the Teller Connect popup and enrolls a realistic sample bank through the
-// backend's mock mode, so the whole flow is testable with no credentials.
+// MOCK MODE: unlike Teller (which used a client-side env var), mock mode is
+// determined by the backend — the first thing this hook does is ask
+// /api/plaid/enroll for a link token, and the response's `mock` flag says
+// whether PLAID_CLIENT_ID/PLAID_SECRET are configured server-side. This
+// keeps mock-mode detection in one place (the server) instead of needing a
+// client env var kept in sync with the backend one.
 //
-// TODO ── once your Teller account is approved, add to .env (and Vercel):
-//   VITE_TELLER_APPLICATION_ID=app_xxxxxxxx   ← Teller dashboard → Application
-//   VITE_TELLER_ENVIRONMENT=sandbox           ← 'sandbox' | 'development' | 'production'
-// (plus the backend vars listed in api/teller/_teller-client.js)
+// TODO ── once your Plaid account is approved (sandbox is instant/self-serve
+// — no approval wait like Teller), set the backend vars listed in
+// api/plaid/_plaid-client.js. No client-side env var is needed for Plaid
+// Link itself — it only ever uses the server-issued link token.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-// TODO: these resolve to real values once the env vars above are set
-const TELLER_APPLICATION_ID = import.meta.env.VITE_TELLER_APPLICATION_ID || null
-const TELLER_ENVIRONMENT    = import.meta.env.VITE_TELLER_ENVIRONMENT || 'sandbox'
-const MOCK_MODE             = !TELLER_APPLICATION_ID
+const PLAID_LINK_SCRIPT_SRC = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'
 
-// Must match (or exceed) SYNC_COOLDOWN_MS in api/teller/_sync-core.js. The
+// Must match (or exceed) SYNC_COOLDOWN_MS in api/plaid/_sync-core.js. The
 // backend is the real enforcement (this can't be bypassed by calling the API
 // directly) — this constant just keeps the button's disabled/countdown state
 // in sync with what the backend will actually allow, so users aren't shown a
 // misleading "ready" button that then fails.
 const SYNC_COOLDOWN_MS = 30_000
 
-export function useTeller(userId) {
+export function usePlaid(userId) {
   const [connectedItems, setConnectedItems] = useState([])
   const [syncing,        setSyncing]        = useState(false)
   const [connecting,     setConnecting]     = useState(false)
   const [syncResult,     setSyncResult]     = useState(null)  // { synced } | null
   const [error,          setError]          = useState('')
-  const [tellerLoaded,   setTellerLoaded]   = useState(MOCK_MODE) // no script needed in mock mode
-  const [cooldownUntil,  setCooldownUntil]  = useState(0)         // epoch ms, 0 = no cooldown
+  const [mockMode,       setMockMode]       = useState(true)  // corrected once the server responds
+  const [linkToken,      setLinkToken]      = useState(null)
+  const [plaidLoaded,    setPlaidLoaded]    = useState(false) // Plaid Link script (real mode only)
+  const [cooldownUntil,  setCooldownUntil]  = useState(0)     // epoch ms, 0 = no cooldown
   const [nowTick,        setNowTick]        = useState(Date.now())
+  const linkHandleRef = useRef(null)
 
   // Ticks once/sec only while a cooldown is active, purely to refresh the
   // countdown display shown on the sync button — never touches the network.
@@ -47,21 +50,44 @@ export function useTeller(userId) {
     return () => clearInterval(id)
   }, [cooldownUntil])
 
-  // Load the Teller Connect script once (real mode only)
+  // Ask the backend for a link token (also tells us whether we're in mock
+  // mode) as soon as we have a user. Harmless/free to call even if the user
+  // never opens Connect Bank — see the /link/token/create cost manifest note
+  // in api/plaid/_plaid-client.js.
   useEffect(() => {
-    if (MOCK_MODE) return
-    if (window.TellerConnect) { setTellerLoaded(true); return }
-    const script = document.createElement('script')
-    script.src = 'https://cdn.teller.io/connect/connect.js'
-    script.onload = () => setTellerLoaded(true)
-    document.head.appendChild(script)
-  }, [])
+    if (!userId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/plaid/enroll', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ mode: 'create_link_token', userId }),
+        })
+        const data = await res.json()
+        if (cancelled) return
+        setMockMode(!!data.mock)
+        setLinkToken(data.linkToken || null)
+        if (!data.mock && !window.Plaid) {
+          const script = document.createElement('script')
+          script.src = PLAID_LINK_SCRIPT_SRC
+          script.onload = () => { if (!cancelled) setPlaidLoaded(true) }
+          document.head.appendChild(script)
+        } else if (!data.mock) {
+          setPlaidLoaded(true)
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to reach Plaid')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [userId])
 
-  // Load connected banks (teller_enrollments) for display
+  // Load connected banks (plaid_items) for display
   const loadItems = useCallback(async () => {
     if (!userId) return
     const { data } = await supabase
-      .from('teller_enrollments')
+      .from('plaid_items')
       .select('id, institution_name, institution_id, status, last_synced_at, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -82,7 +108,7 @@ export function useTeller(userId) {
   const cooldownSecondsLeft = Math.max(0, Math.ceil((cooldownUntil - nowTick) / 1000))
   const canSync = cooldownSecondsLeft === 0
 
-  // If the backend reports it's rate-limited by Teller, or that it skipped a
+  // If the backend reports it's rate-limited by Plaid, or that it skipped a
   // sync because of its own cooldown, extend our cooldown to match so the
   // button doesn't invite another request that would just get rejected again.
   const applyServerCooldown = (data) => {
@@ -93,13 +119,14 @@ export function useTeller(userId) {
     }
   }
 
-  // Send a successful Teller Connect enrollment to the backend, which stores
-  // it and runs the initial account + transaction import
-  const enrollWithBackend = async (payload) => {
-    const res = await fetch('/api/teller/enroll', {
+  // Send a successful Plaid Link exchange (or, in mock mode, an empty
+  // payload) to the backend, which exchanges/stores it and runs the initial
+  // account + transaction import.
+  const exchangeWithBackend = async (payload) => {
+    const res = await fetch('/api/plaid/enroll', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ userId, ...payload }),
+      body:    JSON.stringify({ mode: 'exchange', userId, ...payload }),
     })
     const data = await res.json()
     applyServerCooldown(data)
@@ -109,35 +136,31 @@ export function useTeller(userId) {
 
   // ── Connect a new bank ────────────────────────────────────────────────────
   const connectBank = async () => {
-    if (!userId || !tellerLoaded) return
+    if (!userId) return
     setConnecting(true)
     setError('')
 
     try {
-      if (MOCK_MODE) {
-        // No Teller credentials yet → backend substitutes sample enrollment data
-        await enrollWithBackend({})
+      if (mockMode) {
+        // No Plaid credentials yet → backend substitutes sample item data
+        await exchangeWithBackend({})
       } else {
-        // Real Teller Connect flow. onSuccess hands over the access token
-        // directly — no separate token-exchange step like Plaid.
+        if (!plaidLoaded || !linkToken) throw new Error('Plaid Link is not ready yet — try again in a moment.')
         await new Promise((resolve, reject) => {
-          const connect = window.TellerConnect.setup({
-            applicationId: TELLER_APPLICATION_ID,
-            environment:   TELLER_ENVIRONMENT,
-            products:      ['transactions'],
-            onSuccess: async (enrollment) => {
+          linkHandleRef.current = window.Plaid.create({
+            token: linkToken,
+            onSuccess: async (publicToken, metadata) => {
               try {
-                resolve(await enrollWithBackend({
-                  accessToken:     enrollment.accessToken,
-                  enrollmentId:    enrollment.enrollment?.id,
-                  institutionName: enrollment.enrollment?.institution?.name,
+                resolve(await exchangeWithBackend({
+                  publicToken,
+                  institutionId:   metadata?.institution?.institution_id,
+                  institutionName: metadata?.institution?.name,
                 }))
               } catch (err) { reject(err) }
             },
-            onExit:    () => resolve(null),
-            onFailure: (failure) => reject(new Error(failure?.message || 'Teller Connect failed')),
+            onExit:  (err) => (err ? reject(new Error(err.error_message || 'Plaid Link failed')) : resolve(null)),
           })
-          connect.open()
+          linkHandleRef.current.open()
         })
       }
       await loadItems()
@@ -151,7 +174,7 @@ export function useTeller(userId) {
 
   // ── Sync transactions for all connected banks ─────────────────────────────
   // Guarded by canSync (cooldown) in addition to the syncing in-flight flag,
-  // so rapid re-clicks can't queue up back-to-back Teller calls even if a
+  // so rapid re-clicks can't queue up back-to-back Plaid calls even if a
   // click sneaks in right as the previous request resolves.
   const syncTransactions = async () => {
     if (!userId || syncing || !canSync) return
@@ -160,7 +183,7 @@ export function useTeller(userId) {
     setError('')
 
     try {
-      const res = await fetch('/api/teller/sync-transactions', {
+      const res = await fetch('/api/plaid/sync-transactions', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ userId }),
@@ -179,14 +202,14 @@ export function useTeller(userId) {
   }
 
   // ── Disconnect a bank ─────────────────────────────────────────────────────
-  const disconnectBank = async (enrollmentId) => {
+  const disconnectBank = async (itemId) => {
     if (!confirm('Disconnect this bank? Your transaction history will be kept.')) return
     setError('')
     try {
-      const res = await fetch('/api/teller/disconnect', {
+      const res = await fetch('/api/plaid/disconnect', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ userId, enrollmentId }),
+        body:    JSON.stringify({ userId, itemId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to disconnect')
@@ -202,8 +225,8 @@ export function useTeller(userId) {
     connecting,
     syncResult,
     error,
-    tellerLoaded,
-    mockMode: MOCK_MODE,
+    plaidLoaded,
+    mockMode,
     canSync,
     cooldownSecondsLeft,
     connectBank,

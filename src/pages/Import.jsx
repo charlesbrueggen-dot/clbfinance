@@ -126,6 +126,8 @@ export default function Import() {
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
   const [doneCount, setDoneCount] = useState(0)
+  const [aiCategorizing, setAiCategorizing] = useState(false)
+  const [aiError, setAiError] = useState('')
 
   const columns = useMemo(() => {
     const c = { date: dateCol, description: descCol }
@@ -235,7 +237,10 @@ export default function Import() {
         const key = buildDedupeKey({ accountId: accountId || null, date: p.date, kind: p.kind, amount: p.amount, description: p.description })
         const isDuplicate = existingKeys.has(key) || seenInFile.has(key)
         seenInFile.add(key)
-        return { ...p, _dedupeKey: key, isDuplicate }
+        // Classified up front (not at import time) so the preview step can
+        // show how many rows the keyword matcher missed and offer AI
+        // categorization for them before they're actually inserted.
+        return { ...p, _dedupeKey: key, isDuplicate, classified: classifyForImport(p.description, p.kind), aiCategorized: false }
       })
 
       setParsedRows(finalRows)
@@ -249,30 +254,75 @@ export default function Import() {
     }
   }
 
+  // ── AI categorization for rows the keyword matcher missed ─────────────────
+  // Batches the not-yet-confidently-categorized rows (that will actually be
+  // imported) through /api/categorize (Claude Haiku 4.5) and merges the
+  // results back into parsedRows. Import itself always reads from
+  // row.classified, so this simply improves what gets imported — no change
+  // to the import flow is needed on top of this.
+  const AI_BATCH_SIZE = 50
+  const needsAICount = parsedRows.filter(r => !r.classified.autoCategorized && (includeDuplicates || !r.isDuplicate)).length
+
+  const handleAICategorize = async () => {
+    const targets = parsedRows
+      .map((r, i) => ({ ...r, _idx: i }))
+      .filter(r => !r.classified.autoCategorized && (includeDuplicates || !r.isDuplicate))
+    if (!targets.length) return
+
+    setAiCategorizing(true)
+    setAiError('')
+    try {
+      const updates = new Map() // row index (string) -> assignment
+      for (let i = 0; i < targets.length; i += AI_BATCH_SIZE) {
+        const batch = targets.slice(i, i + AI_BATCH_SIZE)
+        const res = await fetch('/api/categorize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transactions: batch.map(r => ({ id: String(r._idx), description: r.description, kind: r.kind })),
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error?.message || 'AI categorization failed')
+        for (const a of data.assignments || []) updates.set(a.id, a)
+      }
+
+      setParsedRows(rows => rows.map((r, i) => {
+        const a = updates.get(String(i))
+        if (!a) return r
+        const classified = r.kind === 'expense'
+          ? { category: a.category || r.classified.category, subcategory: a.subcategory || r.classified.subcategory, source: null, autoCategorized: true }
+          : { category: null, subcategory: null, source: a.source || r.classified.source, autoCategorized: true }
+        return { ...r, classified, aiCategorized: true }
+      }))
+    } catch (err) {
+      setAiError(err.message || 'AI categorization failed')
+    } finally {
+      setAiCategorizing(false)
+    }
+  }
+
   // ── Step 2 → 3: import ─────────────────────────────────────────────────────
   const handleImport = async () => {
     setImporting(true)
     setImportError('')
     const rowsToInsert = parsedRows.filter(r => includeDuplicates || !r.isDuplicate)
-    const payload = rowsToInsert.map(r => {
-      const classified = classifyForImport(r.description, r.kind)
-      return {
-        user_id: user.id,
-        account_id: accountId || null,
-        description: r.description || 'Imported Transaction',
-        amount: r.amount,
-        kind: r.kind,
-        category: classified.category,
-        subcategory: classified.subcategory,
-        source: classified.source,
-        date: r.date,
-        merchant: r.description || null,
-        auto_categorized: classified.autoCategorized,
-        source_type: 'csv_import',
-        external_id: r._dedupeKey,
-        status: 'posted',
-      }
-    })
+    const payload = rowsToInsert.map(r => ({
+      user_id: user.id,
+      account_id: accountId || null,
+      description: r.description || 'Imported Transaction',
+      amount: r.amount,
+      kind: r.kind,
+      category: r.classified.category,
+      subcategory: r.classified.subcategory,
+      source: r.classified.source,
+      date: r.date,
+      merchant: r.description || null,
+      auto_categorized: r.classified.autoCategorized,
+      source_type: 'csv_import',
+      external_id: r._dedupeKey,
+      status: 'posted',
+    }))
 
     const BATCH = 50
     let inserted = 0
@@ -298,7 +348,7 @@ export default function Import() {
 
   const reset = () => {
     setStep(0); setRows([]); setHeaders([]); setFileError('')
-    setParsedRows([]); setPreviewError(''); setImportError('')
+    setParsedRows([]); setPreviewError(''); setImportError(''); setAiError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -460,6 +510,11 @@ export default function Import() {
                         Possible duplicate
                       </span>
                     )}
+                    {row.aiCategorized && (
+                      <span className="text-xs px-1.5 py-0.5 rounded font-semibold inline-flex items-center gap-1" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
+                        <Sparkle size={10} /> AI
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted">{row.date}</p>
                 </div>
@@ -475,6 +530,27 @@ export default function Import() {
             {duplicateCount > 0 && <p>{duplicateCount} look like duplicates of transactions you've already imported — these are skipped by default.</p>}
             <p className="font-semibold text-primary">{importableCount} will be imported.</p>
           </div>
+
+          {needsAICount > 0 && (
+            <div className="mb-4 p-3 rounded-xl flex items-center justify-between gap-3 flex-wrap"
+              style={{ background: 'var(--info-bg)', border: '1px solid var(--info)' }}>
+              <p className="text-xs flex items-center gap-1" style={{ color: 'var(--info)' }}>
+                <Sparkle size={12} /> {needsAICount} transaction{needsAICount === 1 ? '' : 's'} couldn't be auto-categorized confidently.
+              </p>
+              <button type="button" onClick={handleAICategorize} disabled={aiCategorizing}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 disabled:opacity-50"
+                style={{ background: 'var(--info)', color: '#fff' }}>
+                {aiCategorizing ? 'Categorizing…' : `✨ AI Categorize ${needsAICount}`}
+              </button>
+            </div>
+          )}
+
+          {aiError && (
+            <div className="mb-4 p-3 rounded-xl text-sm"
+              style={{ background: 'var(--negative-bg)', border: '1px solid var(--negative)', color: 'var(--negative)' }}>
+              <AlertTriangle size={14} className="inline mr-1" /> {aiError}
+            </div>
+          )}
 
           {duplicateCount > 0 && (
             <label className="flex items-center gap-2 mb-4 text-sm text-primary cursor-pointer">

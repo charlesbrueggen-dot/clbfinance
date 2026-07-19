@@ -1,5 +1,5 @@
-// api/teller/_supabase.js
-// Service-role Supabase client for Teller backend functions (bypasses RLS).
+// api/plaid/_supabase.js
+// Service-role Supabase client for Plaid backend functions (bypasses RLS).
 import { createClient } from '@supabase/supabase-js'
 
 let cached = null

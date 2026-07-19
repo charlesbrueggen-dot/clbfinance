@@ -24,7 +24,7 @@ const frequencyIcon  = f => FREQUENCY_OPTIONS.find(o => o.value === f)?.icon  ||
 export default function Income() {
   const { user } = useAuth()
   const [income, setIncome]         = useState([])   // manual income table
-  const [bankIncome, setBankIncome] = useState([]) // from account_transactions (Teller-synced + manual)
+  const [bankIncome, setBankIncome] = useState([]) // from account_transactions (Plaid-synced + manual)
   const [loading, setLoading]       = useState(true)
   const [showModal, setShowModal]   = useState(false)
   const [editItem, setEditItem]     = useState(null)
