@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
+import { Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Sparkle, ArrowUpRight, ArrowDownRight, DollarSign,
   Landmark, PieChart, BarChart3, Target, HandCoins, Repeat, Moon, Sun, X,
-  LogOut, MoreHorizontal, Settings as SettingsIcon,
+  MoreHorizontal, Settings as SettingsIcon,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
 // Grouped navigation — every route keeps working, they're just organized by intent.
@@ -63,16 +62,10 @@ function Logo({ dark, size = 36 }) {
 export default function Layout({ dark, setDark }) {
   const [moreOpen, setMoreOpen] = useState(false)
   const { user } = useAuth()
-  const navigate = useNavigate()
   const location = useLocation()
 
   // Close the "More" sheet whenever the route changes
   useEffect(() => { setMoreOpen(false) }, [location.pathname])
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    navigate('/auth')
-  }
 
   const isActive = path => location.pathname === path
   const onCoach = location.pathname === '/coach'
@@ -146,13 +139,7 @@ export default function Layout({ dark, setDark }) {
             {dark ? <Sun size={16} /> : <Moon size={16} />}
             <span>{dark ? 'Light mode' : 'Dark mode'}</span>
           </button>
-          <div className="flex items-center justify-between gap-2 mt-2 px-1">
-            <p className="text-xs text-muted truncate">{user?.email}</p>
-            <button onClick={handleSignOut} title="Sign out"
-              className="text-muted hover:text-primary transition-colors flex-shrink-0 p-1.5 rounded-lg">
-              <LogOut size={15} />
-            </button>
-          </div>
+          <p className="text-xs text-muted truncate mt-2 px-1">{user?.email}</p>
         </div>
       </aside>
 
@@ -204,13 +191,8 @@ export default function Layout({ dark, setDark }) {
                 </Link>
               ))}
             </div>
-            <div className="px-6 py-4 flex items-center justify-between gap-3" style={{ borderTop: '1px solid var(--card-border)' }}>
+            <div className="px-6 py-4" style={{ borderTop: '1px solid var(--card-border)' }}>
               <p className="text-xs text-muted truncate">{user?.email}</p>
-              <button onClick={handleSignOut}
-                className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-xl flex-shrink-0"
-                style={{ color: 'var(--negative)', background: 'var(--negative-bg)' }}>
-                <LogOut size={14} /> Sign Out
-              </button>
             </div>
             <div style={{ height: 'env(safe-area-inset-bottom)' }} />
           </div>

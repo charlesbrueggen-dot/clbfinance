@@ -7,18 +7,34 @@ import { TransactionProvider } from './hooks/useTransactions'
 
 // Route-level code-splitting: each page ships as its own chunk, loaded on first visit
 // instead of all bundling into one ~1.4MB file every visitor downloads up front.
-const Dashboard         = lazy(() => import('./pages/Dashboard'))
-const Income            = lazy(() => import('./pages/Income'))
-const Expenses           = lazy(() => import('./pages/Expenses'))
-const NetWorth           = lazy(() => import('./pages/NetWorth'))
-const Accounts           = lazy(() => import('./pages/Accounts'))
-const Investments        = lazy(() => import('./pages/Investments'))
-const Analytics          = lazy(() => import('./pages/Analytics'))
-const Goals              = lazy(() => import('./pages/Goals'))
-const Loans              = lazy(() => import('./pages/Loans'))
-const Subscriptions      = lazy(() => import('./pages/Subscriptions'))
-const AICoach            = lazy(() => import('./pages/AICoach'))
-const Settings           = lazy(() => import('./pages/Settings'))
+// The loader map is kept separate from lazy() so the idle-prefetch effect below
+// can warm every chunk in the background after first paint.
+const PAGE_LOADERS = {
+  Dashboard:     () => import('./pages/Dashboard'),
+  Income:        () => import('./pages/Income'),
+  Expenses:      () => import('./pages/Expenses'),
+  NetWorth:      () => import('./pages/NetWorth'),
+  Accounts:      () => import('./pages/Accounts'),
+  Investments:   () => import('./pages/Investments'),
+  Analytics:     () => import('./pages/Analytics'),
+  Goals:         () => import('./pages/Goals'),
+  Loans:         () => import('./pages/Loans'),
+  Subscriptions: () => import('./pages/Subscriptions'),
+  AICoach:       () => import('./pages/AICoach'),
+  Settings:      () => import('./pages/Settings'),
+}
+const Dashboard         = lazy(PAGE_LOADERS.Dashboard)
+const Income            = lazy(PAGE_LOADERS.Income)
+const Expenses           = lazy(PAGE_LOADERS.Expenses)
+const NetWorth           = lazy(PAGE_LOADERS.NetWorth)
+const Accounts           = lazy(PAGE_LOADERS.Accounts)
+const Investments        = lazy(PAGE_LOADERS.Investments)
+const Analytics          = lazy(PAGE_LOADERS.Analytics)
+const Goals              = lazy(PAGE_LOADERS.Goals)
+const Loans              = lazy(PAGE_LOADERS.Loans)
+const Subscriptions      = lazy(PAGE_LOADERS.Subscriptions)
+const AICoach            = lazy(PAGE_LOADERS.AICoach)
+const Settings           = lazy(PAGE_LOADERS.Settings)
 const Success            = lazy(() => import('./pages/success'))
 const Cancel             = lazy(() => import('./pages/cancel'))
 
@@ -68,6 +84,22 @@ export default function App() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Warm every page chunk once the browser is idle after first paint, so
+  // switching pages later is instant instead of showing a loading flash.
+  // Doesn't compete with the initial load: waits for idle time (or 2.5s on
+  // browsers without requestIdleCallback), and each chunk is small since the
+  // heavy libraries (charts, spreadsheet parser) stay in their own bundles.
+  useEffect(() => {
+    if (!user) return
+    const prefetch = () => Object.values(PAGE_LOADERS).forEach(load => { load().catch(() => {}) })
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(prefetch, { timeout: 5000 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const t = setTimeout(prefetch, 2500)
+    return () => clearTimeout(t)
+  }, [user])
 
   return (
     <AuthContext.Provider value={{ user, loading }}>

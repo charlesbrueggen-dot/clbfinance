@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import {
-  BarChart3, RefreshCw, Plus, Sparkle, ArrowRight, Download, Target, TrendingUp,
+  BarChart3, Plus, Sparkle, ArrowRight, Download, Target, TrendingUp,
   ArrowUpRight, ArrowDownRight, Wallet, PiggyBank, Repeat, HandCoins,
 } from 'lucide-react'
 import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity, sortByValueDesc } from '../lib/chartTheme'
@@ -130,7 +130,6 @@ export default function Dashboard() {
         title={greeting()}
         subtitle={new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
       >
-        <button className="btn-secondary text-sm" onClick={() => window.location.reload()}><RefreshCw size={15} /> Refresh</button>
         <div className="relative" ref={addMenuRef}>
           <button className="btn-primary text-sm" onClick={() => setAddMenuOpen(o => !o)}>
             <Plus size={15} /> Add

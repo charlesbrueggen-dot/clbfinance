@@ -3,7 +3,6 @@
 // format auto-detection, amount-string parsing, and row normalization onto
 // the same { amount, kind } convention used everywhere else in the app
 // (see src/lib/txSign.js).
-import * as XLSX from 'xlsx'
 import { normalizeSignedAmount } from './txSign.js'
 
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10MB, matches the UI's stated limit
@@ -13,10 +12,16 @@ export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10MB, matches the UI's st
 // path handles all three formats. raw:false renders every cell (including
 // genuine Excel date cells) as display text, so downstream date parsing only
 // ever has to deal with strings.
+//
+// SheetJS is ~400KB minified — by far the app's largest dependency — and is
+// only ever needed at the moment a user actually picks a file to import. The
+// dynamic import() keeps it out of every page bundle entirely; it downloads
+// (once, then cached) in the instant between choosing a file and parsing it.
 export async function parseSpreadsheetFile(file) {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     throw new Error(`File is ${(file.size / (1024 * 1024)).toFixed(1)}MB, which is over the 10MB limit.`)
   }
+  const XLSX = await import('xlsx')
   const buf = await file.arrayBuffer()
   let workbook
   try {
