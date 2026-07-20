@@ -51,7 +51,7 @@ export default function ProGate({ feature, Icon, description, userId }) {
         </div>
 
         <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary w-full justify-center py-3">
-          {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $4.99/mo</>}
+          {upgrading ? 'Redirecting…' : <><Zap size={16} /> Upgrade to Pro — $6.99/mo</>}
         </button>
         <p className="text-xs text-muted mt-3">Cancel anytime.</p>
       </div>

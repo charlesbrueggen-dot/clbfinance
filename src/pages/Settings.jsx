@@ -171,7 +171,7 @@ export default function Settings() {
             </span>
           ) : (
             <button onClick={handleUpgrade} disabled={upgrading} className="btn-primary text-sm">
-              {upgrading ? 'Redirecting…' : <><Zap size={14} /> Upgrade — $4.99/mo</>}
+              {upgrading ? 'Redirecting…' : <><Zap size={14} /> Upgrade — $6.99/mo</>}
             </button>
           )}
         </SettingsRow>
