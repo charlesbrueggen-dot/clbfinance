@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react'
 import {
-  Sparkle, Check, Cloud, AlertTriangle, PartyPopper, FolderOpen,
+  Sparkle, Check, Cloud, AlertTriangle, PartyPopper,
 } from 'lucide-react'
 import { authHeader } from '../lib/supabase'
 import { useAuth } from '../App'
@@ -10,9 +10,6 @@ import {
   validateMapping, buildDedupeKey,
 } from '../lib/importParsing'
 import { fmtCurrency as fmt } from '../lib/format'
-
-import ProGate from '../components/ProGate'
-import { useIsPro } from '../hooks/useIsPro'
 
 const DATE_FORMAT_OPTIONS = [
   { value: 'auto', label: 'Auto-detect' },
@@ -48,7 +45,6 @@ function classifyForImport(description, kind) {
 export default function Import() {
   const { user } = useAuth()
   const { accounts, reload: reloadTxns } = useTransactions()
-  const { isPro, proLoading } = useIsPro(user.id)
   const [step, setStep] = useState(0)
   const fileInputRef = useRef(null)
 
@@ -306,23 +302,6 @@ export default function Import() {
     setParsedRows([]); setPreviewError(''); setImportError(''); setAiError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
-
-  if (proLoading) return (
-    <div className="card p-5">
-      <div className="skeleton mb-3" style={{ width: '40%', height: 18 }} />
-      <div className="skeleton mb-2" style={{ width: '100%', height: 90, borderRadius: 14 }} />
-      <div className="skeleton" style={{ width: '60%', height: 12 }} />
-    </div>
-  )
-
-  if (!isPro) return (
-    <ProGate
-      feature="Import Transactions"
-      Icon={FolderOpen}
-      description="Upload CSV or Excel files from your bank and instantly import hundreds of transactions in seconds."
-      userId={user.id}
-    />
-  )
 
   return (
     <div>

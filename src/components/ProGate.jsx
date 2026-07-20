@@ -8,8 +8,7 @@ import { authHeader } from '../lib/supabase'
 const PRO_PERKS = [
   'AI Coach with your real numbers',
   'Automatic bank sync (Plaid)',
-  'CSV / spreadsheet import',
-  'Investments & subscription tracking',
+  'Investments, subscriptions & loan tracking',
 ]
 
 export default function ProGate({ feature, Icon, description, userId }) {
