@@ -1,7 +1,7 @@
 // src/pages/Accounts.jsx
 // Full Plaid integration — connects real banks, auto-syncs transactions
 // Manual accounts still supported alongside Plaid-connected ones
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Landmark, PiggyBank, CreditCard, TrendingUp, Banknote,
   ArrowUpRight, ArrowDownRight, ArrowLeftRight, Sparkle, Zap, Link2,
@@ -16,6 +16,7 @@ import { fmtCurrency as fmt } from '../lib/format'
 import Import from './Import'
 import ProGate from '../components/ProGate'
 import { PageHeader, StatCard, EmptyState, PageSkeleton } from '../components/ui'
+import { useIsPro } from '../hooks/useIsPro'
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -122,19 +123,7 @@ export default function Accounts() {
   const [search,      setSearch]      = useState('')
   const [tab,         setTab]         = useState('accounts') // 'accounts' | 'connect' | 'import'
 
-  const [isPro, setIsPro] = useState(false)
-  const [proLoading, setProLoading] = useState(true)
-
-  useEffect(() => {
-    const checkPro = async () => {
-      const { data } = await supabase
-        .from('subscriptions').select('status')
-        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
-      setIsPro(!!data)
-      setProLoading(false)
-    }
-    checkPro()
-  }, [user.id])
+  const { isPro, proLoading } = useIsPro(user.id)
 
   // ── Account CRUD ──────────────────────────────────────────────────────────
   const openAddAcc  = () => { setEditAcc(null); setAccForm(blankAccount()); setShowAccModal(true) }

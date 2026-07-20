@@ -27,6 +27,7 @@ const SECTORS = ['Technology','Healthcare','Finance','Energy','Consumer','Real E
 
 import ProGate from '../components/ProGate'
 import { PageHeader, StatCard, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
+import { useIsPro } from '../hooks/useIsPro'
 
 // ─── Offline ticker hints (Stocks + ETFs) ─────────────────────────────────────
 const TICKER_HINTS = {
@@ -108,23 +109,11 @@ export default function Investments() {
   const [refreshError, setRefreshError] = useState('')
   const [lookupStatus, setLookupStatus] = useState('') // '' | 'loading' | 'found' | 'not_found'
 
-  const [isPro, setIsPro] = useState(false)
-  const [proLoading, setProLoading] = useState(true)
+  const { isPro, proLoading } = useIsPro(user.id)
   const dark = useDarkMode()
   const [sectorActiveIndex, setSectorActiveIndex] = useState(null)
   const [typeActiveIndex, setTypeActiveIndex] = useState(null)
   const [growthRange, setGrowthRange] = useState('all') // '1w' | '1m' | '1y' | 'all'
-
-  useEffect(() => {
-    const checkPro = async () => {
-      const { data } = await supabase
-        .from('subscriptions').select('status')
-        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
-      setIsPro(!!data)
-      setProLoading(false)
-    }
-    checkPro()
-  }, [user.id])
 
   // ─── Load ─────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {

@@ -6,12 +6,13 @@ import { useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   Moon, Sun, LogOut, Sparkle, Zap, Download, Trash2, AlertTriangle, X,
-  User, Palette, Database, ShieldCheck,
+  User, Palette, Database, ShieldCheck, FlaskConical,
 } from 'lucide-react'
 import { supabase, authHeader } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '../components/ui'
+import { FORCE_FREE_KEY } from '../hooks/useIsPro'
 
 // Every table that holds the user's actual financial records — cleared by "Clear All Data".
 // Deliberately excludes `subscriptions` (Stripe/Pro billing status) and `plaid_items`
@@ -61,6 +62,21 @@ export default function Settings() {
   const [showClearModal, setShowClearModal] = useState(false)
   const [clearConfirmText, setClearConfirmText] = useState('')
   const [clearing, setClearing] = useState(false)
+
+  // DEV-TESTING-TOGGLE — lets a real Pro subscriber preview the free-tier
+  // experience without touching their actual subscription. Local to this
+  // browser only. Remove this state/section + FORCE_FREE_KEY in
+  // src/hooks/useIsPro.js before shipping publicly.
+  const [forcedFree, setForcedFree] = useState(() => localStorage.getItem(FORCE_FREE_KEY) === '1')
+  const toggleForcedFree = () => {
+    const next = !forcedFree
+    if (next) localStorage.setItem(FORCE_FREE_KEY, '1')
+    else localStorage.removeItem(FORCE_FREE_KEY)
+    setForcedFree(next)
+    // Every Pro-gated page reads this once on mount, so a full reload is the
+    // simplest way to make sure every open page reflects the new setting.
+    window.location.reload()
+  }
 
   useEffect(() => {
     const checkPro = async () => {
@@ -160,6 +176,20 @@ export default function Settings() {
           )}
         </SettingsRow>
       </SettingsSection>
+
+      {/* DEV-TESTING-TOGGLE — only shown to real Pro subscribers; remove before launch */}
+      {!proLoading && isPro && (
+        <SettingsSection Icon={FlaskConical} title="Testing (remove before launch)">
+          <SettingsRow
+            label={forcedFree ? 'Viewing as: Free user' : 'Viewing as: your real plan (Pro)'}
+            sub="Preview the app as a free user without cancelling or touching your actual subscription."
+          >
+            <button onClick={toggleForcedFree} className="btn-secondary text-sm">
+              {forcedFree ? 'Restore Pro view' : 'View as Free'}
+            </button>
+          </SettingsRow>
+        </SettingsSection>
+      )}
 
       <SettingsSection Icon={Database} title="Your Data">
         <SettingsRow label="Export everything" sub="Download all income, expenses, and transactions as a CSV backup.">

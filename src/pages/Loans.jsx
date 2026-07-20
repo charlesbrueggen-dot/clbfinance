@@ -9,30 +9,19 @@ import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
 import ProGate from '../components/ProGate'
 import { PageHeader, StatCard, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
+import { useIsPro } from '../hooks/useIsPro'
 
 const today = () => new Date().toISOString().split('T')[0]
 
 export default function Loans() {
   const { user } = useAuth()
-  const [isPro, setIsPro] = useState(false)
-  const [proLoading, setProLoading] = useState(true)
+  const { isPro, proLoading } = useIsPro(user.id)
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('active')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ person_name: '', type: 'lent', amount: '', interest_rate: '', loan_date: today(), notes: '' })
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    const checkPro = async () => {
-      const { data } = await supabase
-        .from('subscriptions').select('status')
-        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
-      setIsPro(!!data)
-      setProLoading(false)
-    }
-    checkPro()
-  }, [user.id])
 
   const load = async () => {
     const { data } = await supabase.from('loans').select('*').eq('user_id', user.id).order('loan_date', { ascending: false })

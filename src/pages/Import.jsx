@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
   Sparkle, Check, Cloud, AlertTriangle, PartyPopper, FolderOpen,
 } from 'lucide-react'
-import { supabase, authHeader } from '../lib/supabase'
+import { authHeader } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions, autoCategorize } from '../hooks/useTransactions'
 import {
@@ -12,6 +12,7 @@ import {
 import { fmtCurrency as fmt } from '../lib/format'
 
 import ProGate from '../components/ProGate'
+import { useIsPro } from '../hooks/useIsPro'
 
 const DATE_FORMAT_OPTIONS = [
   { value: 'auto', label: 'Auto-detect' },
@@ -47,24 +48,9 @@ function classifyForImport(description, kind) {
 export default function Import() {
   const { user } = useAuth()
   const { accounts, reload: reloadTxns } = useTransactions()
-  const [isPro, setIsPro] = useState(false)
-  const [proLoading, setProLoading] = useState(true)
+  const { isPro, proLoading } = useIsPro(user.id)
   const [step, setStep] = useState(0)
   const fileInputRef = useRef(null)
-
-  useEffect(() => {
-    const checkPro = async () => {
-      const { data } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle()
-      setIsPro(!!data)
-      setProLoading(false)
-    }
-    checkPro()
-  }, [user.id])
 
   // ── File + raw grid ────────────────────────────────────────────────────────
   const [headers, setHeaders] = useState([])

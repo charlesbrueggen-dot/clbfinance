@@ -6,7 +6,6 @@
 // confirm once they've finished it there.
 import { useState, useEffect, useMemo } from 'react'
 import { Repeat, ArrowUp, ArrowUpRight, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
 import {
@@ -16,6 +15,7 @@ import {
 import { fmtCurrency as fmt } from '../lib/format'
 import ProGate from '../components/ProGate'
 import { PageHeader, EmptyState, PageSkeleton } from '../components/ui'
+import { useIsPro } from '../hooks/useIsPro'
 
 function RenewalBadge({ date }) {
   const d = daysUntil(date)
@@ -103,25 +103,13 @@ export default function Subscriptions() {
     cancel: cancelSub, reactivate: reactivateSub, addManual, updateSub,
   } = useSubscriptions(user?.id)
 
-  const [isPro, setIsPro] = useState(false)
-  const [proLoading, setProLoading] = useState(true)
+  const { isPro, proLoading } = useIsPro(user.id)
   const [cancelTarget, setCancelTarget] = useState(null) // { detected } or { tracked }
   const [detailSub, setDetailSub] = useState(null)       // tracked sub shown in the detail popup
   const [showForm, setShowForm] = useState(false)
   const [editingSub, setEditingSub] = useState(null)
   const [form, setForm] = useState(blankForm())
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    const checkPro = async () => {
-      const { data } = await supabase
-        .from('subscriptions').select('status')
-        .eq('user_id', user.id).eq('status', 'active').maybeSingle()
-      setIsPro(!!data)
-      setProLoading(false)
-    }
-    checkPro()
-  }, [user.id])
 
   const allDetected      = useMemo(() => detectRecurring(transactions), [transactions])
   const trackedKeys      = useMemo(() => new Set(trackedSubs.map(s => s.merchant_key)), [trackedSubs])

@@ -8,6 +8,7 @@ import { fmtCurrency as fmt } from '../lib/format'
 import { useTransactions } from '../hooks/useTransactions'
 import { bucketMonthlyTotals, computeSavingsRate } from '../lib/savingsRate'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { useIsPro } from '../hooks/useIsPro'
 
 const SAVINGS_RATE_MONTHS = 6
 
@@ -42,8 +43,7 @@ Guidelines:
 
 export default function AICoach() {
   const { user } = useAuth()
-  const [isPro, setIsPro] = useState(false)
-  const [proLoading, setProLoading] = useState(true)
+  const { isPro, proLoading } = useIsPro(user.id)
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -58,20 +58,6 @@ export default function AICoach() {
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const { expenseTxns, incomeTxns } = useTransactions()
-
-  useEffect(() => {
-    const checkPro = async () => {
-      const { data } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle()
-      setIsPro(!!data)
-      setProLoading(false)
-    }
-    checkPro()
-  }, [user.id])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
