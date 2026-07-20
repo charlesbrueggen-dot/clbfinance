@@ -9,7 +9,7 @@ const PRO_PERKS = [
   'AI Coach with your real numbers',
   'Automatic bank sync (Plaid)',
   'CSV / spreadsheet import',
-  'Investments, subscriptions & loan tracking',
+  'Investments & subscription tracking',
 ]
 
 export default function ProGate({ feature, Icon, description, userId }) {

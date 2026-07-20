@@ -1,21 +1,18 @@
 import { useState, useEffect } from 'react'
 import {
-  Handshake, ArrowUpRight, ArrowDownRight, Check, Trash2,
+  ArrowUpRight, ArrowDownRight, Check, Trash2,
   Users, HandCoins, Wallet, X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { fmtCompact, fmtCurrency as fmt } from '../lib/format'
 import { calcWithInterest } from '../lib/loanMath'
-import ProGate from '../components/ProGate'
 import { PageHeader, StatCard, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
-import { useIsPro } from '../hooks/useIsPro'
 
 const today = () => new Date().toISOString().split('T')[0]
 
 export default function Loans() {
   const { user } = useAuth()
-  const { isPro, proLoading } = useIsPro(user.id)
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('active')
@@ -32,11 +29,11 @@ export default function Loans() {
 
   const openAdd = () => { setForm({ person_name: '', type: 'lent', amount: '', interest_rate: '', loan_date: today(), notes: '' }); setShowModal(true) }
 
-  // Deep link from the Dashboard's "+ Add" menu: /loans?add=1 opens the form (Pro only)
+  // Deep link from the Dashboard's "+ Add" menu: /loans?add=1 opens the form
   useEffect(() => {
-    if (!proLoading && !loading && isPro && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    if (!loading && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proLoading, loading, isPro])
+  }, [loading])
 
   const handleSave = async e => {
     e.preventDefault()
@@ -64,16 +61,7 @@ export default function Loans() {
   const moneyOwed = active.filter(l => l.type === 'borrowed').reduce((s, l) => s + calcWithInterest(l.amount, l.interest_rate, l.loan_date), 0)
   const netPosition = moneyLent - moneyOwed
 
-  if (proLoading || loading) return <PageSkeleton stats={3} hero={false} />
-
-  if (!isPro) return (
-    <ProGate
-      feature="Loans & Debts"
-      Icon={Handshake}
-      description="Track money you've lent or borrowed with automatic interest calculations and settlement tracking."
-      userId={user.id}
-    />
-  )
+  if (loading) return <PageSkeleton stats={3} hero={false} />
 
   return (
     <div>
