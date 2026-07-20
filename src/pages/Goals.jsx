@@ -44,6 +44,12 @@ export default function Goals() {
 
   const openAdd = () => { setForm({ title: '', target_amount: '', target_date: '', category: 'Other', priority: 'medium' }); setShowModal(true) }
 
+  // Deep link from the Dashboard's "+ Add" menu: /goals?add=1 opens the form immediately
+  useEffect(() => {
+    if (!loading && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
+
   const handleSave = async e => {
     e.preventDefault()
     setSaving(true)

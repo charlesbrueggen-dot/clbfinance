@@ -26,7 +26,7 @@ const SECTORS = ['Technology','Healthcare','Finance','Energy','Consumer','Real E
 
 
 import ProGate from '../components/ProGate'
-import { PageHeader, StatCard, EmptyState, PageSkeleton } from '../components/ui'
+import { PageHeader, StatCard, EmptyState, PageSkeleton, SegTabs } from '../components/ui'
 
 // ─── Offline ticker hints (Stocks + ETFs) ─────────────────────────────────────
 const TICKER_HINTS = {
@@ -147,6 +147,12 @@ export default function Investments() {
     setSaveError('')
     setShowModal(true)
   }
+
+  // Deep link from the Dashboard's "+ Add" menu: /investments?add=1 opens the form (Pro only)
+  useEffect(() => {
+    if (!proLoading && !loading && isPro && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proLoading, loading, isPro])
 
   // ─── Open edit modal ──────────────────────────────────────────────────────
   const openEdit = item => {
@@ -751,43 +757,41 @@ export default function Investments() {
       subLine = `${item.shares} shares · ${fmt(item.current_price || item.avg_cost)} now`
     }
 
+    // Stacked row instead of a wide table row — the table forced sideways
+    // scrolling on phones; this keeps every holding fully visible at any width.
     return (
-      <tr key={item._ids ? item._ids.join('-') : item.id} className="border-b last:border-0" style={{ borderColor: 'var(--card-border)' }}>
-        <td className="py-3 px-2">
-          <div className="flex items-center gap-1">
-            {item.symbol && <span className="font-bold text-primary text-sm">{item.symbol}</span>}
+      <div key={item._ids ? item._ids.join('-') : item.id} className="list-row">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {item.symbol
+              ? <span className="font-bold text-primary text-sm">{item.symbol}</span>
+              : <span className="font-bold text-primary text-sm truncate">{item.name}</span>}
+            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'var(--input-bg)', color: 'var(--text-muted)' }}>
+              {item.type}
+            </span>
             {isAutoRefresh(item.type) && (
-              <span className="text-xs px-1 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>auto</span>
+              <span className="text-xs px-1.5 rounded" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>auto</span>
             )}
             {item._ids && item._ids.length > 1 && (
-              <span className="text-xs px-1 rounded" style={{ background: dark ? 'rgba(139,92,246,0.15)' : '#ede9fe', color: dark ? '#a78bfa' : '#6d28d9' }}>{item._ids.length} lots</span>
+              <span className="text-xs px-1.5 rounded" style={{ background: dark ? 'rgba(139,92,246,0.15)' : '#ede9fe', color: dark ? '#a78bfa' : '#6d28d9' }}>{item._ids.length} lots</span>
             )}
           </div>
-          <span className="text-xs text-muted block">{item.name}</span>
-          <span className="text-xs text-muted block mt-0.5">{subLine}</span>
-        </td>
-        <td className="py-3 px-2">
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--input-bg)', color: 'var(--text-muted)' }}>
-            {item.type}
-          </span>
-        </td>
-        <td className="py-3 px-2 text-muted text-xs">{item.sector || '—'}</td>
-        <td className="py-3 px-2 font-medium text-primary">{fmt(val)}</td>
-        <td className="py-3 px-2">
-          <span className="font-medium text-sm" style={{ color: gl >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
-            {gl >= 0 ? '+' : ''}{fmt(gl)}
-          </span>
-          <span className="block text-xs" style={{ color: gl >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
-            {glPct}%
-          </span>
-        </td>
-        <td className="py-3 px-2">
-          <div className="flex gap-2">
-            <button onClick={() => openEdit(item)} className="text-muted hover:text-primary"><Pencil size={14} /></button>
-            <button onClick={() => handleDeleteConsolidated(item)} className="text-muted hover:text-red-500"><Trash2 size={14} /></button>
-          </div>
-        </td>
-      </tr>
+          <p className="text-xs text-muted truncate mt-0.5">
+            {item.symbol ? `${item.name}${item.sector ? ` · ${item.sector}` : ''}` : (item.sector || '')}
+          </p>
+          <p className="text-xs text-muted truncate">{subLine}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="font-bold text-primary text-sm tnum">{fmt(val)}</p>
+          <p className="text-xs tnum font-medium" style={{ color: gl >= 0 ? 'var(--positive-strong)' : 'var(--negative-strong)' }}>
+            {gl >= 0 ? '+' : ''}{fmt(gl)} · {glPct}%
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <button onClick={() => openEdit(item)} className="text-muted hover:text-primary p-0.5"><Pencil size={14} /></button>
+          <button onClick={() => handleDeleteConsolidated(item)} className="text-muted hover:text-red-500 p-0.5"><Trash2 size={14} /></button>
+        </div>
+      </div>
     )
   }
 
@@ -858,39 +862,17 @@ export default function Investments() {
             <button onClick={openAdd} className="btn-primary">+ Add Your First Investment</button>
           </EmptyState>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted border-b" style={{ borderColor: 'var(--card-border)' }}>
-                  {['Holding', 'Type', 'Sector', 'Value', 'G/L', 'Actions'].map(h => (
-                    <th key={h} className="text-left py-2 px-2 font-medium text-xs">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>{consolidatedInvestments.map(renderRow)}</tbody>
-            </table>
-          </div>
+          <div>{consolidatedInvestments.map(renderRow)}</div>
         )}
       </div>
 
       {/* Portfolio Growth */}
       {growthSeriesFull.length > 0 && (
         <div className="card p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
             <div className="flex items-center gap-2 font-semibold text-primary text-sm"><TrendingUp size={16} /><span>Portfolio Growth</span></div>
-            <div className="flex gap-1">
-              {[['1w','1W'],['1m','1M'],['1y','1Y'],['all','All Time']].map(([v, l]) => (
-                <button key={v} onClick={() => setGrowthRange(v)}
-                  className="px-2 py-1 rounded-lg text-xs font-bold transition-all"
-                  style={{
-                    background: growthRange === v ? 'var(--text-primary)' : 'var(--input-bg)',
-                    color:      growthRange === v ? 'var(--page-bg)'      : 'var(--text-muted)',
-                    border:     '1px solid var(--card-border)',
-                  }}>
-                  {l}
-                </button>
-              ))}
-            </div>
+            <SegTabs small active={growthRange} onChange={setGrowthRange}
+              tabs={[{ value: '1w', label: '1W' }, { value: '1m', label: '1M' }, { value: '1y', label: '1Y' }, { value: 'all', label: 'All' }]} />
           </div>
           {growthData.length < 2 ? (
             <div className="text-center py-10 text-muted text-sm">No purchases in this range</div>

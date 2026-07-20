@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import {
   BarChart3, RefreshCw, Plus, Sparkle, ArrowRight, Download, Target, TrendingUp,
-  ArrowUpRight, ArrowDownRight, Trash2, AlertTriangle, X, Wallet, PiggyBank,
+  ArrowUpRight, ArrowDownRight, Wallet, PiggyBank, Repeat, HandCoins,
 } from 'lucide-react'
 import { pieStrokeProps, PIE_COLORS_LIGHT, PIE_COLORS_DARK, renderActivePieSector, pieCellOpacity, sortByValueDesc } from '../lib/chartTheme'
 import { fmtCurrency as fmt } from '../lib/format'
@@ -16,16 +16,16 @@ import { PageHeader, StatCard, EmptyState, PageSkeleton, SectionTitle } from '..
 
 const SAVINGS_RATE_MONTHS = 6
 
-// Every table that holds the user's actual financial records — cleared by "Clear All Data".
-// Deliberately excludes `subscriptions` (Stripe/Pro billing status) and `plaid_items`
-// (bank connection credentials) since those are account/connection state, not "your data" —
-// wiping them would silently cancel Pro access or break an existing bank link.
-const CLEAR_DATA_TABLES = [
-  'income', 'expenses', 'investments', 'loans', 'goals', 'assets',
-  'account_transactions', 'accounts', 'balance', 'balance_accounts', 'balance_gains',
-  'tracked_subscriptions',
+// Everything the "+ Add" menu can create. Each entry deep-links to its page with
+// ?add=1, which the target page reads on arrival to open its add form immediately.
+const ADD_MENU = [
+  { label: 'Income',      Icon: ArrowUpRight,   path: '/income?add=1' },
+  { label: 'Expense',     Icon: ArrowDownRight, path: '/expenses?add=1' },
+  { label: 'Goal',        Icon: Target,         path: '/goals?add=1' },
+  { label: 'Subscription', Icon: Repeat,        path: '/subscriptions?add=1' },
+  { label: 'Investment',  Icon: TrendingUp,     path: '/investments?add=1' },
+  { label: 'Loan / Debt', Icon: HandCoins,      path: '/loans?add=1' },
 ]
-const CLEAR_CONFIRM_PHRASE = 'DELETE'
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -45,15 +45,16 @@ export default function Dashboard() {
   const [pieActiveIndex, setPieActiveIndex] = useState(null)
   const [spendActiveIndex, setSpendActiveIndex] = useState(null)
   const { expenseTxns, incomeTxns } = useTransactions()
-  const [showClearModal, setShowClearModal] = useState(false)
-  const [clearConfirmText, setClearConfirmText] = useState('')
-  const [clearing, setClearing] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const addMenuRef = useRef(null)
 
-  const handleClearAllData = async () => {
-    setClearing(true)
-    await Promise.all(CLEAR_DATA_TABLES.map(table => supabase.from(table).delete().eq('user_id', user.id)))
-    window.location.reload()
-  }
+  // Close the Add menu on any outside click
+  useEffect(() => {
+    if (!addMenuOpen) return
+    const close = e => { if (!addMenuRef.current?.contains(e.target)) setAddMenuOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [addMenuOpen])
 
   useEffect(() => {
     const load = async () => {
@@ -130,7 +131,26 @@ export default function Dashboard() {
         subtitle={new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
       >
         <button className="btn-secondary text-sm" onClick={() => window.location.reload()}><RefreshCw size={15} /> Refresh</button>
-        <Link to="/income" className="btn-primary text-sm no-underline"><Plus size={15} /> Add</Link>
+        <div className="relative" ref={addMenuRef}>
+          <button className="btn-primary text-sm" onClick={() => setAddMenuOpen(o => !o)}>
+            <Plus size={15} /> Add
+          </button>
+          {addMenuOpen && (
+            <div className="absolute right-0 mt-2 w-52 rounded-2xl p-2 z-50"
+              style={{ background: 'var(--modal-bg)', border: '1px solid var(--card-border)', boxShadow: '0 16px 48px rgba(0,0,0,0.35)', animation: 'modal-pop 0.18s ease' }}>
+              {ADD_MENU.map(item => (
+                <button key={item.path}
+                  onClick={() => { setAddMenuOpen(false); navigate(item.path) }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-primary transition-colors hover:opacity-80 text-left"
+                  style={{ background: 'transparent' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--input-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <item.Icon size={15} className="text-muted" /> {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </PageHeader>
 
       {/* ── AI COACH BANNER ── */}
@@ -340,58 +360,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Danger zone */}
-      <div className="mt-8 flex justify-center">
-        <button onClick={() => setShowClearModal(true)}
-          className="text-xs font-semibold flex items-center gap-1.5 px-3 py-2 rounded-lg transition-opacity hover:opacity-75"
-          style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>
-          <Trash2 size={13} /> Clear All Data
-        </button>
-      </div>
-
-      {/* Clear All Data confirmation modal */}
-      {showClearModal && (
-        <div className="modal-overlay" onClick={() => !clearing && setShowClearModal(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
-            <div className="flex items-center justify-between mb-4">
-              <p className="font-black text-lg flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>
-                <AlertTriangle size={20} /> Clear All Data
-              </p>
-              {!clearing && (
-                <button onClick={() => setShowClearModal(false)} className="text-muted hover:text-primary"><X size={20} /></button>
-              )}
-            </div>
-            <p className="text-muted text-sm mb-4">
-              This permanently deletes all your income, expenses, investments, loans, goals, assets,
-              accounts, and synced transactions. This cannot be undone. Your Pro subscription and any
-              connected bank link are not affected.
-            </p>
-            <label className="label">Type {CLEAR_CONFIRM_PHRASE} to confirm</label>
-            <input
-              className="input-field mb-4"
-              value={clearConfirmText}
-              onChange={e => setClearConfirmText(e.target.value)}
-              placeholder={CLEAR_CONFIRM_PHRASE}
-              disabled={clearing}
-              autoFocus
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setShowClearModal(false)} disabled={clearing} className="btn-secondary justify-center">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleClearAllData}
-                disabled={clearing || clearConfirmText !== CLEAR_CONFIRM_PHRASE}
-                className="btn-primary justify-center"
-                style={{ background: '#ef4444', borderColor: '#ef4444' }}
-              >
-                {clearing ? 'Clearing…' : 'Permanently Delete Everything'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

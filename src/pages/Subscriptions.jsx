@@ -5,7 +5,7 @@
 // provider — so we deep-link to their account page and let the user
 // confirm once they've finished it there.
 import { useState, useEffect, useMemo } from 'react'
-import { Repeat, AlertTriangle, ArrowUp, ArrowUpRight, X } from 'lucide-react'
+import { Repeat, ArrowUp, ArrowUpRight, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import { useTransactions } from '../hooks/useTransactions'
@@ -26,6 +26,70 @@ function RenewalBadge({ date }) {
   return <span className="text-xs text-muted">Renews {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
 }
 
+// ── Company logos ────────────────────────────────────────────────────────────
+// Well-known merchants map to their real domain; anything else falls back to a
+// guessed "<name>.com". Icons come from Google's public favicon service, and if
+// nothing loads we quietly show the category icon instead.
+const LOGO_DOMAINS = {
+  netflix: 'netflix.com', spotify: 'spotify.com', hulu: 'hulu.com',
+  'disney+': 'disneyplus.com', disney: 'disneyplus.com', 'disney plus': 'disneyplus.com',
+  'amazon prime': 'amazon.com', prime: 'amazon.com', amazon: 'amazon.com', audible: 'audible.com',
+  'youtube premium': 'youtube.com', youtube: 'youtube.com', 'youtube tv': 'tv.youtube.com',
+  'apple music': 'apple.com', 'apple tv': 'apple.com', 'apple tv+': 'apple.com', icloud: 'apple.com', apple: 'apple.com',
+  'hbo max': 'max.com', max: 'max.com', hbo: 'max.com',
+  'paramount+': 'paramountplus.com', paramount: 'paramountplus.com',
+  peacock: 'peacocktv.com', crunchyroll: 'crunchyroll.com', twitch: 'twitch.tv',
+  adobe: 'adobe.com', 'creative cloud': 'adobe.com', photoshop: 'adobe.com',
+  dropbox: 'dropbox.com', notion: 'notion.so', canva: 'canva.com', github: 'github.com',
+  microsoft: 'microsoft.com', 'microsoft 365': 'microsoft.com', 'office 365': 'microsoft.com', xbox: 'xbox.com',
+  'google one': 'google.com', google: 'google.com', playstation: 'playstation.com',
+  'ps plus': 'playstation.com', nintendo: 'nintendo.com', chatgpt: 'openai.com', openai: 'openai.com',
+  'planet fitness': 'planetfitness.com', peloton: 'onepeloton.com', equinox: 'equinox.com',
+  doordash: 'doordash.com', dashpass: 'doordash.com', instacart: 'instacart.com',
+  'uber one': 'uber.com', uber: 'uber.com', 'walmart+': 'walmart.com', walmart: 'walmart.com',
+  costco: 'costco.com', 'new york times': 'nytimes.com', nyt: 'nytimes.com',
+  discord: 'discord.com', 'discord nitro': 'discord.com', duolingo: 'duolingo.com',
+  strava: 'strava.com', patreon: 'patreon.com', 'linkedin premium': 'linkedin.com',
+}
+
+function logoDomain(name = '') {
+  const key = name.trim().toLowerCase()
+  if (LOGO_DOMAINS[key]) return LOGO_DOMAINS[key]
+  // Partial match ("Netflix.com Bill" → netflix)
+  const hit = Object.keys(LOGO_DOMAINS).find(k => key.includes(k))
+  if (hit) return LOGO_DOMAINS[hit]
+  // Last resort: guess <name>.com from the first word
+  const first = key.replace(/[^a-z0-9 ]/g, '').split(' ')[0]
+  return first ? `${first}.com` : null
+}
+
+function SubLogo({ name, category, size = 36 }) {
+  const [failed, setFailed] = useState(false)
+  const domain = logoDomain(name)
+  const CIcon = CATEGORY_ICON[category] || Repeat
+  if (!domain || failed) {
+    return (
+      <div className="icon-chip flex-shrink-0" style={{ width: size, height: size }}>
+        <CIcon size={size * 0.45} />
+      </div>
+    )
+  }
+  return (
+    <div className="flex-shrink-0 flex items-center justify-center rounded-xl overflow-hidden"
+      style={{ width: size, height: size, background: '#fff', border: '1px solid var(--card-border)' }}>
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        alt=""
+        width={size * 0.62}
+        height={size * 0.62}
+        style={{ objectFit: 'contain' }}
+        onError={() => setFailed(true)}
+        loading="lazy"
+      />
+    </div>
+  )
+}
+
 const blankForm = () => ({
   name: '', amount: '', frequency: 'monthly', category: 'Other',
   next_billing_date: '', cancel_url: '',
@@ -42,6 +106,7 @@ export default function Subscriptions() {
   const [isPro, setIsPro] = useState(false)
   const [proLoading, setProLoading] = useState(true)
   const [cancelTarget, setCancelTarget] = useState(null) // { detected } or { tracked }
+  const [detailSub, setDetailSub] = useState(null)       // tracked sub shown in the detail popup
   const [showForm, setShowForm] = useState(false)
   const [editingSub, setEditingSub] = useState(null)
   const [form, setForm] = useState(blankForm())
@@ -92,6 +157,12 @@ export default function Subscriptions() {
   })
 
   const openAdd  = () => { setEditingSub(null); setForm(blankForm()); setShowForm(true) }
+
+  // Deep link from the Dashboard's "+ Add" menu: /subscriptions?add=1 opens the form (Pro only)
+  useEffect(() => {
+    if (!proLoading && !loading && isPro && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proLoading, loading, isPro])
   const openEdit = sub => {
     setEditingSub(sub)
     setForm({
@@ -126,59 +197,28 @@ export default function Subscriptions() {
         <button onClick={openAdd} className="btn-primary text-sm px-4">+ Add</button>
       </PageHeader>
 
-      <div className="mb-4 p-3 rounded-xl text-xs flex items-start gap-1.5"
-        style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning)', color: 'var(--warning)' }}>
-        <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-        <span>We can't cancel subscriptions for you — no provider offers that. Cancelling here just stops
-        counting it as active spend and points you to where to finish the job yourself.</span>
-      </div>
-
       {activeSubs.length > 0 && (
         <div className="card p-4 mb-5">
           <p className="text-muted text-xs mb-1">Monthly Subscription Cost</p>
-          <p className="text-2xl font-black text-primary">{fmt(monthlySubTotal)}/mo</p>
+          <p className="text-2xl font-black text-primary tnum">{fmt(monthlySubTotal)}/mo</p>
           <p className="text-xs text-muted mt-1">
             ≈ {fmt(monthlySubTotal * 12)}/yr · {activeSubs.length} active subscription{activeSubs.length !== 1 ? 's' : ''}
+            {renewingSoon.length > 0 && <span> · {renewingSoon.length} renewing within 7 days</span>}
           </p>
-        </div>
-      )}
-
-      {renewingSoon.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Renewing Soon</p>
-          <div className="space-y-2">
-            {renewingSoon.map(sub => (
-              <div key={sub.id} className="card p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {(() => { const CIcon = CATEGORY_ICON[sub.category] || Repeat; return <CIcon size={16} className="text-primary" /> })()}
-                  <p className="text-sm font-semibold text-primary">{sub.name}</p>
-                  <span className="text-xs text-muted">{fmt(sub.amount)}</span>
-                </div>
-                <RenewalBadge date={sub.next_billing_date} />
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
       {untrackedDetected.length > 0 && (
         <div className="mb-5">
           <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Detected Recurring Charges</p>
-          <div className="space-y-2">
+          <div className="card px-4 py-1">
             {untrackedDetected.map(d => (
-              <div key={d.merchantKey} className="card p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {(() => { const CIcon = CATEGORY_ICON[d.category] || Repeat; return <CIcon size={18} className="text-primary" /> })()}
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="font-semibold text-primary text-sm">{d.name}</p>
-                      {d.confidence === 'likely' && (
-                        <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
-                          1 repeat so far
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted">{fmt(d.amount)} · {d.frequency} · est. next {d.nextDate}</p>
+              <div key={d.merchantKey} className="list-row">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <SubLogo name={d.name} category={d.category} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-primary text-sm truncate">{d.name}</p>
+                    <p className="text-xs text-muted truncate">{fmt(d.amount)} · {d.frequency} · est. next {d.nextDate}</p>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
@@ -195,31 +235,26 @@ export default function Subscriptions() {
       {activeSubs.length > 0 && (
         <div className="mb-5">
           <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Your Subscriptions</p>
-          <div className="space-y-2">
+          {/* Condensed rows — tap one for the full details popup */}
+          <div className="card px-4 py-1">
             {activeSubs.map(sub => (
-              <div key={sub.id} className="card p-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {(() => { const CIcon = CATEGORY_ICON[sub.category] || Repeat; return <CIcon size={18} className="flex-shrink-0 text-primary" /> })()}
+              <div key={sub.id} className="list-row cursor-pointer" onClick={() => setDetailSub(sub)}>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <SubLogo name={sub.name} category={sub.category} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-primary text-sm truncate">{sub.name}</p>
                       {sub.previous_amount != null && (
                         <span className="text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 inline-flex items-center gap-0.5"
                           style={{ background: 'var(--negative-bg)', color: 'var(--negative)' }}>
-                          <ArrowUp size={11} /> was {fmt(sub.previous_amount)}
+                          <ArrowUp size={11} /> price up
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted">{fmt(sub.amount)} · {sub.frequency} · {sub.category}</p>
+                    <RenewalBadge date={sub.next_billing_date} />
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <RenewalBadge date={sub.next_billing_date} />
-                  <button onClick={() => openEdit(sub)} className="text-xs text-muted hover:text-primary px-2 py-1 rounded border"
-                    style={{ borderColor: 'var(--card-border)' }}>Edit</button>
-                  <button onClick={() => setCancelTarget({ tracked: sub })} className="text-xs text-muted hover:text-red-500 px-2 py-1 rounded border"
-                    style={{ borderColor: 'var(--card-border)' }}>Cancel</button>
-                </div>
+                <p className="font-black text-primary text-sm tnum flex-shrink-0">{fmt(sub.amount)}</p>
               </div>
             ))}
           </div>
@@ -229,14 +264,17 @@ export default function Subscriptions() {
       {cancelledSubs.length > 0 && (
         <div className="mb-5">
           <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Cancelled</p>
-          <div className="space-y-2">
+          <div className="card px-4 py-1 opacity-70">
             {cancelledSubs.map(sub => (
-              <div key={sub.id} className="card p-4 flex items-center justify-between opacity-60">
-                <div>
-                  <p className="font-semibold text-primary text-sm line-through">{sub.name}</p>
-                  <p className="text-xs text-muted">{fmt(sub.amount)} · {sub.frequency}</p>
+              <div key={sub.id} className="list-row">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <SubLogo name={sub.name} category={sub.category} />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-primary text-sm line-through truncate">{sub.name}</p>
+                    <p className="text-xs text-muted">{fmt(sub.amount)} · {sub.frequency}</p>
+                  </div>
                 </div>
-                <button onClick={() => reactivateSub(sub.id)} className="text-xs text-muted hover:text-primary px-3 py-1.5 rounded border"
+                <button onClick={() => reactivateSub(sub.id)} className="text-xs text-muted hover:text-primary px-3 py-1.5 rounded border flex-shrink-0"
                   style={{ borderColor: 'var(--card-border)' }}>Reactivate</button>
               </div>
             ))}
@@ -250,6 +288,49 @@ export default function Subscriptions() {
             sub="Once you log or sync a few months of transactions, repeating charges show up here automatically.">
             <button onClick={openAdd} className="btn-secondary">+ Add one manually</button>
           </EmptyState>
+        </div>
+      )}
+
+      {/* ══════════════════ SUBSCRIPTION DETAIL POPUP ══════════════════ */}
+      {detailSub && (
+        <div className="modal-overlay" onClick={() => setDetailSub(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="flex items-start justify-between mb-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <SubLogo name={detailSub.name} category={detailSub.category} size={46} />
+                <div className="min-w-0">
+                  <p className="font-black text-primary text-lg truncate">{detailSub.name}</p>
+                  <RenewalBadge date={detailSub.next_billing_date} />
+                </div>
+              </div>
+              <button onClick={() => setDetailSub(null)} className="text-muted hover:text-primary flex-shrink-0"><X size={20} /></button>
+            </div>
+
+            <div className="rounded-2xl p-4 mb-5" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+              {[
+                ['Price', `${fmt(detailSub.amount)} / ${detailSub.frequency}`],
+                ['Monthly equivalent', `${fmt(monthlyEquivalent(detailSub))}/mo`],
+                ['Yearly cost', fmt(monthlyEquivalent(detailSub) * 12)],
+                ['Category', detailSub.category || 'Other'],
+                detailSub.next_billing_date && ['Next billing', new Date(detailSub.next_billing_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })],
+                detailSub.last_charge_date && ['Last charge', detailSub.last_charge_date],
+                detailSub.previous_amount != null && ['Previous price', `${fmt(detailSub.previous_amount)} (increased)`],
+              ].filter(Boolean).map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-3 py-1.5 text-sm">
+                  <span className="text-muted">{label}</span>
+                  <span className="font-semibold text-primary text-right tnum">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setDetailSub(null); openEdit(detailSub) }} className="btn-secondary justify-center">Edit</button>
+              <button onClick={() => { const s = detailSub; setDetailSub(null); setCancelTarget({ tracked: s }) }}
+                className="btn-primary justify-center" style={{ background: '#ef4444', borderColor: '#ef4444' }}>
+                Cancel Subscription
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

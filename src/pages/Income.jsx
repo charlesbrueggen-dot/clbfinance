@@ -53,6 +53,12 @@ export default function Income() {
     setShowModal(true)
   }
 
+  // Deep link from the Dashboard's "+ Add" menu: /income?add=1 opens the form immediately
+  useEffect(() => {
+    if (!loading && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
+
   const openEdit = item => {
     setEditItem(item)
     setForm({

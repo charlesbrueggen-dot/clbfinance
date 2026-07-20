@@ -270,11 +270,19 @@ select.input-field option {
 }
 
 /* ── Page scaffolding ──────────────────────────────────────────────────────── */
+/* Opacity-only on purpose: a transform here (even translateY(0)) turns the page
+   wrapper into the containing block for its position:fixed descendants, which
+   made modal overlays center on the tall page instead of the screen — showing
+   up "below" the viewport whenever the user had scrolled. */
 .page-enter { animation: page-fade 0.3s ease both; }
 @keyframes page-fade {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
+
+/* Vertical swipes over charts should scroll the page; charts only need
+   horizontal pointer movement for their hover/tooltip interactions. */
+.recharts-wrapper { touch-action: pan-y; }
 
 /* Segmented pill tabs (shared look for every page's filter/tab row) */
 .seg-tab {

@@ -189,9 +189,9 @@ export default function AICoach() {
       {/* Header */}
       <div className="mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl font-black"
-            style={{ background: dark ? '#10b981' : 'rgba(255,255,255,0.22)', color: dark ? '#000' : '#fff', border: '2px solid rgba(255,255,255,0.3)' }}>
-            S
+          <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
+            style={{ background: dark ? '#0d0d0d' : 'rgba(255,255,255,0.9)', border: dark ? '2px solid #10b981' : '2px solid rgba(255,255,255,0.4)' }}>
+            <img src={dark ? '/logo-dark.png' : '/logo.png'} alt="Stride Coach" className="w-7 h-7 object-contain" />
           </div>
           <div>
             <h1 className="text-xl font-black text-primary tracking-tight">Stride Coach</h1>

@@ -361,7 +361,7 @@ export default function Analytics() {
           {/* Subcategory breakdown — powered by account_transactions data */}
           {allExpenses.length > 0 && (
             <div className="card p-5 mb-4">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
                 <p className="font-bold text-primary text-sm">Subcategory Breakdown</p>
                 <SegTabs small active={subCatRange} onChange={setSubCatRange}
                   tabs={[{ value: '1w', label: '1W' }, { value: '1m', label: '1M' }, { value: '1y', label: '1Y' }, { value: 'all', label: 'All' }]} />

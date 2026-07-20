@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Sparkle, ArrowUpRight, ArrowDownRight, DollarSign,
   Landmark, PieChart, BarChart3, Target, HandCoins, Repeat, Moon, Sun, X,
-  LogOut, MoreHorizontal,
+  LogOut, MoreHorizontal, Settings as SettingsIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
@@ -53,6 +53,7 @@ const MORE_ITEMS = [
   { path: '/investments', label: 'Investments', Icon: PieChart },
   { path: '/subscriptions', label: 'Subscriptions', Icon: Repeat },
   { path: '/loans', label: 'Loans & Debts', Icon: HandCoins },
+  { path: '/settings', label: 'Settings', Icon: SettingsIcon },
 ]
 
 function Logo({ dark, size = 36 }) {
@@ -134,8 +135,12 @@ export default function Layout({ dark, setDark }) {
           </Link>
         </nav>
 
-        {/* Sidebar footer: theme, account, sign out */}
+        {/* Sidebar footer: settings, theme, account, sign out */}
         <div className="px-4 py-4" style={{ borderTop: '1px solid var(--card-border)' }}>
+          <Link to="/settings" className={`nav-item mb-1 ${isActive('/settings') ? 'nav-item-active' : ''}`}>
+            <SettingsIcon size={16} />
+            <span>Settings</span>
+          </Link>
           <button onClick={() => setDark(!dark)}
             className="nav-item w-full mb-1" style={{ background: 'var(--nav-soft)' }}>
             {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -245,7 +250,7 @@ export default function Layout({ dark, setDark }) {
       <main className="lg:pl-64">
         <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
           <div className="page-enter" key={location.pathname}>
-            <Outlet />
+            <Outlet context={{ dark, setDark }} />
           </div>
         </div>
       </main>

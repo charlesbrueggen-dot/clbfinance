@@ -114,6 +114,12 @@ export default function Expenses() {
     setStep('quick')
   }
 
+  // Deep link from the Dashboard's "+ Add" menu: /expenses?add=1 opens the form immediately
+  useEffect(() => {
+    if (!loading && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
+
   const openEdit = item => {
     setEditItem(item)
     setEditSource(item._source)

@@ -301,21 +301,22 @@ export default function Accounts() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+      {/* Tabs — sized to always fit on one line, even on small phones */}
+      <div className="flex flex-wrap gap-1 mb-5">
         {[['accounts', Landmark, 'Accounts'], ['connect', Link2, 'Connect Bank'], ['import', Download, 'Import']].map(([t, Icon, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`seg-tab ${tab === t ? 'seg-tab-active' : ''}`}>
-            <Icon size={15} /> {label}
+            className={`seg-tab ${tab === t ? 'seg-tab-active' : ''}`}
+            style={{ padding: '6px 9px', fontSize: 12, gap: 4 }}>
+            <Icon size={13} /> {label}
             {t === 'connect' && connectedItems.length > 0 && (
-              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold"
+              <span className="text-xs px-1.5 rounded-full font-bold"
                 style={{ background: '#10b981', color: '#000' }}>
                 {connectedItems.length}
               </span>
             )}
             {t === 'connect' && connectedItems.length === 0 && !isPro && (
-              <span className="ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold"
-                style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
+              <span className="text-xs px-1.5 rounded-full font-bold"
+                style={{ background: 'var(--positive-bg)', color: 'var(--positive)', fontSize: 10 }}>
                 PRO
               </span>
             )}
@@ -606,15 +607,13 @@ export default function Accounts() {
               <input className="input-field flex-1 text-sm" placeholder="Search transactions…"
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {/* Active pill uses the standard seg-tab colors — the old version painted
+                "All" white-on-white in light mode (white bg + white text). */}
+            <div className="flex flex-wrap gap-2 mb-4">
               {['all', 'expense', 'income', 'transfer'].map(k => (
                 <button key={k} onClick={() => setTxnFilter(k)}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all"
-                  style={{
-                    background: txnFilter === k ? (KIND_COLOR[k] || 'var(--text-primary)') : 'var(--input-bg)',
-                    color:      txnFilter === k ? '#fff' : 'var(--text-muted)',
-                    border:     '1px solid var(--card-border)',
-                  }}>
+                  className={`seg-tab capitalize ${txnFilter === k ? 'seg-tab-active' : ''}`}
+                  style={{ padding: '5px 12px', fontSize: 12 }}>
                   {k === 'all' ? `All (${transactions.length})` : k}
                 </button>
               ))}

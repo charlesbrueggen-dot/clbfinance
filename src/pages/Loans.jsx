@@ -43,6 +43,12 @@ export default function Loans() {
 
   const openAdd = () => { setForm({ person_name: '', type: 'lent', amount: '', interest_rate: '', loan_date: today(), notes: '' }); setShowModal(true) }
 
+  // Deep link from the Dashboard's "+ Add" menu: /loans?add=1 opens the form (Pro only)
+  useEffect(() => {
+    if (!proLoading && !loading && isPro && new URLSearchParams(window.location.search).get('add') === '1') openAdd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proLoading, loading, isPro])
+
   const handleSave = async e => {
     e.preventDefault()
     setSaving(true)
@@ -178,9 +184,9 @@ export default function Loans() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div><label className="label">Original Amount ($)</label><input className="input-field" type="number" step="0.01" min="0" placeholder="500.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required /></div>
-                <div><label className="label">Annual Interest Rate (%)</label><input className="input-field" type="number" step="0.01" min="0" placeholder="0 = interest-free" value={form.interest_rate} onChange={e => setForm(f => ({ ...f, interest_rate: e.target.value }))} /></div>
+              <div className="grid grid-cols-2 gap-3 mb-4 items-end">
+                <div><label className="label">Amount ($)</label><input className="input-field" type="number" step="0.01" min="0" placeholder="500.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} required /></div>
+                <div><label className="label">Interest (%/yr)</label><input className="input-field" type="number" step="0.01" min="0" placeholder="0 = interest-free" value={form.interest_rate} onChange={e => setForm(f => ({ ...f, interest_rate: e.target.value }))} /></div>
               </div>
               <div className="mb-4"><label className="label">Loan Date</label><input className="input-field" type="date" value={form.loan_date} onChange={e => setForm(f => ({ ...f, loan_date: e.target.value }))} required /></div>
               <div className="mb-6"><label className="label">Notes (optional)</label><input className="input-field" placeholder="e.g., For rent payment" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>

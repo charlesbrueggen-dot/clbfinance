@@ -33,10 +33,12 @@ export function StatCard({ label, value, sub, Icon, tone, onClick, valueStyle })
   )
 }
 
-/** Pill-style segmented tabs. `tabs` = [{value, label, Icon?}] or plain strings. */
+/** Pill-style segmented tabs. `tabs` = [{value, label, Icon?}] or plain strings.
+ *  Wraps onto extra lines instead of scrolling sideways — nothing in the app
+ *  should require a horizontal swipe to reach. */
 export function SegTabs({ tabs, active, onChange, small }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+    <div className="flex flex-wrap gap-2">
       {tabs.map(t => {
         const tab = typeof t === 'string' ? { value: t, label: t } : t
         return (
